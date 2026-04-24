@@ -1,0 +1,217 @@
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
+
+import { Button } from '../../../../src/components/Button';
+import { Card } from '../../../../src/components/Card';
+import { trpc } from '../../../../src/lib/trpc';
+
+/**
+ * Practice flow. Matches the web PracticeSession:
+ *   1. Fetch the queue once on mount.
+ *   2. Walk cards locally (tap card to flip).
+ *   3. After each rating, fire submitReview and advance — don't block
+ *      the UI on the network.
+ *   4. When the queue is done, show a summary and invalidate stats.
+ */
+export default function PracticeScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const categoryId = id as string;
+  const router = useRouter();
+  const utils = trpc.useUtils();
+
+  const { data, isLoading } = trpc.practice.queue.useQuery(
+    { categoryId, limit: 20 },
+    { refetchOnMount: 'always' },
+  );
+
+  const submit = trpc.practice.submitReview.useMutation();
+
+  const [index, setIndex] = useState(0);
+  const [flipped, setFlipped] = useState(false);
+  const [reviewed, setReviewed] = useState(0);
+
+  const cards = data?.cards ?? [];
+  const current = cards[index];
+  const done = !isLoading && cards.length > 0 && index >= cards.length;
+
+  function handleRate(quality: number) {
+    if (!current) return;
+    submit.mutate({ cardId: current.id, confidence: quality });
+    setReviewed((n) => n + 1);
+    setFlipped(false);
+    setIndex((i) => i + 1);
+  }
+
+  // Refresh counts when the session wraps up.
+  useEffect(() => {
+    if (done) {
+      utils.categories.list.invalidate();
+      utils.practice.stats.invalidate({ categoryId });
+      utils.flashcards.listByCategory.invalidate({ categoryId });
+    }
+  }, [done, utils, categoryId]);
+
+  const progress = useMemo(() => {
+    if (cards.length === 0) return 0;
+    return Math.min(index, cards.length) / cards.length;
+  }, [index, cards.length]);
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-slate-50">
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </View>
+    );
+  }
+
+  return (
+    <View className="flex-1 bg-slate-50">
+      <Stack.Screen options={{ title: data?.category.name ?? 'Practice' }} />
+
+      <ScrollView contentContainerStyle={{ padding: 16, flexGrow: 1 }}>
+        {cards.length === 0 ? (
+          <EmptyQueue onBack={() => router.back()} />
+        ) : done ? (
+          <SessionSummary
+            reviewed={reviewed}
+            onBack={() => router.back()}
+            onAgain={() => {
+              setIndex(0);
+              setReviewed(0);
+              setFlipped(false);
+              utils.practice.queue.invalidate({ categoryId, limit: 20 });
+            }}
+          />
+        ) : (
+          <>
+            <ProgressBar value={progress} />
+            <Text className="mt-2 text-center text-xs text-slate-500">
+              {Math.min(index + 1, cards.length)} of {cards.length}
+            </Text>
+
+            <Pressable onPress={() => setFlipped((f) => !f)} className="mt-6 active:opacity-90">
+              <Card
+                className={`min-h-[280px] items-center justify-center p-6 ${
+                  flipped ? 'border-primary bg-blue-50' : ''
+                }`}
+              >
+                <Text
+                  className={`text-center leading-snug ${
+                    flipped ? 'text-xl text-slate-900' : 'text-2xl font-medium text-slate-900'
+                  }`}
+                >
+                  {flipped ? current?.back : current?.front}
+                </Text>
+                <Text className="mt-6 text-xs uppercase tracking-wider text-slate-400">
+                  {flipped ? 'Answer' : 'Tap to reveal'}
+                </Text>
+              </Card>
+            </Pressable>
+
+            {flipped ? (
+              <RatingButtons onRate={handleRate} />
+            ) : (
+              <View className="mt-6">
+                <Button size="lg" onPress={() => setFlipped(true)}>
+                  Show answer
+                </Button>
+              </View>
+            )}
+          </>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <View className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+      <View
+        className="h-full bg-primary"
+        style={{ width: `${Math.round(value * 100)}%` }}
+      />
+    </View>
+  );
+}
+
+const RATINGS: { value: number; label: string; sub: string; tone: string }[] = [
+  { value: 0, label: 'Again', sub: 'No idea', tone: 'border-red-300' },
+  { value: 2, label: 'Hard', sub: 'Wrong', tone: 'border-orange-300' },
+  { value: 3, label: 'Good', sub: 'Got it', tone: 'border-blue-300' },
+  { value: 5, label: 'Easy', sub: 'Perfect', tone: 'border-green-300' },
+];
+
+function RatingButtons({ onRate }: { onRate: (q: number) => void }) {
+  return (
+    <View className="mt-6 flex-row flex-wrap gap-2">
+      {RATINGS.map((r) => (
+        <Pressable
+          key={r.value}
+          onPress={() => onRate(r.value)}
+          className={`flex-1 min-w-[45%] items-center rounded-lg border bg-white py-3 active:opacity-70 ${r.tone}`}
+        >
+          <Text className="text-base font-semibold text-slate-900">{r.label}</Text>
+          <Text className="text-xs text-slate-500">{r.sub}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+function EmptyQueue({ onBack }: { onBack: () => void }) {
+  return (
+    <Card className="items-center gap-3 p-10">
+      <View className="h-12 w-12 items-center justify-center rounded-full bg-blue-50">
+        <Text className="text-2xl">✓</Text>
+      </View>
+      <Text className="text-lg font-semibold text-slate-900">Nothing due right now</Text>
+      <Text className="text-center text-sm text-slate-500">
+        You're all caught up. Your schedule will surface cards as they become due.
+      </Text>
+      <View className="mt-2 w-full">
+        <Button onPress={onBack}>Back to deck</Button>
+      </View>
+    </Card>
+  );
+}
+
+function SessionSummary({
+  reviewed,
+  onBack,
+  onAgain,
+}: {
+  reviewed: number;
+  onBack: () => void;
+  onAgain: () => void;
+}) {
+  return (
+    <Card className="items-center gap-3 p-10">
+      <View className="h-12 w-12 items-center justify-center rounded-full bg-green-100">
+        <Text className="text-2xl">✓</Text>
+      </View>
+      <Text className="text-lg font-semibold text-slate-900">Session complete</Text>
+      <Text className="text-center text-sm text-slate-500">
+        You reviewed <Text className="font-semibold">{reviewed}</Text>{' '}
+        {reviewed === 1 ? 'card' : 'cards'}. Nice.
+      </Text>
+      <View className="mt-2 w-full flex-row gap-2">
+        <View className="flex-1">
+          <Button variant="outline" onPress={onBack}>
+            Back to deck
+          </Button>
+        </View>
+        <View className="flex-1">
+          <Button onPress={onAgain}>Practice again</Button>
+        </View>
+      </View>
+    </Card>
+  );
+}

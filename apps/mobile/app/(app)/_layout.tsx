@@ -1,0 +1,52 @@
+import { Redirect, Stack } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
+
+import { useAuth } from '../../src/lib/AuthContext';
+
+/**
+ * Route group for authed screens. Kicks unauth'd users back to /signin;
+ * uses a native stack so the app feels like a real iOS/Android app.
+ */
+export default function AppLayout() {
+  const { session, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </View>
+    );
+  }
+  if (!session) return <Redirect href="/signin" />;
+
+  return (
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: '#ffffff' },
+        headerTitleStyle: { color: '#0f172a', fontWeight: '600' },
+        headerTintColor: '#3b82f6',
+        headerShadowVisible: true,
+        contentStyle: { backgroundColor: '#f8fafc' },
+      }}
+    >
+      <Stack.Screen name="index" options={{ title: 'Your decks' }} />
+      <Stack.Screen
+        name="new-deck"
+        options={{ title: 'New deck', presentation: 'modal' }}
+      />
+      <Stack.Screen name="decks/[id]/index" options={{ title: 'Deck' }} />
+      <Stack.Screen
+        name="decks/[id]/practice"
+        options={{ title: 'Practice' }}
+      />
+      <Stack.Screen
+        name="decks/[id]/new-card"
+        options={{ title: 'New card', presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="cards/[id]/edit"
+        options={{ title: 'Edit card', presentation: 'modal' }}
+      />
+    </Stack>
+  );
+}

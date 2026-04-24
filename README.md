@@ -1,13 +1,12 @@
 # FlipFlow
 
-Flashcards with spaced repetition. Built as a Turborepo monorepo so the same backend (Prisma + tRPC) feeds a Next.js web client today and a React Native client in Phase 2.
+Flashcards with spaced repetition. Turborepo monorepo — one Prisma + tRPC backend feeds both a Next.js web client and an Expo / React Native mobile client. Every procedure is type-shared between the two.
 
-## Phase 1: Web MVP
-
-What's in the box:
+## What's in the box
 
 - `apps/web` — Next.js 15 (App Router), Tailwind, shadcn/ui, Auth.js v5, tRPC client, TanStack Query
-- `packages/api` — tRPC routers (`auth`, `categories`, `flashcards`, `practice`) — the single source of truth for the backend, ready to be consumed by the mobile app
+- `apps/mobile` — Expo SDK 51 + Expo Router, NativeWind, tRPC + TanStack Query, SecureStore, Auth via `expo-web-browser`
+- `packages/api` — tRPC routers (`auth`, `categories`, `flashcards`, `practice`) — the single source of truth for the backend
 - `packages/db` — Prisma schema and generated client
 - `packages/types` — shared Zod schemas and the SM-2 spaced-repetition algorithm
 - `packages/config` — shared TypeScript configs
@@ -15,8 +14,9 @@ What's in the box:
 ```
 apps/
   web/                Next.js App Router
+  mobile/             Expo Router (React Native)
 packages/
-  api/                tRPC router (shared with mobile in Phase 2)
+  api/                tRPC router (consumed by web + mobile)
   db/                 Prisma schema + client
   types/              Zod schemas + SM-2 algorithm
   config/             tsconfig presets
@@ -82,7 +82,7 @@ If a provider's env vars are missing, that sign-in option is hidden — the app 
 ## Useful scripts
 
 ```bash
-npm run dev              # turbo: run all `dev` tasks (just the web app for now)
+npm run dev              # turbo: runs dev tasks in every app that has one
 npm run build            # production build
 npm run typecheck        # tsc across every workspace
 npm run lint             # next lint + future packages
@@ -91,17 +91,80 @@ npm run db:migrate       # create + apply a migration
 npm run db:seed          # seed a demo deck
 ```
 
+`npm run dev` only starts the *web* dev server; the mobile app runs separately because Metro has its own lifecycle and QR-code UI.
+
 ## How the spaced-repetition piece works
 
 `packages/types/src/sm2.ts` implements the SM-2 algorithm. Each `Flashcard` row tracks `repetitions`, `easeFactor`, `interval`, and `nextReview`. When the user rates a card 0–5, `practice.submitReview` runs SM-2 and persists the new schedule. The practice queue endpoint (`practice.queue`) returns cards where `nextReview` is `null` (never seen) or `<= now`.
 
-## Phase 2 preview
+## Mobile app (Expo)
 
-Adding the React Native client is mostly:
+The mobile app lives in `apps/mobile`. It has feature parity with the web: deck list, deck detail with card CRUD, and the SM-2 practice flow. Authentication is delegated to the web app via a hosted bridge, so there's no duplicate auth code to maintain.
 
-1. Add `apps/mobile` (Expo) to the workspace.
-2. Install `@flipflow/api`, `@flipflow/types` in it.
-3. Use `@trpc/client` with the same `AppRouter` type — autocomplete and type safety drop in for free.
-4. Authenticate via `expo-auth-session` against the same Auth.js endpoints.
+### Running the mobile app
 
-No backend code changes required. That's the whole point of the monorepo.
+You need two terminals: one for the web server (the mobile app talks to it), one for Expo.
+
+```bash
+# Terminal 1 — web backend
+npm run dev --workspace=@flipflow/web
+
+# Terminal 2 — Expo
+npm --workspace=@flipflow/mobile run start
+```
+
+Then scan the QR code with the **Expo Go** app on iOS or Android.
+
+### `EXPO_PUBLIC_API_URL` — pointing the phone at the web server
+
+On your phone, `localhost` means "this phone," not your dev machine. Set the API URL to your machine's LAN IP:
+
+```bash
+# Find your LAN IP
+ipconfig getifaddr en0        # macOS wifi
+hostname -I | awk '{print $1}' # Linux
+
+# Start Expo with the pointed URL
+EXPO_PUBLIC_API_URL=http://192.168.1.42:3000 npm --workspace=@flipflow/mobile run start
+```
+
+If you don't set `EXPO_PUBLIC_API_URL`, the mobile app falls back to deriving the host from the Expo dev server, which works in the common case of running Metro and Next.js on the same machine.
+
+### Using tunnel mode (coffee-shop / restrictive Wi-Fi / different networks)
+
+If your phone can't reach your dev machine on the LAN, tunnel through ngrok:
+
+```bash
+npm --workspace=@flipflow/mobile run tunnel
+```
+
+In tunnel mode, set `EXPO_PUBLIC_API_URL` to a publicly reachable URL for your Next.js server (e.g. an `ngrok http 3000` tunnel or a Vercel preview deploy) — the phone can't hit your LAN IP in that scenario.
+
+### Deep link scheme
+
+The app is registered as `flipflow://` in `apps/mobile/app.json`. The sign-in flow opens `https://<web>/auth/mobile?scheme=flipflow` in an in-app browser, and Auth.js redirects back to `flipflow://auth?token=…&expires=…`. The mobile app parses the token, persists it via `expo-secure-store`, and injects it as a `Bearer` header on every tRPC request.
+
+### How mobile auth works (no new tRPC procedures)
+
+1. Mobile calls `WebBrowser.openAuthSessionAsync("${API_URL}/auth/mobile?scheme=flipflow")`.
+2. The new `/auth/mobile` route in `apps/web` checks the user's session. If signed out, it bounces to `/signin` with a callback. If signed in, it looks up the corresponding `Session` row and redirects to `flipflow://auth?token=<sessionToken>&expires=<iso>`.
+3. Mobile stores `token` + `expires` in `expo-secure-store`, then sends `Authorization: Bearer <token>` on every tRPC request.
+4. The tRPC handler (`apps/web/src/app/api/trpc/[trpc]/route.ts`) accepts *either* a cookie session (web) *or* a bearer token (mobile) — bearer tokens are resolved against the same `Session` table Auth.js already maintains.
+
+Result: zero changes to `@flipflow/api`, and mobile sign-out is just `clearStoredSession()`.
+
+### Google OAuth redirects for mobile
+
+The in-app browser flow reuses the web app's Google OAuth config — no separate iOS / Android OAuth clients are needed. Just make sure your Google OAuth client has `http://<your-web-origin>/api/auth/callback/google` listed as an authorized redirect URI for whichever origin Expo will hit (LAN IP in dev, production URL in prod).
+
+### Useful mobile scripts
+
+```bash
+# From the repo root
+npm --workspace=@flipflow/mobile run start      # Metro + QR code
+npm --workspace=@flipflow/mobile run ios        # open iOS simulator
+npm --workspace=@flipflow/mobile run android    # open Android emulator
+npm --workspace=@flipflow/mobile run tunnel     # ngrok-backed tunnel
+npm --workspace=@flipflow/mobile run typecheck  # tsc
+npm --workspace=@flipflow/mobile run clean      # wipe .expo + node_modules
+```
