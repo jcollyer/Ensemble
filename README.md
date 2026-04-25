@@ -64,8 +64,9 @@ All variables live in `.env.local` at the repo root (Turbo passes them through t
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth credentials |
 | `AUTH_RESEND_KEY` | Resend API key for magic-link email |
 | `EMAIL_FROM` | "From" address for magic-link emails |
+| `GOOGLE_TRANSLATE_API_KEY` | Optional. Enables the translation toggle on the New Card dialog. |
 
-If a provider's env vars are missing, that sign-in option is hidden — the app still runs.
+If a provider's env vars are missing, that sign-in option is hidden — the app still runs. Same goes for `GOOGLE_TRANSLATE_API_KEY`: when it's not set, the new-card dialog quietly omits the translation toggle.
 
 ### Setting up Google OAuth
 
@@ -78,6 +79,16 @@ If a provider's env vars are missing, that sign-in option is hidden — the app 
 1. Create an API key at <https://resend.com/api-keys>
 2. Verify a sending domain (or use the `onboarding@resend.dev` test sender)
 3. Set `AUTH_RESEND_KEY` and `EMAIL_FROM` in `.env.local`
+
+### Setting up Google Translate (optional)
+
+The New Card dialog has an opt-in translation mode that auto-fills the back of a flashcard with a translation of the front (assumed English) into French, Spanish, or German. The toggle and chosen language are persisted per deck in `localStorage`.
+
+1. In Google Cloud Console, enable the **Cloud Translation API** for your project.
+2. Create an API key at <https://console.cloud.google.com/apis/credentials>. Restrict it to the Translation API.
+3. Set `GOOGLE_TRANSLATE_API_KEY` in `.env.local`.
+
+Translation calls go through the `translate.translate` tRPC mutation — the key never leaves the server. The web dialog feature-detects the key via `translate.isAvailable`, so when it's not set the toggle is hidden and everything else still works. Mobile parity will land in a follow-up.
 
 ## Useful scripts
 
