@@ -1,4 +1,5 @@
 import NextAuth, { type DefaultSession } from 'next-auth';
+import type { Provider } from 'next-auth/providers';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import Google from 'next-auth/providers/google';
 import Resend from 'next-auth/providers/resend';
@@ -13,7 +14,7 @@ declare module 'next-auth' {
   }
 }
 
-const providers = [];
+const providers: Provider[] = [];
 
 if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
   providers.push(
