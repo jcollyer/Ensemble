@@ -6,10 +6,12 @@
 //   - Flashcard: front/back card with SM-2 spaced-repetition fields
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // Generate into our own package so npm workspaces hoisting doesn't hide
   // the client from `prisma generate`. Imported via @flipflow/db.
-  output   = "../src/generated/client"
+  output        = "../src/generated/client"
+  // Include the Vercel/Lambda Linux engine alongside the local native engine.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
