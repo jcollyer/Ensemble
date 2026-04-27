@@ -123,7 +123,7 @@ export default function DeckDetailScreen() {
                 </Button>
               </View>
               <View className="flex-1">
-                <Button onPress={() => router.push(`/decks/${categoryId}/new-card`)}>
+                <Button onPress={() => router.push(`/new-card?categoryId=${categoryId}`)}>
                   + New card
                 </Button>
               </View>

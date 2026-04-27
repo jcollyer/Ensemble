@@ -60,18 +60,24 @@ export default function DecksScreen() {
       <FlatList
         data={data ?? []}
         keyExtractor={(c) => c.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 180 }}
         ListHeaderComponent={
-          <View className="mb-4 flex-row items-center justify-between">
-            <View>
-              <Text className="text-2xl font-bold text-slate-900">Your decks</Text>
-              <Text className="text-sm text-slate-500">
-                Practice with spaced repetition.
-              </Text>
+          <View className="mb-4 gap-4">
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Text className="text-2xl font-bold text-slate-900">Your decks</Text>
+                <Text className="text-sm text-slate-500">
+                  Practice with spaced repetition.
+                </Text>
+              </View>
+              <Pressable onPress={confirmSignOut} hitSlop={8}>
+                <Text className="text-sm font-medium text-slate-500">Sign out</Text>
+              </Pressable>
             </View>
-            <Pressable onPress={confirmSignOut} hitSlop={8}>
-              <Text className="text-sm font-medium text-slate-500">Sign out</Text>
-            </Pressable>
+            {/* Aggregate "All decks" entry. Visually distinct from real decks
+                (dashed border, library icon, bold label) so it reads as a
+                meta-entry rather than a deck named "All decks". */}
+            <AllDecksEntry />
           </View>
         }
         ItemSeparatorComponent={() => <View className="h-3" />}
@@ -126,11 +132,64 @@ export default function DecksScreen() {
         }
       />
 
-      <View className="absolute bottom-6 left-4 right-4">
+      {/* Stacked floating action buttons. + New card sits above + New deck
+          so the higher-frequency action is closer to the thumb. */}
+      <View className="absolute bottom-6 left-4 right-4 gap-2">
+        <Button
+          size="lg"
+          variant="outline"
+          onPress={() => router.push('/new-card')}
+        >
+          + New card
+        </Button>
         <Button size="lg" onPress={() => router.push('/new-deck')}>
           + New deck
         </Button>
       </View>
     </View>
+  );
+}
+
+/**
+ * Pseudo-deck card linking to the all-cards aggregate view. Renders inside
+ * the FlatList header so it always sits at the very top of the list,
+ * regardless of how many real decks exist.
+ */
+function AllDecksEntry() {
+  const { data: stats } = trpc.practice.stats.useQuery({});
+  const total = stats?.total ?? 0;
+  const due = stats?.due ?? 0;
+
+  return (
+    <Link href="/all-cards" asChild>
+      <Pressable className="active:opacity-70">
+        <Card className="border-2 border-dashed border-slate-300 p-4">
+          <View className="flex-row items-center gap-3">
+            <View className="h-10 w-10 items-center justify-center rounded-md bg-primary/10">
+              <Text className="text-lg font-bold text-primary">≡</Text>
+            </View>
+            <Text
+              className="flex-1 text-lg font-bold text-slate-900"
+              numberOfLines={1}
+            >
+              All decks
+            </Text>
+          </View>
+          <View className="mt-3 flex-row gap-4">
+            <Text className="text-sm text-slate-500">
+              {total} {total === 1 ? 'card' : 'cards'}
+            </Text>
+            <Text className="text-sm text-slate-500">•</Text>
+            <Text
+              className={`text-sm ${
+                due > 0 ? 'font-medium text-primary' : 'text-slate-500'
+              }`}
+            >
+              {due} due
+            </Text>
+          </View>
+        </Card>
+      </Pressable>
+    </Link>
   );
 }
