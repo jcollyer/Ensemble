@@ -282,23 +282,6 @@ export default function EditCardScreen() {
     >
       <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
         <View className="gap-5">
-          <TextField
-            label="Front"
-            value={front}
-            onChangeText={(v) => { userEditedFrontRef.current = true; setFront(v); }}
-            error={frontError}
-            multiline
-            style={{ minHeight: 80, textAlignVertical: 'top' }}
-          />
-          <TextField
-            label="Back"
-            value={back}
-            onChangeText={setBack}
-            error={backError}
-            multiline
-            style={{ minHeight: 120, textAlignVertical: 'top' }}
-          />
-
           {translateAvailable ? (
             <View className="gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
               <View className="flex-row items-center justify-between">
@@ -338,6 +321,23 @@ export default function EditCardScreen() {
               ) : null}
             </View>
           ) : null}
+
+          <TextField
+            label="Front"
+            value={front}
+            onChangeText={(v) => { userEditedFrontRef.current = true; setFront(v); }}
+            error={frontError}
+            multiline
+            style={{ minHeight: 80, textAlignVertical: 'top' }}
+          />
+          <TextField
+            label="Back"
+            value={back}
+            onChangeText={setBack}
+            error={backError}
+            multiline
+            style={{ minHeight: 120, textAlignVertical: 'top' }}
+          />
 
           {frontExamples.length > 0 ? (
             <View className="gap-2">
