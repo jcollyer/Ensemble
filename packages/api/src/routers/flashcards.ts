@@ -25,7 +25,7 @@ export const flashcardsRouter = router({
 
   /**
    * Every card the user owns, across all decks plus uncategorized cards.
-   * Powers the "All decks" view at /app/categories/all.
+   * Powers the "All decks" view at /app/all-categories.
    */
   listAll: protectedProcedure.query(async ({ ctx }) => {
     return ctx.prisma.flashcard.findMany({

@@ -210,14 +210,14 @@ export function CategoriesDashboard() {
 }
 
 /**
- * Pseudo-deck card that links to the All decks view at /app/categories/all.
+ * Pseudo-deck card that links to the All decks view at /app/all-categories.
  * Visually distinct from real decks (dashed border, library icon, bold label)
  * so it reads as a meta-entry rather than a deck named "All decks".
  */
 function AllDecksCard() {
   const { data: stats } = trpc.practice.stats.useQuery({});
   return (
-    <Link href="/app/categories/all" className="group">
+    <Link href="/app/all-categories" className="group">
       <Card className="border-dashed transition hover:border-primary/60 hover:shadow-md">
         <CardHeader className="flex flex-row items-center gap-3">
           <div
