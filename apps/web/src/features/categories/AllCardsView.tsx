@@ -180,13 +180,17 @@ export function AllCardsView() {
         onOpenChange={setCreateOpen}
       />
 
-      {/* Edit card dialog */}
+      {/* Edit card dialog. Passes the deck list so uncategorized cards get
+          a "Move to deck" selector — already-categorized cards see the plain
+          edit form. */}
       {editingId ? (
         <EditCardDialog
           cardId={editingId}
+          decks={decks}
           onClose={() => setEditingId(null)}
           onSaved={() => {
             utils.flashcards.listAll.invalidate();
+            utils.categories.list.invalidate();
             setEditingId(null);
           }}
         />
@@ -208,22 +212,39 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
+// Sentinel for "leave the card uncategorized" — Radix Select can't bind to
+// an empty string or null, so we map at the edges.
+const KEEP_UNCATEGORIZED = '__none__';
+
 function EditCardDialog({
   cardId,
+  decks,
   onClose,
   onSaved,
 }: {
   cardId: string;
+  decks: Array<{ id: string; name: string }>;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const { data: card } = trpc.flashcards.byId.useQuery({ id: cardId });
   const update = trpc.flashcards.update.useMutation({ onSuccess: onSaved });
 
+  // Tracked separately from the form: we need a tri-state (no card loaded
+  // yet / explicitly uncategorized / specific deck) for the dropdown.
+  // The dialog conditionally renders on `editingId`, so opening a different
+  // card unmounts and remounts this — state resets naturally.
+  const [assignDeck, setAssignDeck] = useState<string>(KEEP_UNCATEGORIZED);
+
   const form = useForm<FlashcardUpdateInput>({
     resolver: zodResolver(FlashcardUpdateInput),
     values: { id: cardId, front: card?.front ?? '', back: card?.back ?? '' },
   });
+
+  // Show the deck assigner only for uncategorized cards. Cards already in a
+  // deck don't get a re-assign UI — that wasn't asked for, and it's safer
+  // to keep that flow as a separate, explicit action.
+  const showAssign = card && !card.categoryId && decks.length > 0;
 
   return (
     <Dialog open onOpenChange={(o) => (o ? null : onClose())}>
@@ -232,7 +253,11 @@ function EditCardDialog({
           <DialogTitle>Edit card</DialogTitle>
         </DialogHeader>
         <form
-          onSubmit={form.handleSubmit((values) => update.mutate(values))}
+          onSubmit={form.handleSubmit((values) => {
+            const categoryId =
+              showAssign && assignDeck !== KEEP_UNCATEGORIZED ? assignDeck : undefined;
+            update.mutate({ ...values, categoryId });
+          })}
           className="space-y-3"
         >
           <div className="space-y-2">
@@ -243,6 +268,28 @@ function EditCardDialog({
             <Label htmlFor="back">Back</Label>
             <Textarea id="back" rows={3} {...form.register('back')} />
           </div>
+          {showAssign ? (
+            <div className="space-y-2">
+              <Label htmlFor="assign-deck">Assign to deck</Label>
+              <Select value={assignDeck} onValueChange={setAssignDeck}>
+                <SelectTrigger id="assign-deck">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={KEEP_UNCATEGORIZED}>Leave uncategorized</SelectItem>
+                  {decks.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Move this card into one of your decks. You can't move it back to
+                uncategorized once assigned.
+              </p>
+            </div>
+          ) : null}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel

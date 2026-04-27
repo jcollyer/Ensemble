@@ -45,7 +45,12 @@ export default function EditCardScreen() {
 
   const update = trpc.flashcards.update.useMutation({
     onSuccess: (updated) => {
-      utils.flashcards.listByCategory.invalidate({ categoryId: updated.categoryId });
+      // categoryId can now be null (uncategorized) — only invalidate the
+      // per-deck cache when the card actually belongs to a deck.
+      if (updated.categoryId) {
+        utils.flashcards.listByCategory.invalidate({ categoryId: updated.categoryId });
+      }
+      utils.flashcards.listAll.invalidate();
       utils.flashcards.byId.invalidate({ id: cardId });
       router.back();
     },
