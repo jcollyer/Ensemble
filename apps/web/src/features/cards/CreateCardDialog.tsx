@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus, X } from 'lucide-react';
 
 import { FlashcardCreateInput } from '@flipflow/types';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -195,6 +196,13 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
   // Memoizes the most recent (text, target) we sent to Google so flipping the
   // toggle / re-rendering doesn't re-fire identical requests.
   const lastTranslatedRef = useRef<{ text: string; target: string } | null>(null);
+  // Per-slot memoization for example translations (keyed by array index).
+  const lastTranslatedExamplesRef = useRef(new Map<number, { text: string; target: string }>());
+
+  // Example sentences are managed outside RHF so we avoid the useFieldArray
+  // object-array wrapper; they are merged into the mutation payload on submit.
+  const [frontExamples, setFrontExamples] = useState<string[]>([]);
+  const [backExamples, setBackExamples] = useState<string[]>([]);
 
   // Reset form state when the dialog closes so the next open starts clean.
   // We deliberately do NOT reset translateOn / target — those are sticky.
@@ -207,6 +215,9 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
       });
       translate.reset();
       lastTranslatedRef.current = null;
+      setFrontExamples([]);
+      setBackExamples([]);
+      lastTranslatedExamplesRef.current.clear();
     }
     // form / translate are stable refs from their hooks — don't include them
     // here or this would loop on every render.
@@ -248,6 +259,46 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedFront, target, translateOn, translateAvailable]);
 
+  // Debounced translation for each front example → corresponding back example.
+  const debouncedFrontExamples = useDebouncedValue(frontExamples, 500);
+
+  useEffect(() => {
+    if (!translateOn || !translateAvailable) return;
+
+    debouncedFrontExamples.forEach((text, i) => {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        setBackExamples((prev) => {
+          const next = [...prev];
+          next[i] = '';
+          return next;
+        });
+        lastTranslatedExamplesRef.current.delete(i);
+        return;
+      }
+      const last = lastTranslatedExamplesRef.current.get(i);
+      if (last && last.text === trimmed && last.target === target) return;
+
+      const request = { text: trimmed, target };
+      lastTranslatedExamplesRef.current.set(i, request);
+
+      translate.mutate(
+        { text: trimmed, target },
+        {
+          onSuccess: ({ translation }) => {
+            if (lastTranslatedExamplesRef.current.get(i) !== request) return;
+            setBackExamples((prev) => {
+              const next = [...prev];
+              next[i] = translation;
+              return next;
+            });
+          },
+        },
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedFrontExamples, target, translateOn, translateAvailable]);
+
   const showDeckSelector = props.mode === 'selectable' && props.decks.length > 0;
 
   const onSubmit = form.handleSubmit((values) => {
@@ -257,7 +308,7 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
         : selectedDeck === NO_DECK
           ? null
           : selectedDeck;
-    create.mutate({ ...values, categoryId });
+    create.mutate({ ...values, categoryId, frontExamples, backExamples });
   });
 
   return (
@@ -335,6 +386,53 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
           <div className="space-y-2">
             <Label htmlFor="front">Front</Label>
             <Textarea id="front" rows={2} {...form.register('front')} />
+            {frontExamples.length > 0 ? (
+              <div className="space-y-2">
+                {frontExamples.map((val, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      placeholder="Example sentence…"
+                      value={val}
+                      onChange={(e) =>
+                        setFrontExamples((prev) => {
+                          const next = [...prev];
+                          next[i] = e.target.value;
+                          return next;
+                        })
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setFrontExamples((prev) => prev.filter((_, j) => j !== i));
+                        setBackExamples((prev) => prev.filter((_, j) => j !== i));
+                        lastTranslatedExamplesRef.current.clear();
+                      }}
+                      aria-label="Remove example"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {frontExamples.length < 20 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="-ml-1 h-7 text-xs text-muted-foreground"
+                onClick={() => {
+                  setFrontExamples((prev) => [...prev, '']);
+                  setBackExamples((prev) => [...prev, '']);
+                }}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add example
+              </Button>
+            ) : null}
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -347,6 +445,24 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
               ) : null}
             </div>
             <Textarea id="back" rows={3} {...form.register('back')} />
+            {backExamples.length > 0 ? (
+              <div className="space-y-2">
+                {backExamples.map((val, i) => (
+                  <Input
+                    key={i}
+                    placeholder="Example sentence…"
+                    value={val}
+                    onChange={(e) =>
+                      setBackExamples((prev) => {
+                        const next = [...prev];
+                        next[i] = e.target.value;
+                        return next;
+                      })
+                    }
+                  />
+                ))}
+              </div>
+            ) : null}
             {translate.error ? (
               <p className="text-xs text-destructive">{translate.error.message}</p>
             ) : null}

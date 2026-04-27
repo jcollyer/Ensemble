@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Library, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Library, Pencil, Plus, Trash2, X } from 'lucide-react';
 
 import { FlashcardUpdateInput } from '@flipflow/types';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { trpc } from '@/lib/trpc/client';
 import { formatRelative } from '@/lib/utils';
 import { CreateCardDialog } from '@/features/cards/CreateCardDialog';
@@ -113,6 +114,16 @@ export function AllCardsView() {
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="line-clamp-2 font-medium">{card.front}</div>
                     <div className="line-clamp-2 text-sm text-muted-foreground">{card.back}</div>
+                    {(card.frontExamples.length > 0 || card.backExamples.length > 0) ? (
+                      <div className="space-y-0.5 pt-1">
+                        {card.frontExamples.map((ex, i) => (
+                          <p key={i} className="text-xs text-muted-foreground">Front: {ex}</p>
+                        ))}
+                        {card.backExamples.map((ex, i) => (
+                          <p key={i} className="text-xs text-muted-foreground">Back: {ex}</p>
+                        ))}
+                      </div>
+                    ) : null}
                     <div className="flex items-center gap-3 pt-1 text-xs text-muted-foreground">
                       {deck ? (
                         <span className="inline-flex items-center gap-1.5">
@@ -236,6 +247,18 @@ function EditCardDialog({
   // card unmounts and remounts this — state resets naturally.
   const [assignDeck, setAssignDeck] = useState<string>(KEEP_UNCATEGORIZED);
 
+  const [frontExamples, setFrontExamples] = useState<string[]>([]);
+  const [backExamples, setBackExamples] = useState<string[]>([]);
+
+  // Sync example state when the card data loads.
+  useEffect(() => {
+    if (card) {
+      setFrontExamples(card.frontExamples);
+      setBackExamples(card.backExamples);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card?.id]);
+
   const form = useForm<FlashcardUpdateInput>({
     resolver: zodResolver(FlashcardUpdateInput),
     values: { id: cardId, front: card?.front ?? '', back: card?.back ?? '' },
@@ -256,17 +279,81 @@ function EditCardDialog({
           onSubmit={form.handleSubmit((values) => {
             const categoryId =
               showAssign && assignDeck !== KEEP_UNCATEGORIZED ? assignDeck : undefined;
-            update.mutate({ ...values, categoryId });
+            update.mutate({ ...values, categoryId, frontExamples, backExamples });
           })}
           className="space-y-3"
         >
           <div className="space-y-2">
             <Label htmlFor="front">Front</Label>
             <Textarea id="front" rows={2} {...form.register('front')} />
+            {frontExamples.length > 0 ? (
+              <div className="space-y-2">
+                {frontExamples.map((val, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      placeholder="Example sentence…"
+                      value={val}
+                      onChange={(e) =>
+                        setFrontExamples((prev) => {
+                          const next = [...prev];
+                          next[i] = e.target.value;
+                          return next;
+                        })
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setFrontExamples((prev) => prev.filter((_, j) => j !== i));
+                        setBackExamples((prev) => prev.filter((_, j) => j !== i));
+                      }}
+                      aria-label="Remove example"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {frontExamples.length < 20 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="-ml-1 h-7 text-xs text-muted-foreground"
+                onClick={() => {
+                  setFrontExamples((prev) => [...prev, '']);
+                  setBackExamples((prev) => [...prev, '']);
+                }}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add example
+              </Button>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="back">Back</Label>
             <Textarea id="back" rows={3} {...form.register('back')} />
+            {backExamples.length > 0 ? (
+              <div className="space-y-2">
+                {backExamples.map((val, i) => (
+                  <Input
+                    key={i}
+                    placeholder="Example sentence…"
+                    value={val}
+                    onChange={(e) =>
+                      setBackExamples((prev) => {
+                        const next = [...prev];
+                        next[i] = e.target.value;
+                        return next;
+                      })
+                    }
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
           {showAssign ? (
             <div className="space-y-2">
@@ -285,7 +372,7 @@ function EditCardDialog({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Move this card into one of your decks. You can't move it back to
+                Move this card into one of your decks. You can&#39;t move it back to
                 uncategorized once assigned.
               </p>
             </div>

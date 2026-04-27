@@ -43,10 +43,15 @@ export type CategoryUpdateInput = z.infer<typeof CategoryUpdateInput>;
  * `categoryId` is optional. When omitted (or null), the card is "uncategorized"
  * — it doesn't belong to any deck and only shows up in the All decks view.
  */
+const ExampleSentence = z.string().trim().min(1).max(500);
+const ExamplesArray = z.array(ExampleSentence).max(20);
+
 export const FlashcardCreateInput = z.object({
   categoryId: z.string().cuid().nullish(),
   front: z.string().trim().min(1, 'Front is required').max(2000),
   back: z.string().trim().min(1, 'Back is required').max(4000),
+  frontExamples: ExamplesArray.default([]),
+  backExamples: ExamplesArray.default([]),
 });
 export type FlashcardCreateInput = z.infer<typeof FlashcardCreateInput>;
 
@@ -60,6 +65,8 @@ export const FlashcardUpdateInput = z.object({
   front: z.string().trim().min(1).max(2000).optional(),
   back: z.string().trim().min(1).max(4000).optional(),
   categoryId: z.string().cuid().optional(),
+  frontExamples: ExamplesArray.optional(),
+  backExamples: ExamplesArray.optional(),
 });
 export type FlashcardUpdateInput = z.infer<typeof FlashcardUpdateInput>;
 

@@ -61,6 +61,8 @@ export const flashcardsRouter = router({
       data: {
         front: input.front,
         back: input.back,
+        frontExamples: input.frontExamples,
+        backExamples: input.backExamples,
         categoryId: input.categoryId ?? null,
         userId: ctx.userId,
       },
@@ -89,6 +91,8 @@ export const flashcardsRouter = router({
         ...(input.front !== undefined ? { front: input.front } : {}),
         ...(input.back !== undefined ? { back: input.back } : {}),
         ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
+        ...(input.frontExamples !== undefined ? { frontExamples: input.frontExamples } : {}),
+        ...(input.backExamples !== undefined ? { backExamples: input.backExamples } : {}),
       },
     });
   }),
