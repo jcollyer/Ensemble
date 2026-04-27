@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useRef, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Pencil, Play, Plus, Trash2, X } from 'lucide-react';
+import { AlignLeft, AlignRight, ArrowLeft, Loader2, Pencil, Play, Plus, Trash2, X } from 'lucide-react';
 
 import {
   BACK_LANGUAGES,
@@ -31,9 +31,52 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { trpc } from '@/lib/trpc/client';
 import { formatRelative } from '@/lib/utils';
+import { useDebouncedValue } from '@/lib/hooks';
 import { CreateCardDialog } from '@/features/cards/CreateCardDialog';
+
+const TRANSLATE_TARGETS = [
+  { value: 'fr', label: 'French' },
+  { value: 'es', label: 'Spanish' },
+  { value: 'de', label: 'German' },
+] as const;
+type TranslateTargetValue = (typeof TRANSLATE_TARGETS)[number]['value'];
+
+interface TranslatePrefs {
+  v: 1;
+  enabled: boolean;
+  target: TranslateTargetValue;
+}
+
+function readTranslatePrefs(scope: string): TranslatePrefs | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(`flipflow:translate:${scope}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<TranslatePrefs>;
+    if (
+      parsed.v === 1 &&
+      typeof parsed.enabled === 'boolean' &&
+      TRANSLATE_TARGETS.some((t) => t.value === parsed.target)
+    ) {
+      return parsed as TranslatePrefs;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function writeTranslatePrefs(scope: string, prefs: TranslatePrefs) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(`flipflow:translate:${scope}`, JSON.stringify(prefs));
+  } catch {
+    // non-fatal
+  }
+}
 
 interface Props {
   categoryId: string;
@@ -124,12 +167,22 @@ export function CategoryDetail({ categoryId }: Props) {
                   <div className="line-clamp-2 font-medium">{card.front}</div>
                   <div className="line-clamp-2 text-sm text-muted-foreground">{card.back}</div>
                   {(card.frontExamples.length > 0 || card.backExamples.length > 0) ? (
-                    <div className="space-y-0.5 pt-1">
-                      {card.frontExamples.map((ex, i) => (
-                        <p key={i} className="text-xs text-muted-foreground">Front: {ex}</p>
-                      ))}
-                      {card.backExamples.map((ex, i) => (
-                        <p key={i} className="text-xs text-muted-foreground">Back: {ex}</p>
+                    <div className="divide-y divide-border/50 px-3 py-1 mt-2">
+                      {Array.from({
+                        length: Math.max(card.frontExamples.length, card.backExamples.length),
+                      }).map((_, i) => (
+                        <div key={i} className="flex items-baseline gap-3 py-1 text-xs">
+                          <span className="flex min-w-0 items-baseline gap-1">
+                            <span className="font-semibold text-foreground">
+                              {card.frontExamples[i] ?? ''}
+                            </span>
+                          </span>
+                          <span className="flex min-w-0 items-baseline gap-1">
+                            <span className="text-muted-foreground">
+                              {card.backExamples[i] ?? ''}
+                            </span>
+                          </span>
+                        </div>
                       ))}
                     </div>
                   ) : null}
@@ -200,6 +253,7 @@ export function CategoryDetail({ categoryId }: Props) {
       {editingId ? (
         <EditCardDialog
           cardId={editingId}
+          categoryId={categoryId}
           onClose={() => setEditingId(null)}
           onSaved={() => {
             utils.flashcards.listByCategory.invalidate({ categoryId });
@@ -298,32 +352,118 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 function EditCardDialog({
   cardId,
+  categoryId,
   onClose,
   onSaved,
 }: {
   cardId: string;
+  categoryId: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const { data: card } = trpc.flashcards.byId.useQuery({ id: cardId });
   const update = trpc.flashcards.update.useMutation({ onSuccess: onSaved });
 
+  const { data: availability } = trpc.translate.isAvailable.useQuery(undefined, {
+    staleTime: Infinity,
+  });
+  const translateAvailable = !!availability?.available;
+
+  // Translate prefs share the same scope key as the create dialog for this deck.
+  const [translateOn, setTranslateOn] = useState(false);
+  const [target, setTarget] = useState<TranslateTargetValue>('fr');
+
+  useEffect(() => {
+    const stored = readTranslatePrefs(categoryId);
+    if (stored) {
+      setTranslateOn(stored.enabled);
+      setTarget(stored.target);
+    } else {
+      setTranslateOn(false);
+      setTarget('fr');
+    }
+  }, [categoryId]);
+
+  useEffect(() => {
+    writeTranslatePrefs(categoryId, { v: 1, enabled: translateOn, target });
+  }, [categoryId, translateOn, target]);
+
+  const translate = trpc.translate.translate.useMutation();
+  const lastTranslatedRef = useRef<{ text: string; target: string } | null>(null);
+  const lastTranslatedExamplesRef = useRef(new Map<number, { text: string; target: string }>());
+
   const [frontExamples, setFrontExamples] = useState<string[]>([]);
   const [backExamples, setBackExamples] = useState<string[]>([]);
 
-  // Sync example state when the card data loads.
+  // Sync form + example state when the card data loads.
   useEffect(() => {
     if (card) {
       setFrontExamples(card.frontExamples);
       setBackExamples(card.backExamples);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.id]);
 
   const form = useForm<FlashcardUpdateInput>({
     resolver: zodResolver(FlashcardUpdateInput),
     values: { id: cardId, front: card?.front ?? '', back: card?.back ?? '' },
   });
+
+  // Debounced root back translation.
+  const front = useWatch({ control: form.control, name: 'front' }) ?? '';
+  const debouncedFront = useDebouncedValue(front.trim(), 500);
+
+  useEffect(() => {
+    if (!translateOn || !translateAvailable) return;
+    if (!debouncedFront) {
+      form.setValue('back', '');
+      lastTranslatedRef.current = null;
+      return;
+    }
+    const last = lastTranslatedRef.current;
+    if (last && last.text === debouncedFront && last.target === target) return;
+    const request = { text: debouncedFront, target };
+    lastTranslatedRef.current = request;
+    translate.mutate(
+      { text: debouncedFront, target },
+      {
+        onSuccess: ({ translation }) => {
+          if (lastTranslatedRef.current !== request) return;
+          form.setValue('back', translation, { shouldDirty: true, shouldValidate: true });
+        },
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedFront, target, translateOn, translateAvailable]);
+
+  // Debounced per-example translation.
+  const debouncedFrontExamples = useDebouncedValue(frontExamples, 500);
+
+  useEffect(() => {
+    if (!translateOn || !translateAvailable) return;
+    debouncedFrontExamples.forEach((text, i) => {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        setBackExamples((prev) => { const next = [...prev]; next[i] = ''; return next; });
+        lastTranslatedExamplesRef.current.delete(i);
+        return;
+      }
+      const last = lastTranslatedExamplesRef.current.get(i);
+      if (last && last.text === trimmed && last.target === target) return;
+      const request = { text: trimmed, target };
+      lastTranslatedExamplesRef.current.set(i, request);
+      translate.mutate(
+        { text: trimmed, target },
+        {
+          onSuccess: ({ translation }) => {
+            if (lastTranslatedExamplesRef.current.get(i) !== request) return;
+            setBackExamples((prev) => { const next = [...prev]; next[i] = translation; return next; });
+          },
+        },
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedFrontExamples, target, translateOn, translateAvailable]);
 
   return (
     <Dialog open onOpenChange={(o) => (o ? null : onClose())}>
@@ -337,6 +477,46 @@ function EditCardDialog({
           )}
           className="space-y-3"
         >
+          {translateAvailable ? (
+            <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="edit-translate-toggle" className="cursor-pointer">
+                    Translation card
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Auto-translate the front into the chosen language.
+                  </p>
+                </div>
+                <Switch
+                  id="edit-translate-toggle"
+                  checked={translateOn}
+                  onCheckedChange={setTranslateOn}
+                />
+              </div>
+              {translateOn ? (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-translate-target">Target language</Label>
+                  <Select
+                    value={target}
+                    onValueChange={(v) => setTarget(v as TranslateTargetValue)}
+                  >
+                    <SelectTrigger id="edit-translate-target">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TRANSLATE_TARGETS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="space-y-2">
             <Label htmlFor="front">Front</Label>
             <Textarea id="front" rows={2} {...form.register('front')} />
@@ -362,6 +542,7 @@ function EditCardDialog({
                       onClick={() => {
                         setFrontExamples((prev) => prev.filter((_, j) => j !== i));
                         setBackExamples((prev) => prev.filter((_, j) => j !== i));
+                        lastTranslatedExamplesRef.current.clear();
                       }}
                       aria-label="Remove example"
                     >
@@ -387,8 +568,17 @@ function EditCardDialog({
               </Button>
             ) : null}
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="back">Back</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="back">Back</Label>
+              {translateOn && translate.isPending ? (
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Translating…
+                </span>
+              ) : null}
+            </div>
             <Textarea id="back" rows={3} {...form.register('back')} />
             {backExamples.length > 0 ? (
               <div className="space-y-2">
@@ -409,6 +599,7 @@ function EditCardDialog({
               </div>
             ) : null}
           </div>
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel

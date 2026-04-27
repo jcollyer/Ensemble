@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Library, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { AlignLeft, AlignRight, ArrowLeft, Library, Pencil, Plus, Trash2, X } from 'lucide-react';
 
 import { FlashcardUpdateInput } from '@flipflow/types';
 import { Button } from '@/components/ui/button';
@@ -115,12 +115,24 @@ export function AllCardsView() {
                     <div className="line-clamp-2 font-medium">{card.front}</div>
                     <div className="line-clamp-2 text-sm text-muted-foreground">{card.back}</div>
                     {(card.frontExamples.length > 0 || card.backExamples.length > 0) ? (
-                      <div className="space-y-0.5 pt-1">
-                        {card.frontExamples.map((ex, i) => (
-                          <p key={i} className="text-xs text-muted-foreground">Front: {ex}</p>
-                        ))}
-                        {card.backExamples.map((ex, i) => (
-                          <p key={i} className="text-xs text-muted-foreground">Back: {ex}</p>
+                      <div className="divide-y divide-border/50 rounded-md border bg-muted/30 px-3 py-1 mt-2">
+                        {Array.from({
+                          length: Math.max(card.frontExamples.length, card.backExamples.length),
+                        }).map((_, i) => (
+                          <div key={i} className="flex items-baseline gap-3 py-1 text-xs">
+                            <span className="flex min-w-0 flex-1 items-baseline gap-1">
+                              <AlignLeft className="mt-0.5 h-3 w-3 shrink-0 text-foreground/50" />
+                              <span className="font-semibold text-foreground">
+                                {card.frontExamples[i] ?? ''}
+                              </span>
+                            </span>
+                            <span className="flex min-w-0 flex-1 items-baseline gap-1">
+                              <AlignRight className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                              <span className="text-muted-foreground">
+                                {card.backExamples[i] ?? ''}
+                              </span>
+                            </span>
+                          </div>
                         ))}
                       </div>
                     ) : null}

@@ -112,6 +112,8 @@ export function PracticeSession({ categoryId }: Props) {
           <FlipCard
             front={current?.front ?? ''}
             back={current?.back ?? ''}
+            frontExamples={current?.frontExamples ?? []}
+            backExamples={current?.backExamples ?? []}
             flipped={flipped}
             onClick={() => setFlipped((f) => !f)}
             cardId={current?.id}
@@ -141,6 +143,8 @@ export function PracticeSession({ categoryId }: Props) {
 function FlipCard({
   front,
   back,
+  frontExamples,
+  backExamples,
   flipped,
   onClick,
   cardId,
@@ -148,6 +152,8 @@ function FlipCard({
 }: {
   front: string;
   back: string;
+  frontExamples: string[];
+  backExamples: string[];
   flipped: boolean;
   onClick: () => void;
   cardId: string | undefined;
@@ -157,15 +163,33 @@ function FlipCard({
     <button
       type="button"
       onClick={onClick}
-      className={cn('flip-card block h-72 w-full select-text outline-none', flipped && 'is-flipped')}
+      className={cn('flip-card block min-h-72 w-full select-text outline-none', flipped && 'is-flipped')}
       aria-label={flipped ? 'Hide answer' : 'Show answer'}
     >
       <div className="flip-card-inner">
         <Card className="flip-card-face flex items-center justify-center p-6 text-center shadow-md">
-          <CardContent className="text-2xl font-medium leading-snug">{front}</CardContent>
+          <CardContent className="w-full space-y-3">
+            <p className="text-2xl font-bold leading-snug">{front}</p>
+            {frontExamples.length > 0 ? (
+              <ul className="space-y-1 text-left">
+                {frontExamples.map((ex, i) => (
+                  <li key={i} className="pl-4 text-base italic text-muted-foreground">{ex}</li>
+                ))}
+              </ul>
+            ) : null}
+          </CardContent>
         </Card>
         <Card className="flip-card-face flip-card-back relative flex items-center justify-center border-primary/40 bg-primary/5 p-6 text-center shadow-md">
-          <CardContent className="text-xl leading-snug">{back}</CardContent>
+          <CardContent className="w-full space-y-3">
+            <p className="text-xl font-bold leading-snug">{back}</p>
+            {backExamples.length > 0 ? (
+              <ul className="space-y-1 text-left">
+                {backExamples.map((ex, i) => (
+                  <li key={i} className="pl-4 text-base italic text-muted-foreground">{ex}</li>
+                ))}
+              </ul>
+            ) : null}
+          </CardContent>
           {/* Only render the audio button if the deck has a configured language. */}
           {backLanguage && cardId ? (
             <AudioButton cardId={cardId} text={back} languageCode={backLanguage} />
