@@ -2,15 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Loader2, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 
 import {
   BACK_LANGUAGES,
   type BackLanguageValue,
-  FlashcardCreateInput,
   FlashcardUpdateInput,
 } from '@flipflow/types';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -31,19 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { trpc } from '@/lib/trpc/client';
-import { useDebouncedValue } from '@/lib/hooks';
 import { formatRelative } from '@/lib/utils';
-
-/** Languages exposed in the translation dropdown. Must match the server enum. */
-const TRANSLATE_TARGETS = [
-  { value: 'fr', label: 'French' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'de', label: 'German' },
-] as const;
-type TranslateTargetValue = (typeof TRANSLATE_TARGETS)[number]['value'];
+import { CreateCardDialog } from '@/features/cards/CreateCardDialog';
 
 interface Props {
   categoryId: string;
@@ -188,8 +177,9 @@ export function CategoryDetail({ categoryId }: Props) {
         </Button>
       </div>
 
-      {/* Create card dialog */}
+      {/* Create card dialog (deck is fixed to this category). */}
       <CreateCardDialog
+        mode="fixed"
         categoryId={categoryId}
         open={createOpen}
         onOpenChange={setCreateOpen}
@@ -341,248 +331,3 @@ function EditCardDialog({
   );
 }
 
-/**
- * Per-deck localStorage shape for translation preferences. Bumped to v1 so we
- * have an obvious migration handle if we ever change it.
- */
-interface TranslatePrefs {
-  v: 1;
-  enabled: boolean;
-  target: TranslateTargetValue;
-}
-
-function readTranslatePrefs(categoryId: string): TranslatePrefs | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(`flipflow:translate:${categoryId}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<TranslatePrefs>;
-    if (
-      parsed.v === 1 &&
-      typeof parsed.enabled === 'boolean' &&
-      TRANSLATE_TARGETS.some((t) => t.value === parsed.target)
-    ) {
-      return parsed as TranslatePrefs;
-    }
-  } catch {
-    // Ignore corrupt entries — the user just gets defaults.
-  }
-  return null;
-}
-
-function writeTranslatePrefs(categoryId: string, prefs: TranslatePrefs) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(`flipflow:translate:${categoryId}`, JSON.stringify(prefs));
-  } catch {
-    // localStorage can throw in private mode / quota — non-fatal.
-  }
-}
-
-/**
- * New-card dialog with optional translation mode.
- *
- * When the server has a Google Translate key configured, the user can flip a
- * toggle to translate the front (assumed English) into the chosen target
- * language as they type. The toggle and language are remembered per deck so a
- * "French Vocab" deck always opens in French mode without nagging the user.
- *
- * Auto-fill behavior: every debounced change to the front overwrites the back
- * with the latest translation, even if the user manually edited it. The user
- * opted into this trade-off (simple + predictable) over the more complex
- * "remember my manual edit" model.
- */
-function CreateCardDialog({
-  categoryId,
-  open,
-  onOpenChange,
-}: {
-  categoryId: string;
-  open: boolean;
-  onOpenChange: (next: boolean) => void;
-}) {
-  const utils = trpc.useUtils();
-
-  const { data: availability } = trpc.translate.isAvailable.useQuery(undefined, {
-    // Availability is purely an env-var check; no need to refetch on focus.
-    staleTime: Infinity,
-  });
-  const translateAvailable = !!availability?.available;
-
-  const [translateOn, setTranslateOn] = useState(false);
-  const [target, setTarget] = useState<TranslateTargetValue>('fr');
-
-  // Hydrate per-deck prefs on mount.
-  useEffect(() => {
-    const stored = readTranslatePrefs(categoryId);
-    if (stored) {
-      setTranslateOn(stored.enabled);
-      setTarget(stored.target);
-    }
-  }, [categoryId]);
-
-  // Persist whenever they change.
-  useEffect(() => {
-    writeTranslatePrefs(categoryId, { v: 1, enabled: translateOn, target });
-  }, [categoryId, translateOn, target]);
-
-  const form = useForm<FlashcardCreateInput>({
-    resolver: zodResolver(FlashcardCreateInput),
-    defaultValues: { categoryId, front: '', back: '' },
-  });
-
-  const create = trpc.flashcards.create.useMutation({
-    onSuccess: () => {
-      utils.flashcards.listByCategory.invalidate({ categoryId });
-      utils.practice.stats.invalidate({ categoryId });
-      utils.categories.list.invalidate();
-      onOpenChange(false);
-    },
-  });
-
-  const translate = trpc.translate.translate.useMutation();
-
-  // Memoizes the most recent (text, target) we sent to Google so flipping the
-  // toggle / re-rendering doesn't re-fire identical requests.
-  const lastTranslatedRef = useRef<{ text: string; target: string } | null>(null);
-
-  // Reset form state when the dialog closes so the next "+ New card" starts
-  // clean. We deliberately do NOT reset translateOn / target — those are the
-  // sticky per-deck preferences.
-  useEffect(() => {
-    if (!open) {
-      form.reset({ categoryId, front: '', back: '' });
-      translate.reset();
-      lastTranslatedRef.current = null;
-    }
-    // form / translate are stable refs from their hooks — don't include them
-    // here or this would loop on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, categoryId]);
-
-  // Debounced translation on front-text change.
-  const front = useWatch({ control: form.control, name: 'front' }) ?? '';
-  const debouncedFront = useDebouncedValue(front.trim(), 500);
-
-  useEffect(() => {
-    if (!translateOn || !translateAvailable) return;
-
-    if (!debouncedFront) {
-      // Front is empty — clear any auto-fill and reset memoization.
-      form.setValue('back', '');
-      lastTranslatedRef.current = null;
-      return;
-    }
-
-    // Skip if we already translated this exact (text, target) pair — prevents
-    // a burst of duplicate calls when the toggle/lang changes triggers the
-    // effect with unchanged input.
-    const last = lastTranslatedRef.current;
-    if (last && last.text === debouncedFront && last.target === target) return;
-
-    // Stamp this request as the latest. We use the *object identity* of
-    // `request` (not its contents) to detect stale responses — useMutation
-    // doesn't cancel in-flight calls, so if the user types again before the
-    // first response lands, the older response would otherwise overwrite the
-    // back with a stale translation. The closure's `request` ref will no
-    // longer equal `lastTranslatedRef.current` once a newer mutate has run.
-    const request = { text: debouncedFront, target };
-    lastTranslatedRef.current = request;
-
-    translate.mutate(
-      { text: debouncedFront, target },
-      {
-        onSuccess: ({ translation }) => {
-          if (lastTranslatedRef.current !== request) return;
-          form.setValue('back', translation, { shouldDirty: true, shouldValidate: true });
-        },
-      },
-    );
-    // form / translate are stable refs from their hooks; including them would
-    // re-run this effect on every render and re-fire the same mutation.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedFront, target, translateOn, translateAvailable]);
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>New card</DialogTitle>
-          <DialogDescription>The front is the prompt, the back is the answer.</DialogDescription>
-        </DialogHeader>
-        <form
-          onSubmit={form.handleSubmit((values) => create.mutate(values))}
-          className="space-y-3"
-        >
-          {translateAvailable ? (
-            <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-0.5">
-                  <Label htmlFor="translate-toggle" className="cursor-pointer">
-                    Translation card
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Auto-translate the front into the chosen language.
-                  </p>
-                </div>
-                <Switch
-                  id="translate-toggle"
-                  checked={translateOn}
-                  onCheckedChange={setTranslateOn}
-                />
-              </div>
-              {translateOn ? (
-                <div className="space-y-2">
-                  <Label htmlFor="translate-target">Target language</Label>
-                  <Select
-                    value={target}
-                    onValueChange={(v) => setTarget(v as TranslateTargetValue)}
-                  >
-                    <SelectTrigger id="translate-target">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TRANSLATE_TARGETS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="space-y-2">
-            <Label htmlFor="front">Front</Label>
-            <Textarea id="front" rows={2} {...form.register('front')} />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="back">Back</Label>
-              {translateOn && translate.isPending ? (
-                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Translating…
-                </span>
-              ) : null}
-            </div>
-            <Textarea id="back" rows={3} {...form.register('back')} />
-            {translate.error ? (
-              <p className="text-xs text-destructive">{translate.error.message}</p>
-            ) : null}
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? 'Adding…' : 'Add card'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}

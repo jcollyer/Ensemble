@@ -22,16 +22,17 @@ datasource db {
 // ----------------------------------------------------------------------------
 
 model User {
-  id            String     @id @default(cuid())
+  id            String      @id @default(cuid())
   name          String?
-  email         String?    @unique
+  email         String?     @unique
   emailVerified DateTime?
   image         String?
   accounts      Account[]
   sessions      Session[]
   categories    Category[]
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  flashcards    Flashcard[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 model Account {
@@ -99,8 +100,14 @@ model Flashcard {
   id         String    @id @default(cuid())
   front      String    @db.Text
   back       String    @db.Text
-  categoryId String
-  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  // Optional. Cards can live outside of a deck — they show up only in the
+  // "All decks" view. When the deck is deleted, the card cascades with it.
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  // Direct ownership pointer so we can find a user's uncategorized cards
+  // (where categoryId is null) without joining through Category.
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // SM-2 spaced-repetition state
   confidence  Int       @default(0) // last rating, 0-5
@@ -114,4 +121,6 @@ model Flashcard {
 
   @@index([categoryId])
   @@index([categoryId, nextReview])
+  @@index([userId])
+  @@index([userId, nextReview])
 }

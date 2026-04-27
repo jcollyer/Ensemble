@@ -39,17 +39,27 @@ export type CategoryUpdateInput = z.infer<typeof CategoryUpdateInput>;
 // Flashcard
 // ----------------------------------------------------------------------------
 
+/**
+ * `categoryId` is optional. When omitted (or null), the card is "uncategorized"
+ * — it doesn't belong to any deck and only shows up in the All decks view.
+ */
 export const FlashcardCreateInput = z.object({
-  categoryId: z.string().cuid(),
+  categoryId: z.string().cuid().nullish(),
   front: z.string().trim().min(1, 'Front is required').max(2000),
   back: z.string().trim().min(1, 'Back is required').max(4000),
 });
 export type FlashcardCreateInput = z.infer<typeof FlashcardCreateInput>;
 
+/**
+ * `categoryId`: when provided, moves the card into that deck. We deliberately
+ * don't allow `null` here — the UI only exposes assigning an *uncategorized*
+ * card to a deck, not the other way around. `undefined` leaves it unchanged.
+ */
 export const FlashcardUpdateInput = z.object({
   id: z.string().cuid(),
   front: z.string().trim().min(1).max(2000).optional(),
   back: z.string().trim().min(1).max(4000).optional(),
+  categoryId: z.string().cuid().optional(),
 });
 export type FlashcardUpdateInput = z.infer<typeof FlashcardUpdateInput>;
 

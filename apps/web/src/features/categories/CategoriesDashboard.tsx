@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Layers, Clock } from 'lucide-react';
+import { Plus, Layers, Clock, Library } from 'lucide-react';
 
 import { BACK_LANGUAGES, CategoryCreateInput } from '@flipflow/types';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { trpc } from '@/lib/trpc/client';
+import { CreateCardDialog } from '@/features/cards/CreateCardDialog';
 
 // Sentinel because the Radix Select doesn't allow an empty-string value.
 // We translate this back to `null` before submitting.
@@ -35,14 +36,15 @@ const NO_LANGUAGE = '__none__';
 const PALETTE = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export function CategoriesDashboard() {
-  const [open, setOpen] = useState(false);
+  const [deckOpen, setDeckOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
   const utils = trpc.useUtils();
   const { data: categories, isLoading } = trpc.categories.list.useQuery();
 
   const create = trpc.categories.create.useMutation({
     onSuccess: () => {
       utils.categories.list.invalidate();
-      setOpen(false);
+      setDeckOpen(false);
     },
   });
 
@@ -58,25 +60,34 @@ export function CategoriesDashboard() {
     defaultValues: { name: '', color: PALETTE[0], backLanguage: null },
   });
 
+  const decks = (categories ?? []).map((c) => ({ id: c.id, name: c.name }));
+
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Your decks</h1>
           <p className="text-sm text-muted-foreground">
             Organize cards into decks and practice them with spaced repetition.
           </p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4" />
-          New deck
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setCardOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New card
+          </Button>
+          <Button onClick={() => setDeckOpen(true)}>
+            <Plus className="h-4 w-4" />
+            New deck
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
         <SkeletonGrid />
       ) : categories && categories.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <AllDecksCard />
           {categories.map((c) => (
             <Link key={c.id} href={`/app/categories/${c.id}`} className="group">
               <Card className="transition hover:border-primary/40 hover:shadow-md">
@@ -103,10 +114,13 @@ export function CategoriesDashboard() {
           ))}
         </div>
       ) : (
-        <EmptyState onCreate={() => setOpen(true)} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <AllDecksCard />
+          <EmptyState onCreate={() => setDeckOpen(true)} />
+        </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={deckOpen} onOpenChange={setDeckOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create a deck</DialogTitle>
@@ -173,7 +187,7 @@ export function CategoriesDashboard() {
               </div>
             ) : null}
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+              <Button type="button" variant="ghost" onClick={() => setDeckOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={create.isPending}>
@@ -183,13 +197,57 @@ export function CategoriesDashboard() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* New card dialog with optional deck selector. */}
+      <CreateCardDialog
+        mode="selectable"
+        decks={decks}
+        open={cardOpen}
+        onOpenChange={setCardOpen}
+      />
     </div>
+  );
+}
+
+/**
+ * Pseudo-deck card that links to the All decks view at /app/categories/all.
+ * Visually distinct from real decks (dashed border, library icon, bold label)
+ * so it reads as a meta-entry rather than a deck named "All decks".
+ */
+function AllDecksCard() {
+  const { data: stats } = trpc.practice.stats.useQuery({});
+  return (
+    <Link href="/app/categories/all" className="group">
+      <Card className="border-dashed transition hover:border-primary/60 hover:shadow-md">
+        <CardHeader className="flex flex-row items-center gap-3">
+          <div
+            aria-hidden
+            className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary"
+          >
+            <Library className="h-5 w-5" />
+          </div>
+          <CardTitle className="truncate font-bold group-hover:text-primary">
+            All decks
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <Layers className="h-4 w-4" />
+            {stats?.total ?? 0} {stats?.total === 1 ? 'card' : 'cards'}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Clock className="h-4 w-4" />
+            {stats?.due ?? 0} due
+          </span>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <Card className="border-dashed">
+    <Card className="border-dashed sm:col-span-1 lg:col-span-2">
       <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Layers className="h-6 w-6" />

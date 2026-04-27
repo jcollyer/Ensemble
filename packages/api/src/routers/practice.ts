@@ -53,7 +53,7 @@ export const practiceRouter = router({
    */
   submitReview: protectedProcedure.input(SubmitReviewInput).mutation(async ({ ctx, input }) => {
     const card = await ctx.prisma.flashcard.findFirst({
-      where: { id: input.cardId, category: { userId: ctx.userId } },
+      where: { id: input.cardId, userId: ctx.userId },
     });
     if (!card) throw new TRPCError({ code: 'NOT_FOUND' });
 
@@ -78,15 +78,21 @@ export const practiceRouter = router({
     });
   }),
 
-  /** Lightweight stats for the dashboard / streak widgets. */
+  /**
+   * Lightweight stats for the dashboard / streak widgets.
+   *
+   * When `categoryId` is supplied, stats are scoped to that deck. Otherwise
+   * we count every card the user owns — including uncategorized ones — which
+   * is what the "All decks" view needs.
+   */
   stats: protectedProcedure
     .input(z.object({ categoryId: z.string().cuid().optional() }))
     .query(async ({ ctx, input }) => {
+      // Filter by direct ownership so uncategorized cards (categoryId = null)
+      // are still counted when no categoryId is supplied.
       const where = {
-        category: {
-          userId: ctx.userId,
-          ...(input.categoryId ? { id: input.categoryId } : {}),
-        },
+        userId: ctx.userId,
+        ...(input.categoryId ? { categoryId: input.categoryId } : {}),
       };
       const now = new Date();
 
