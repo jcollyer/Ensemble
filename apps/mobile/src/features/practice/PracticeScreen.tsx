@@ -46,6 +46,10 @@ export function PracticeScreen({ categoryId }: Props) {
 
   const cards = data?.cards ?? [];
   const current = cards[index];
+  const backLanguage =
+    ((current?.category?.backLanguage ?? data?.category?.backLanguage ?? null) as
+      | BackLanguageValue
+      | null);
   const done = !isLoading && cards.length > 0 && index >= cards.length;
   const backTarget = isAllCards ? '/all-cards' : `/decks/${categoryId}`;
   const backLabel = isAllCards ? 'Back to all cards' : 'Back to deck';
@@ -118,7 +122,7 @@ export function PracticeScreen({ categoryId }: Props) {
 
             <Pressable onPress={() => setFlipped((f) => !f)} className="mt-6 active:opacity-90">
               <Card
-                className={`min-h-[280px] items-center justify-center p-6 ${
+                className={`relative min-h-[280px] items-center justify-center p-6 ${
                   flipped ? 'border-primary bg-blue-50' : ''
                 }`}
               >
@@ -157,15 +161,13 @@ export function PracticeScreen({ categoryId }: Props) {
                   {flipped ? 'Answer' : 'Tap to reveal'}
                 </Text>
 
-                {flipped && current && (current.category?.backLanguage ?? data?.category?.backLanguage) ? (
-                  <View className="absolute right-3 top-3">
+                {flipped && current?.id && backLanguage ? (
+                  <View className="absolute right-3 top-3 z-10">
                     <AudioButton
                       cardId={current.id}
                       text={current.back}
                       examples={current.backExamples ?? []}
-                      languageCode={
-                        (current.category?.backLanguage ?? data?.category?.backLanguage) as BackLanguageValue
-                      }
+                      languageCode={backLanguage}
                     />
                   </View>
                 ) : null}
@@ -378,7 +380,10 @@ function AudioButton({
   return (
     <View className="items-end gap-1">
       <Pressable
-        onPress={handlePress}
+        onPress={(event) => {
+          event.stopPropagation();
+          void handlePress();
+        }}
         disabled={loading}
         accessibilityLabel={playing ? 'Playing pronunciation' : 'Hear pronunciation'}
         accessibilityRole="button"
