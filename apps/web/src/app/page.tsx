@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ArrowRight, Sparkles, Zap, RefreshCw } from 'lucide-react';
+import { ArrowRight, Sparkles, Zap, RefreshCw, Languages, Volume2, Wand2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { auth } from '@/server/auth';
@@ -47,17 +47,50 @@ export default async function HomePage() {
           <FeatureCard icon={<Zap className="h-5 w-5" />} title="Fast capture" body="Add cards in seconds." />
           <FeatureCard icon={<RefreshCw className="h-5 w-5" />} title="SM-2 scheduling" body="The classic algorithm, dialed in." />
           <FeatureCard icon={<Sparkles className="h-5 w-5" />} title="One backend" body="Web today, mobile next." />
+          <FeatureCard
+            icon={<Languages className="h-5 w-5" />}
+            title="Auto translate mode"
+            body="Type in one language, get the other side filled in for you."
+          />
+          <FeatureCard
+            icon={<Volume2 className="h-5 w-5" />}
+            title="Click to hear translation"
+            body="Tap the back of any card to hear it spoken aloud."
+          />
+          <FeatureCard
+            icon={<Wand2 className="h-5 w-5" />}
+            title="Auto-generate practice text"
+            body="Turn your deck into reading passages on the fly."
+            badge="Coming soon"
+          />
         </div>
       </section>
     </main>
   );
 }
 
-function FeatureCard({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
+function FeatureCard({
+  icon,
+  title,
+  body,
+  badge,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  badge?: string;
+}) {
   return (
     <div className="rounded-xl border p-5 text-left">
-      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        {icon}
+      <div className="mb-3 flex items-center justify-between">
+        <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          {icon}
+        </div>
+        {badge ? (
+          <span className="rounded-full border bg-muted/50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {badge}
+          </span>
+        ) : null}
       </div>
       <div className="font-semibold">{title}</div>
       <div className="text-sm text-muted-foreground">{body}</div>
