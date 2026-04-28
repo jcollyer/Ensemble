@@ -304,7 +304,7 @@ function AudioButton({
         // Play segments with a 400 ms pause between each.
         for (let i = 0; i < dataUrls.length; i++) {
           if (!isActive()) break;
-          await playSingle(dataUrls[i]);
+          await playSingle(dataUrls[i] as string);
           if (i < dataUrls.length - 1 && isActive()) {
             await new Promise<void>((resolve) => setTimeout(resolve, 400));
           }
