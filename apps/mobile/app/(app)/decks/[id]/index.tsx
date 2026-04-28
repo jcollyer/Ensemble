@@ -13,6 +13,7 @@ import { type BackLanguageValue } from '@flipflow/types';
 
 import { Button } from '../../../../src/components/Button';
 import { Card } from '../../../../src/components/Card';
+import { ClassBadge } from '../../../../src/components/ClassBadge';
 import { LanguagePicker } from '../../../../src/components/LanguagePicker';
 import { formatRelative } from '../../../../src/lib/format';
 import { trpc } from '../../../../src/lib/trpc';
@@ -158,7 +159,8 @@ export default function DeckDetailScreen() {
                   ))}
                 </View>
               ) : null}
-              <View className="mt-1 flex-row gap-2">
+              <View className="mt-1 flex-row flex-wrap items-center gap-x-2 gap-y-1">
+                {item.class ? <ClassBadge value={item.class} /> : null}
                 <Text className="text-xs text-slate-400">
                   Next: {formatRelative(item.nextReview)}
                 </Text>

@@ -12,6 +12,7 @@ import {
 
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
+import { ClassBadge } from '../../src/components/ClassBadge';
 import { formatRelative } from '../../src/lib/format';
 import { trpc } from '../../src/lib/trpc';
 
@@ -126,6 +127,7 @@ export default function AllCardsScreen() {
                   </View>
                 ) : null}
                 <View className="mt-1 flex-row flex-wrap items-center gap-x-2 gap-y-1">
+                  {item.class ? <ClassBadge value={item.class} /> : null}
                   {deck ? (
                     <View className="flex-row items-center gap-1.5">
                       <View

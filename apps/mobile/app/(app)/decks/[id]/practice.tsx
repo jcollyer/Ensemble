@@ -14,6 +14,7 @@ import { type BackLanguageValue } from '@flipflow/types';
 
 import { Button } from '../../../../src/components/Button';
 import { Card } from '../../../../src/components/Card';
+import { ClassBadge } from '../../../../src/components/ClassBadge';
 import { trpc } from '../../../../src/lib/trpc';
 
 /**
@@ -115,6 +116,11 @@ export default function PracticeScreen() {
                   flipped ? 'border-primary bg-blue-50' : ''
                 }`}
               >
+                {current?.class ? (
+                  <View className="mb-3">
+                    <ClassBadge value={current.class} size="md" />
+                  </View>
+                ) : null}
                 <Text
                   className={`text-center leading-snug ${
                     flipped ? 'text-xl font-bold text-slate-900' : 'text-2xl font-bold text-slate-900'
