@@ -117,19 +117,17 @@ export function AllCardsView() {
                     <div className="line-clamp-2 font-medium">{card.front}</div>
                     <div className="text-muted-foreground line-clamp-2 text-sm">{card.back}</div>
                     {card.frontExamples.length > 0 || card.backExamples.length > 0 ? (
-                      <div className="divide-border/50 bg-muted/30 mt-2 divide-y rounded-md border px-3 py-1">
+                      <div className="divide-border/50 mt-2 divide-y px-3 py-1">
                         {Array.from({
                           length: Math.max(card.frontExamples.length, card.backExamples.length),
                         }).map((_, i) => (
                           <div key={i} className="flex items-baseline gap-3 py-1 text-xs">
-                            <span className="flex min-w-0 flex-1 items-baseline gap-1">
-                              <AlignLeft className="text-foreground/50 mt-0.5 h-3 w-3 shrink-0" />
+                            <span className="flex min-w-0 items-baseline gap-1">
                               <span className="text-foreground font-semibold">
                                 {card.frontExamples[i] ?? ''}
                               </span>
                             </span>
-                            <span className="flex min-w-0 flex-1 items-baseline gap-1">
-                              <AlignRight className="text-muted-foreground mt-0.5 h-3 w-3 shrink-0" />
+                            <span className="flex min-w-0 items-baseline gap-1">
                               <span className="text-muted-foreground">
                                 {card.backExamples[i] ?? ''}
                               </span>
