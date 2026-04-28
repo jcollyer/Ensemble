@@ -192,7 +192,7 @@ function FlipCard({
           </CardContent>
           {/* Only render the audio button if the deck has a configured language. */}
           {backLanguage && cardId ? (
-            <AudioButton cardId={cardId} text={back} languageCode={backLanguage} />
+            <AudioButton cardId={cardId} text={back} examples={backExamples} languageCode={backLanguage} />
           ) : null}
         </Card>
       </div>
@@ -202,13 +202,12 @@ function FlipCard({
 
 /**
  * Speaker button that fetches and plays a TTS pronunciation of the back-of-
- * card text via the `tts.synthesize` mutation.
+ * card text (followed by each example, with a short pause between segments)
+ * via the `tts.synthesize` mutation.
  *
- * Caching: we keep a per-session in-memory cache keyed by `cardId` so the
- * same card never re-bills the user — flipping back to a card you've heard
- * already plays instantly with no network round-trip. The cache lives on a
- * useRef Map (instead of useState) because we never need a re-render when
- * an entry is added; we just lazily read from it on click.
+ * Caching: we keep a per-session in-memory cache keyed by text content so
+ * the same phrase is never re-synthesized. Re-clicking while audio is playing
+ * cancels the current sequence and restarts from the beginning.
  *
  * `stopPropagation` on the click is essential — the audio button is nested
  * inside the FlipCard `<button>`, so without it the click would also
@@ -217,82 +216,110 @@ function FlipCard({
 function AudioButton({
   cardId,
   text,
+  examples,
   languageCode,
 }: {
   cardId: string;
   text: string;
+  examples: string[];
   languageCode: BackLanguageValue;
 }) {
   const synthesize = trpc.tts.synthesize.useMutation();
 
-  // cardId -> data URL we can hand to `new Audio()`.
+  // text content -> data URL cache so the same phrase is never re-billed.
   const cacheRef = useRef<Map<string, string>>(new Map());
-  // Holds the currently-playing element so a second click while playing
-  // restarts cleanly rather than overlapping audio.
+  // Holds the currently-playing element so re-clicks restart cleanly.
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Symbol token to cancel an in-flight sequence when the user clicks again.
+  const runTokenRef = useRef<symbol | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // If the user navigates away mid-playback the parent unmounts; stop the
   // audio so it doesn't keep playing in the background.
   useEffect(() => {
     return () => {
+      runTokenRef.current = null;
       audioRef.current?.pause();
       audioRef.current = null;
     };
   }, []);
 
-  const play = useCallback(
-    (dataUrl: string) => {
-      // Always tear down any previous element so repeated clicks restart.
+  // Fetch (or return cached) TTS audio for a single text segment.
+  const fetchAudio = useCallback(
+    async (t: string): Promise<string> => {
+      const cached = cacheRef.current.get(t);
+      if (cached) return cached;
+      const { audioContent } = await synthesize.mutateAsync({ text: t, languageCode });
+      const dataUrl = `data:audio/mp3;base64,${audioContent}`;
+      cacheRef.current.set(t, dataUrl);
+      return dataUrl;
+    },
+    [synthesize, languageCode],
+  );
+
+  // Play a single audio data URL; resolves when the clip ends.
+  const playSingle = useCallback((dataUrl: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
       audioRef.current?.pause();
       const audio = new Audio(dataUrl);
       audioRef.current = audio;
-      setPlaying(true);
-      audio.addEventListener('ended', () => setPlaying(false));
-      audio.addEventListener('error', () => {
-        setPlaying(false);
-        setError('Audio playback failed.');
-      });
-      // play() returns a Promise; some browsers reject if interrupted.
-      audio.play().catch(() => {
-        setPlaying(false);
-        setError('Audio playback failed.');
-      });
-    },
-    [],
-  );
+      audio.addEventListener('ended', () => resolve());
+      audio.addEventListener('error', () => reject(new Error('Audio playback failed.')));
+      audio.play().catch(reject);
+    });
+  }, []);
 
   const handleClick = useCallback(
-    (e: React.MouseEvent) => {
+    async (e: React.MouseEvent) => {
       e.stopPropagation();
       e.preventDefault();
+
+      // Cancel any running sequence.
+      audioRef.current?.pause();
+      audioRef.current = null;
       setError(null);
 
-      const cached = cacheRef.current.get(cardId);
-      if (cached) {
-        play(cached);
-        return;
+      const token = Symbol();
+      runTokenRef.current = token;
+      const isActive = () => runTokenRef.current === token;
+
+      const texts = examples.length > 0 ? [text, ...examples] : [text];
+
+      setLoading(true);
+      setPlaying(false);
+      try {
+        // Pre-fetch all segments sequentially (uses cache on repeat plays).
+        const dataUrls: string[] = [];
+        for (const t of texts) {
+          if (!isActive()) return;
+          dataUrls.push(await fetchAudio(t));
+        }
+
+        if (!isActive()) return;
+        setLoading(false);
+        setPlaying(true);
+
+        // Play segments with a 400 ms pause between each.
+        for (let i = 0; i < dataUrls.length; i++) {
+          if (!isActive()) break;
+          await playSingle(dataUrls[i]);
+          if (i < dataUrls.length - 1 && isActive()) {
+            await new Promise<void>((resolve) => setTimeout(resolve, 400));
+          }
+        }
+      } catch {
+        if (isActive()) setError('Audio playback failed.');
+      } finally {
+        if (isActive()) {
+          setLoading(false);
+          setPlaying(false);
+        }
       }
-
-      synthesize.mutate(
-        { text, languageCode },
-        {
-          onSuccess: ({ audioContent }) => {
-            const dataUrl = `data:audio/mp3;base64,${audioContent}`;
-            cacheRef.current.set(cardId, dataUrl);
-            play(dataUrl);
-          },
-          onError: (err) => {
-            setError(err.message);
-          },
-        },
-      );
     },
-    [cardId, text, languageCode, synthesize, play],
+    [text, examples, fetchAudio, playSingle],
   );
-
-  const loading = synthesize.isPending;
 
   return (
     <span

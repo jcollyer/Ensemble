@@ -148,6 +148,7 @@ export default function PracticeScreen() {
                     <AudioButton
                       cardId={current.id}
                       text={current.back}
+                      examples={current.backExamples ?? []}
                       languageCode={data.category.backLanguage as BackLanguageValue}
                     />
                   </View>
@@ -245,14 +246,13 @@ function EmptyQueue({
 
 /**
  * Speaker button that fetches and plays a TTS pronunciation of the back-of-
- * card text via the `tts.synthesize` mutation. Mirrors the web AudioButton
- * but uses `expo-av` for playback.
+ * card text (followed by each example, with a short pause between segments)
+ * via the `tts.synthesize` mutation. Mirrors the web AudioButton but uses
+ * `expo-av` for playback.
  *
- * Caching: per-session in-memory cache keyed by `cardId` so the same card
- * never re-bills the user — flipping back to a card you've already heard
- * plays instantly. Cache holds the base64 data URI string (lightweight) and
- * each play creates a fresh `Audio.Sound`, which is unloaded on finish or
- * on the next click.
+ * Caching: per-session in-memory cache keyed by text content so the same
+ * phrase is never re-billed. Re-tapping while audio plays cancels the current
+ * sequence and restarts from the beginning.
  *
  * `stopPropagation` doesn't exist in React Native — instead, the parent
  * Pressable for "tap to flip" wraps the *card content*, but this button is
@@ -261,105 +261,132 @@ function EmptyQueue({
  * sufficient to keep the flip from toggling on tap.
  */
 function AudioButton({
-  cardId,
+  cardId: _cardId,
   text,
+  examples,
   languageCode,
 }: {
   cardId: string;
   text: string;
+  examples: string[];
   languageCode: BackLanguageValue;
 }) {
   const synthesize = trpc.tts.synthesize.useMutation();
 
-  // cardId -> base64 data URI for `Audio.Sound.createAsync({ uri })`.
+  // text content -> base64 data URI cache so the same phrase is never re-billed.
   const cacheRef = useRef<Map<string, string>>(new Map());
-  // Currently-loaded sound. We unload before playing the next so repeated
-  // taps restart cleanly rather than overlapping audio.
   const soundRef = useRef<Audio.Sound | null>(null);
+  // Symbol token to cancel an in-flight sequence when the user taps again.
+  const runTokenRef = useRef<symbol | null>(null);
 
   const [playing, setPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Best-effort cleanup if the user navigates away mid-playback.
   useEffect(() => {
     return () => {
+      runTokenRef.current = null;
       const s = soundRef.current;
       soundRef.current = null;
       if (s) {
-        // Fire-and-forget; we're already unmounting.
-        s.unloadAsync().catch(() => {
-          // Already unloaded or torn down — nothing to do.
-        });
+        s.unloadAsync().catch(() => {});
       }
     };
   }, []);
 
-  const play = useCallback(async (dataUrl: string) => {
-    try {
-      // Tear down any previous sound so taps always restart cleanly.
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync().catch(() => {
-          // ignore — likely already unloaded
-        });
-        soundRef.current = null;
-      }
+  // Fetch (or return cached) TTS audio for a single text segment.
+  const fetchAudio = useCallback(
+    async (t: string): Promise<string> => {
+      const cached = cacheRef.current.get(t);
+      if (cached) return cached;
+      const { audioContent } = await synthesize.mutateAsync({ text: t, languageCode });
+      const dataUrl = `data:audio/mp3;base64,${audioContent}`;
+      cacheRef.current.set(t, dataUrl);
+      return dataUrl;
+    },
+    [synthesize, languageCode],
+  );
 
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: dataUrl },
-        { shouldPlay: true },
-      );
-      soundRef.current = sound;
-      setPlaying(true);
-
-      sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-        if (!status.isLoaded) {
-          // `error` only exists on the unloaded variant of the union.
-          if ('error' in status && status.error) {
-            setPlaying(false);
-            setError('Audio playback failed.');
-          }
-          return;
+  // Play a single audio data URL via expo-av; resolves when the clip ends.
+  const playSingle = useCallback((dataUrl: string): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      (async () => {
+        if (soundRef.current) {
+          await soundRef.current.unloadAsync().catch(() => {});
+          soundRef.current = null;
         }
-        if (status.didJustFinish) {
-          setPlaying(false);
-          // Async unload; no need to await here.
-          sound.unloadAsync().catch(() => {
-            // ignore
+        try {
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: dataUrl },
+            { shouldPlay: true },
+          );
+          soundRef.current = sound;
+
+          sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
+            if (!status.isLoaded) {
+              if ('error' in status && status.error) {
+                reject(new Error('Audio playback failed.'));
+              }
+              return;
+            }
+            if (status.didJustFinish) {
+              sound.unloadAsync().catch(() => {});
+              if (soundRef.current === sound) soundRef.current = null;
+              resolve();
+            }
           });
-          if (soundRef.current === sound) soundRef.current = null;
+        } catch (err) {
+          reject(err);
         }
-      });
-    } catch {
-      setPlaying(false);
-      setError('Audio playback failed.');
-    }
+      })();
+    });
   }, []);
 
-  const handlePress = useCallback(() => {
+  const handlePress = useCallback(async () => {
+    // Stop any current playback and cancel the in-flight sequence.
+    if (soundRef.current) {
+      await soundRef.current.stopAsync().catch(() => {});
+    }
     setError(null);
 
-    const cached = cacheRef.current.get(cardId);
-    if (cached) {
-      void play(cached);
-      return;
+    const token = Symbol();
+    runTokenRef.current = token;
+    const isActive = () => runTokenRef.current === token;
+
+    const texts = examples.length > 0 ? [text, ...examples] : [text];
+
+    setLoading(true);
+    setPlaying(false);
+    try {
+      // Pre-fetch all segments (uses cache on repeat plays).
+      const dataUrls: string[] = [];
+      for (const t of texts) {
+        if (!isActive()) return;
+        dataUrls.push(await fetchAudio(t));
+      }
+
+      if (!isActive()) return;
+      setLoading(false);
+      setPlaying(true);
+
+      // Play segments with a 400 ms pause between each.
+      for (let i = 0; i < dataUrls.length; i++) {
+        if (!isActive()) break;
+        await playSingle(dataUrls[i]);
+        if (i < dataUrls.length - 1 && isActive()) {
+          await new Promise<void>((resolve) => setTimeout(resolve, 400));
+        }
+      }
+    } catch {
+      if (isActive()) setError('Audio playback failed.');
+    } finally {
+      if (isActive()) {
+        setLoading(false);
+        setPlaying(false);
+      }
     }
-
-    synthesize.mutate(
-      { text, languageCode },
-      {
-        onSuccess: ({ audioContent }) => {
-          const dataUrl = `data:audio/mp3;base64,${audioContent}`;
-          cacheRef.current.set(cardId, dataUrl);
-          void play(dataUrl);
-        },
-        onError: (err) => {
-          setError(err.message);
-        },
-      },
-    );
-  }, [cardId, text, languageCode, synthesize, play]);
-
-  const loading = synthesize.isPending;
+  }, [text, examples, fetchAudio, playSingle]);
 
   return (
     <View className="items-end gap-1">
