@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { ClassBadge } from '@/features/cards/ClassBadge';
 
 interface Props {
-  categoryId: string;
+  categoryId?: string;
 }
 
 /**
@@ -26,6 +26,12 @@ interface Props {
  */
 export function PracticeSession({ categoryId }: Props) {
   const utils = trpc.useUtils();
+  const isAllCards = !categoryId;
+  const backHref = isAllCards ? '/app/all-categories' : `/app/categories/${categoryId}`;
+  const practiceHref = isAllCards
+    ? '/app/all-categories/practice'
+    : `/app/categories/${categoryId}/practice`;
+  const backLabel = isAllCards ? 'Back to all cards' : 'Back to deck';
 
   // When `practiceAll` is true we ignore the SM-2 schedule and pull every
   // card in the deck. The user opts in via "Practice anyway" on the empty
@@ -72,7 +78,11 @@ export function PracticeSession({ categoryId }: Props) {
     if (done) {
       utils.categories.list.invalidate();
       utils.practice.stats.invalidate({ categoryId });
-      utils.flashcards.listByCategory.invalidate({ categoryId });
+      if (categoryId) {
+        utils.flashcards.listByCategory.invalidate({ categoryId });
+      } else {
+        utils.flashcards.listAll.invalidate();
+      }
     }
   }, [done, utils, categoryId]);
 
@@ -85,22 +95,29 @@ export function PracticeSession({ categoryId }: Props) {
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
         <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link href={`/app/categories/${categoryId}`}>
+          <Link href={backHref}>
             <ArrowLeft className="h-4 w-4" />
-            Back to deck
+            {backLabel}
           </Link>
         </Button>
-        <div className="text-muted-foreground text-sm">{data?.category.name ?? ''}</div>
+        <div className="text-muted-foreground text-sm">{data?.category?.name ?? 'All cards'}</div>
       </div>
 
       {!isLoading && cards.length === 0 ? (
         <EmptyQueue
-          categoryId={categoryId}
+          backHref={backHref}
+          backLabel={backLabel}
+          emptyTitle={isAllCards ? 'No cards to practice' : 'No cards in this deck'}
           practiceAll={practiceAll}
           onPracticeAnyway={() => setPracticeAll(true)}
         />
       ) : done ? (
-        <SessionSummary categoryId={categoryId} reviewed={reviewed} />
+        <SessionSummary
+          backHref={backHref}
+          backLabel={backLabel}
+          practiceHref={practiceHref}
+          reviewed={reviewed}
+        />
       ) : (
         <>
           <Progress value={progress} />
@@ -119,7 +136,11 @@ export function PracticeSession({ categoryId }: Props) {
             cardId={current?.id}
             // Cast: backLanguage is widened to `string | null` from the wire,
             // but on the server we only ever store BackLanguageValue values.
-            backLanguage={(data?.category.backLanguage ?? null) as BackLanguageValue | null}
+            backLanguage={
+              ((current?.category?.backLanguage ?? data?.category?.backLanguage ?? null) as
+                | BackLanguageValue
+                | null)
+            }
           />
 
           {flipped ? (
@@ -404,11 +425,15 @@ function RatingButtons({ onRate, disabled }: { onRate: (q: number) => void; disa
 }
 
 function EmptyQueue({
-  categoryId,
+  backHref,
+  backLabel,
+  emptyTitle,
   practiceAll,
   onPracticeAnyway,
 }: {
-  categoryId: string;
+  backHref: string;
+  backLabel: string;
+  emptyTitle: string;
   practiceAll: boolean;
   onPracticeAnyway: () => void;
 }) {
@@ -423,9 +448,7 @@ function EmptyQueue({
         <div className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full">
           <CheckCircle2 className="h-6 w-6" />
         </div>
-        <div className="text-lg font-semibold">
-          {deckIsEmpty ? 'No cards in this deck' : 'Nothing due right now'}
-        </div>
+        <div className="text-lg font-semibold">{deckIsEmpty ? emptyTitle : 'Nothing due right now'}</div>
         <p className="text-muted-foreground max-w-sm text-sm">
           {deckIsEmpty
             ? "There's nothing here to practice yet. Add some cards to get started."
@@ -433,7 +456,7 @@ function EmptyQueue({
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button asChild variant="outline">
-            <Link href={`/app/categories/${categoryId}`}>Back to deck</Link>
+            <Link href={backHref}>{backLabel}</Link>
           </Button>
           {!deckIsEmpty && <Button onClick={onPracticeAnyway}>Practice anyway</Button>}
         </div>
@@ -442,7 +465,17 @@ function EmptyQueue({
   );
 }
 
-function SessionSummary({ categoryId, reviewed }: { categoryId: string; reviewed: number }) {
+function SessionSummary({
+  backHref,
+  backLabel,
+  practiceHref,
+  reviewed,
+}: {
+  backHref: string;
+  backLabel: string;
+  practiceHref: string;
+  reviewed: number;
+}) {
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
@@ -455,10 +488,10 @@ function SessionSummary({ categoryId, reviewed }: { categoryId: string; reviewed
         </p>
         <div className="flex gap-2">
           <Button asChild variant="outline">
-            <Link href={`/app/categories/${categoryId}`}>Back to deck</Link>
+            <Link href={backHref}>{backLabel}</Link>
           </Button>
           <Button asChild>
-            <Link href={`/app/categories/${categoryId}/practice`}>
+            <Link href={practiceHref}>
               <RotateCcw className="h-4 w-4" />
               Practice again
             </Link>

@@ -18,25 +18,35 @@ export const practiceRouter = router({
   queue: protectedProcedure
     .input(
       z.object({
-        categoryId: z.string().cuid(),
+        categoryId: z.string().cuid().optional(),
         limit: z.number().int().min(1).max(100).default(20),
         includeAll: z.boolean().default(false),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const category = await ctx.prisma.category.findFirst({
-        where: { id: input.categoryId, userId: ctx.userId },
-        // backLanguage powers the per-card audio button; the practice UI
-        // hides the button entirely when it's null.
-        select: { id: true, name: true, color: true, backLanguage: true },
-      });
-      if (!category) throw new TRPCError({ code: 'NOT_FOUND' });
+      const category = input.categoryId
+        ? await ctx.prisma.category.findFirst({
+            where: { id: input.categoryId, userId: ctx.userId },
+            // backLanguage powers the per-card audio button; the practice UI
+            // hides the button entirely when it's null.
+            select: { id: true, name: true, color: true, backLanguage: true },
+          })
+        : null;
+      if (input.categoryId && !category) throw new TRPCError({ code: 'NOT_FOUND' });
 
       const now = new Date();
       const cards = await ctx.prisma.flashcard.findMany({
         where: {
-          categoryId: input.categoryId,
+          userId: ctx.userId,
+          ...(input.categoryId ? { categoryId: input.categoryId } : {}),
           ...(input.includeAll ? {} : { OR: [{ nextReview: null }, { nextReview: { lte: now } }] }),
+        },
+        include: {
+          category: {
+            select: {
+              backLanguage: true,
+            },
+          },
         },
         orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
         take: input.limit,

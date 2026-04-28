@@ -4,7 +4,17 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlignLeft, AlignRight, ArrowLeft, Library, Pencil, Plus, Trash2, X } from 'lucide-react';
+import {
+  AlignLeft,
+  AlignRight,
+  ArrowLeft,
+  Library,
+  Pencil,
+  Play,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react';
 
 import { FlashcardUpdateInput } from '@flipflow/types';
 import { Button } from '@/components/ui/button';
@@ -87,6 +97,12 @@ export function AllCardsView() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href="/app/all-categories/practice">
+              <Play className="h-4 w-4" />
+              Practice {stats?.due ? `(${stats.due})` : ''}
+            </Link>
+          </Button>
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             New card
