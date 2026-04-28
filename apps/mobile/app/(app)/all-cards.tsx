@@ -95,6 +95,13 @@ export default function AllCardsScreen() {
               <Stat label="Due now" value={stats?.due ?? 0} highlight={(stats?.due ?? 0) > 0} />
               <Stat label="Mastered" value={stats?.mastered ?? 0} />
             </View>
+
+            <Button
+              variant="outline"
+              onPress={() => router.push('/all-cards-practice' as never)}
+            >
+              {`Practice${stats?.due ? ` (${stats.due})` : ''}`}
+            </Button>
           </View>
         }
         renderItem={({ item }) => {
