@@ -6,10 +6,14 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "scheme": "flipflow",
+    "icon": "./assets/icon.png",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.flipflow.app"
+      "bundleIdentifier": "com.flipflow.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.flipflow.app",
@@ -31,6 +35,9 @@
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "84eb5fe8-4511-4644-9f2a-9287de8d1511"
       }
     }
   }
