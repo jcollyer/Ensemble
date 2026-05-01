@@ -75,6 +75,12 @@ export const VerbTypeSchema = z
   .union([z.enum(['regular', 'irregular']), z.literal('')])
   .nullish();
 
+/**
+ * Optional pronunciation hint for the front word (e.g. IPA, romanization).
+ * Free-form text. `null`/`undefined`/`''` = none.
+ */
+export const PronunciationSchema = z.string().trim().max(500).nullish();
+
 export const FlashcardCreateInput = z.object({
   categoryId: z.string().cuid().nullish(),
   front: z.string().trim().min(1, 'Front is required').max(2000),
@@ -87,6 +93,8 @@ export const FlashcardCreateInput = z.object({
   gender: GenderSchema,
   /** Optional verb type — 'regular', 'irregular', or null/undefined for none. */
   verb_type: VerbTypeSchema,
+  /** Optional pronunciation hint for the front word. */
+  pronunciation: PronunciationSchema,
 });
 export type FlashcardCreateInput = z.infer<typeof FlashcardCreateInput>;
 
@@ -111,6 +119,11 @@ export const FlashcardUpdateInput = z.object({
   gender: GenderSchema,
   /** Optional verb type. `null` clears the value, `undefined` leaves it unchanged. */
   verb_type: VerbTypeSchema,
+  /**
+   * Optional pronunciation hint. `null` clears the value, `undefined` leaves
+   * it unchanged.
+   */
+  pronunciation: PronunciationSchema,
 });
 export type FlashcardUpdateInput = z.infer<typeof FlashcardUpdateInput>;
 

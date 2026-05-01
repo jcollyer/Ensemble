@@ -213,6 +213,8 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
   // Gender and verb type — optional.
   const [gender, setGender] = useState<GenderValue | null>(null);
   const [verbType, setVerbType] = useState<VerbTypeValue | null>(null);
+  // Optional pronunciation hint (e.g. IPA or romanization).
+  const [pronunciation, setPronunciation] = useState('');
 
   // Reset form state when the dialog closes so the next open starts clean.
   // We deliberately do NOT reset translateOn / target — those are sticky.
@@ -230,6 +232,7 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
       setWordClass(null);
       setGender(null);
       setVerbType(null);
+      setPronunciation('');
       lastTranslatedExamplesRef.current.clear();
     }
     // form / translate are stable refs from their hooks — don't include them
@@ -325,6 +328,7 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
       class: wordClass,
       gender: gender,
       verb_type: verbType,
+      pronunciation: pronunciation.trim() ? pronunciation.trim() : null,
     });
   });
 
@@ -440,6 +444,15 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="card-pronunciation">Pronunciation (optional)</Label>
+            <Input
+              id="card-pronunciation"
+              value={pronunciation}
+              onChange={(e) => setPronunciation(e.target.value)}
+              placeholder="e.g. /bɔ̃.ʒuʁ/ or bohn-zhoor"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="front">Front</Label>

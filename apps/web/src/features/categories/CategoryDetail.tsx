@@ -412,6 +412,8 @@ function EditCardDialog({
   // Gender and verb type — optional.
   const [gender, setGender] = useState<GenderValue | null>(null);
   const [verbType, setVerbType] = useState<VerbTypeValue | null>(null);
+  // Optional pronunciation hint.
+  const [pronunciation, setPronunciation] = useState('');
 
   // Sync form + example state when the card data loads.
   useEffect(() => {
@@ -421,6 +423,7 @@ function EditCardDialog({
       setWordClass(card.class ?? null);
       setGender(((card as { gender?: string | null }).gender as GenderValue | null) ?? null);
       setVerbType(((card as { verb_type?: string | null }).verb_type as VerbTypeValue | null) ?? null);
+      setPronunciation((card as { pronunciation?: string | null }).pronunciation ?? '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card]);
@@ -502,7 +505,15 @@ function EditCardDialog({
         </DialogHeader>
         <form
           onSubmit={form.handleSubmit((values) =>
-            update.mutate({ ...values, frontExamples, backExamples, class: wordClass, gender, verb_type: verbType }),
+            update.mutate({
+              ...values,
+              frontExamples,
+              backExamples,
+              class: wordClass,
+              gender,
+              verb_type: verbType,
+              pronunciation: pronunciation.trim() ? pronunciation.trim() : null,
+            }),
           )}
           className="space-y-3"
         >
@@ -589,6 +600,16 @@ function EditCardDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-card-pronunciation">Pronunciation (optional)</Label>
+            <Input
+              id="edit-card-pronunciation"
+              value={pronunciation}
+              onChange={(e) => setPronunciation(e.target.value)}
+              placeholder="e.g. /bɔ̃.ʒuʁ/ or bohn-zhoor"
+            />
           </div>
 
           <div className="space-y-2">

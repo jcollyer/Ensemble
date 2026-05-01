@@ -143,6 +143,9 @@ export function PracticeSession({ categoryId, categoryIds, classes, practiceLimi
             frontExamples={current?.frontExamples ?? []}
             backExamples={current?.backExamples ?? []}
             cardClass={current?.class ?? null}
+            pronunciation={
+              (current as { pronunciation?: string | null } | undefined)?.pronunciation ?? null
+            }
             flipped={flipped}
             onClick={() => setFlipped((f) => !f)}
             cardId={current?.id}
@@ -179,6 +182,7 @@ function FlipCard({
   frontExamples,
   backExamples,
   cardClass,
+  pronunciation,
   flipped,
   onClick,
   cardId,
@@ -189,6 +193,7 @@ function FlipCard({
   frontExamples: string[];
   backExamples: string[];
   cardClass: string | null;
+  pronunciation: string | null;
   flipped: boolean;
   onClick: () => void;
   cardId: string | undefined;
@@ -233,9 +238,9 @@ function FlipCard({
             ) : null}
             <p className="text-xl font-bold leading-snug">{back}</p>
             {backExamples.length > 0 ? (
-              <ul className="space-y-1 text-left">
+              <ul className="space-y-1 w-fit text-left  divide-y divide-gray-200">
                 {backExamples.map((ex, i) => (
-                  <li key={i} className="text-muted-foreground pl-4 text-base italic">
+                  <li key={i} className="text-base">
                     {ex}
                   </li>
                 ))}
@@ -251,6 +256,9 @@ function FlipCard({
               languageCode={backLanguage}
             />
           ) : null}
+               {pronunciation && (
+              <p className="text-muted-foreground text-right italic mt-auto">[{pronunciation}]</p>
+            )}
         </Card>
       </div>
     </button>

@@ -66,6 +66,7 @@ export const flashcardsRouter = router({
         class: input.class ?? null,
         gender: input.gender ?? null,
         verb_type: input.verb_type ?? null,
+        pronunciation: input.pronunciation ?? null,
         categoryId: input.categoryId ?? null,
         userId: ctx.userId,
       },
@@ -99,6 +100,7 @@ export const flashcardsRouter = router({
         ...(input.class !== undefined ? { class: input.class } : {}),
         ...(input.gender !== undefined ? { gender: input.gender } : {}),
         ...(input.verb_type !== undefined ? { verb_type: input.verb_type } : {}),
+        ...(input.pronunciation !== undefined ? { pronunciation: input.pronunciation } : {}),
       },
     });
   }),

@@ -111,6 +111,9 @@ model Flashcard {
   // Optional gender ("male" / "female") and verb type ("regular" / "irregular").
   gender     String?
   verb_type  String?
+  // Optional pronunciation hint for the front word — e.g. an IPA transcription
+  // or a romanization. Free-form text so we don't lock the user into a format.
+  pronunciation String? @db.Text
   // Optional. Cards can live outside of a deck — they show up only in the
   // "All decks" view. When the deck is deleted, the card cascades with it.
   categoryId String?
