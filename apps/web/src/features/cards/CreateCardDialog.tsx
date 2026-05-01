@@ -330,7 +330,7 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent>
+      <DialogContent className="overflow-auto max-h-[80dvh]">
         <DialogHeader>
           <DialogTitle>New card</DialogTitle>
           <DialogDescription>The front is the prompt, the back is the answer.</DialogDescription>
@@ -400,7 +400,7 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
             </div>
           ) : null}
           <div className="space-y-2">
-            <Label htmlFor="card-class">Class (optional)</Label>
+            <Label htmlFor="card-class">Category (optional)</Label>
             <ClassSelect id="card-class" value={wordClass} onChange={setWordClass} />
           </div>
           <div className="space-y-2">

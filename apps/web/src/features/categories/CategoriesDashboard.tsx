@@ -244,7 +244,7 @@ function AllDecksCard() {
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <Card className="border-dashed sm:col-span-1 lg:col-span-2">
+    <Card className="border-dashed sm:col-span-1 lg:col-span-3">
       <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
         <div className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full">
           <Layers className="h-6 w-6" />
