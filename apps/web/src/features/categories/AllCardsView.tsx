@@ -489,7 +489,7 @@ function EditCardDialog({
 
   return (
     <Dialog open onOpenChange={(o) => (o ? null : onClose())}>
-      <DialogContent>
+      <DialogContent className="overflow-auto max-h-[80dvh]">
         <DialogHeader>
           <DialogTitle>Edit card</DialogTitle>
         </DialogHeader>
