@@ -5,7 +5,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Plus, X } from 'lucide-react';
 
-import { FlashcardCreateInput } from '@flipflow/types';
+import { FlashcardCreateInput, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@flipflow/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -41,6 +41,8 @@ type TranslateTargetValue = (typeof TRANSLATE_TARGETS)[number]['value'];
 // Sentinel for "no deck" in the optional deck selector — Radix Select can't
 // bind to empty strings or null.
 const NO_DECK = '__none__';
+const NO_GENDER = '__no_gender__';
+const NO_VERB_TYPE = '__no_verb_type__';
 
 /**
  * Per-scope localStorage shape for translation preferences. The "scope" is
@@ -208,6 +210,9 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
   // Word class (part of speech) — optional. Tracked outside RHF so the dialog
   // can map between `null` and the Radix sentinel without RHF type gymnastics.
   const [wordClass, setWordClass] = useState<string | null>(null);
+  // Gender and verb type — optional.
+  const [gender, setGender] = useState<GenderValue | null>(null);
+  const [verbType, setVerbType] = useState<VerbTypeValue | null>(null);
 
   // Reset form state when the dialog closes so the next open starts clean.
   // We deliberately do NOT reset translateOn / target — those are sticky.
@@ -223,6 +228,8 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
       setFrontExamples([]);
       setBackExamples([]);
       setWordClass(null);
+      setGender(null);
+      setVerbType(null);
       lastTranslatedExamplesRef.current.clear();
     }
     // form / translate are stable refs from their hooks — don't include them
@@ -316,6 +323,8 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
       frontExamples,
       backExamples,
       class: wordClass,
+      gender: gender,
+      verb_type: verbType,
     });
   });
 
@@ -393,6 +402,44 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
           <div className="space-y-2">
             <Label htmlFor="card-class">Class (optional)</Label>
             <ClassSelect id="card-class" value={wordClass} onChange={setWordClass} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="card-gender">Gender (optional)</Label>
+            <Select
+              value={gender ?? NO_GENDER}
+              onValueChange={(v) => setGender(v === NO_GENDER ? null : v as GenderValue)}
+            >
+              <SelectTrigger id="card-gender">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_GENDER}>None</SelectItem>
+                {GENDER_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="card-verb-type">Verb type (optional)</Label>
+            <Select
+              value={verbType ?? NO_VERB_TYPE}
+              onValueChange={(v) => setVerbType(v === NO_VERB_TYPE ? null : v as VerbTypeValue)}
+            >
+              <SelectTrigger id="card-verb-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_VERB_TYPE}>None</SelectItem>
+                {VERB_TYPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="front">Front</Label>

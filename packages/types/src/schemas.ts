@@ -47,6 +47,34 @@ export type CategoryUpdateInput = z.infer<typeof CategoryUpdateInput>;
 const ExampleSentence = z.string().trim().min(1).max(500);
 const ExamplesArray = z.array(ExampleSentence).max(20);
 
+/** Gender options for a flashcard's front word. */
+export const GENDER_OPTIONS = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+] as const;
+export type GenderValue = (typeof GENDER_OPTIONS)[number]['value'];
+
+/**
+ * Optional gender for a flashcard's front word. `null`/`undefined`/`''` = none.
+ */
+export const GenderSchema = z
+  .union([z.enum(['male', 'female']), z.literal('')])
+  .nullish();
+
+/** Verb-type options for a flashcard's front word. */
+export const VERB_TYPE_OPTIONS = [
+  { value: 'regular', label: 'Regular' },
+  { value: 'irregular', label: 'Irregular' },
+] as const;
+export type VerbTypeValue = (typeof VERB_TYPE_OPTIONS)[number]['value'];
+
+/**
+ * Optional verb type for a flashcard's front word. `null`/`undefined`/`''` = none.
+ */
+export const VerbTypeSchema = z
+  .union([z.enum(['regular', 'irregular']), z.literal('')])
+  .nullish();
+
 export const FlashcardCreateInput = z.object({
   categoryId: z.string().cuid().nullish(),
   front: z.string().trim().min(1, 'Front is required').max(2000),
@@ -55,6 +83,10 @@ export const FlashcardCreateInput = z.object({
   backExamples: ExamplesArray.default([]),
   /** Optional part-of-speech of the front word — see WORD_CLASS_OPTIONS. */
   class: WordClassSchema,
+  /** Optional gender of the front word — 'male', 'female', or null/undefined for none. */
+  gender: GenderSchema,
+  /** Optional verb type — 'regular', 'irregular', or null/undefined for none. */
+  verb_type: VerbTypeSchema,
 });
 export type FlashcardCreateInput = z.infer<typeof FlashcardCreateInput>;
 
@@ -75,6 +107,10 @@ export const FlashcardUpdateInput = z.object({
    * `undefined` leaves it unchanged.
    */
   class: WordClassSchema,
+  /** Optional gender. `null` clears the value, `undefined` leaves it unchanged. */
+  gender: GenderSchema,
+  /** Optional verb type. `null` clears the value, `undefined` leaves it unchanged. */
+  verb_type: VerbTypeSchema,
 });
 export type FlashcardUpdateInput = z.infer<typeof FlashcardUpdateInput>;
 

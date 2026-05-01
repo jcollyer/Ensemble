@@ -108,6 +108,9 @@ model Flashcard {
   // "verb", "adjective". Free-form string so we don't have to migrate the
   // schema every time we tweak the list of options shown in the UI.
   class      String?
+  // Optional gender ("male" / "female") and verb type ("regular" / "irregular").
+  gender     String?
+  verb_type  String?
   // Optional. Cards can live outside of a deck — they show up only in the
   // "All decks" view. When the deck is deleted, the card cascades with it.
   categoryId String?

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { FlashcardCreateInput } from '@flipflow/types';
+import { FlashcardCreateInput, GENDER_OPTIONS, VERB_TYPE_OPTIONS } from '@flipflow/types';
 
 import { Button } from '../../src/components/Button';
 import { TextField } from '../../src/components/TextField';
@@ -100,6 +100,9 @@ export default function NewCardScreen() {
   const [backError, setBackError] = useState<string | undefined>();
   const [frontExamples, setFrontExamples] = useState<string[]>([]);
   const [backExamples, setBackExamples] = useState<string[]>([]);
+  // Gender and verb type — optional.
+  const [gender, setGender] = useState<string | null>(null);
+  const [verbType, setVerbType] = useState<string | null>(null);
 
   // Translation state. `hydrated` gates the persist effect so the initial
   // defaults don't clobber stored prefs before the read completes.
@@ -252,6 +255,8 @@ export default function NewCardScreen() {
       categoryId: selectedCategoryId,
       frontExamples,
       backExamples,
+      gender: gender ?? undefined,
+      verb_type: verbType ?? undefined,
     });
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
@@ -434,6 +439,96 @@ export default function NewCardScreen() {
           >
             <Text className="text-primary text-sm font-medium">+ Add example</Text>
           </Pressable>
+
+          {/* Gender picker */}
+          <View className="gap-2">
+            <Text className="text-sm font-medium text-slate-700">Gender (optional)</Text>
+            <View className="flex-row gap-2">
+              <Pressable
+                onPress={() => setGender(null)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: gender === null }}
+                className={`flex-1 rounded-md border px-3 py-2 active:opacity-80 ${
+                  gender === null ? 'border-primary bg-primary' : 'border-slate-200 bg-white'
+                }`}
+              >
+                <Text
+                  className={`text-center text-sm font-semibold ${
+                    gender === null ? 'text-white' : 'text-slate-700'
+                  }`}
+                >
+                  None
+                </Text>
+              </Pressable>
+              {GENDER_OPTIONS.map((opt) => {
+                const active = gender === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setGender(opt.value)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    className={`flex-1 rounded-md border px-3 py-2 active:opacity-80 ${
+                      active ? 'border-primary bg-primary' : 'border-slate-200 bg-white'
+                    }`}
+                  >
+                    <Text
+                      className={`text-center text-sm font-semibold ${
+                        active ? 'text-white' : 'text-slate-700'
+                      }`}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Verb type picker */}
+          <View className="gap-2">
+            <Text className="text-sm font-medium text-slate-700">Verb type (optional)</Text>
+            <View className="flex-row gap-2">
+              <Pressable
+                onPress={() => setVerbType(null)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: verbType === null }}
+                className={`flex-1 rounded-md border px-3 py-2 active:opacity-80 ${
+                  verbType === null ? 'border-primary bg-primary' : 'border-slate-200 bg-white'
+                }`}
+              >
+                <Text
+                  className={`text-center text-sm font-semibold ${
+                    verbType === null ? 'text-white' : 'text-slate-700'
+                  }`}
+                >
+                  None
+                </Text>
+              </Pressable>
+              {VERB_TYPE_OPTIONS.map((opt) => {
+                const active = verbType === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setVerbType(opt.value)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    className={`flex-1 rounded-md border px-3 py-2 active:opacity-80 ${
+                      active ? 'border-primary bg-primary' : 'border-slate-200 bg-white'
+                    }`}
+                  >
+                    <Text
+                      className={`text-center text-sm font-semibold ${
+                        active ? 'text-white' : 'text-slate-700'
+                      }`}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
         </View>
 
         <View className="mt-8 flex-row gap-3">

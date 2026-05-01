@@ -7,7 +7,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Loader2, Pencil, Play, Plus, Trash2, X } from 'lucide-react';
 
-import { BACK_LANGUAGES, type BackLanguageValue, FlashcardUpdateInput } from '@flipflow/types';
+import { BACK_LANGUAGES, type BackLanguageValue, FlashcardUpdateInput, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@flipflow/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -41,6 +41,9 @@ const TRANSLATE_TARGETS = [
   { value: 'de', label: 'German' },
 ] as const;
 type TranslateTargetValue = (typeof TRANSLATE_TARGETS)[number]['value'];
+
+const NO_GENDER = '__no_gender__';
+const NO_VERB_TYPE = '__no_verb_type__';
 
 interface TranslatePrefs {
   v: 1;
@@ -399,6 +402,9 @@ function EditCardDialog({
   const [backExamples, setBackExamples] = useState<string[]>([]);
   // Word class — optional. `null` = clear it on save.
   const [wordClass, setWordClass] = useState<string | null>(null);
+  // Gender and verb type — optional.
+  const [gender, setGender] = useState<GenderValue | null>(null);
+  const [verbType, setVerbType] = useState<VerbTypeValue | null>(null);
 
   // Sync form + example state when the card data loads.
   useEffect(() => {
@@ -406,6 +412,8 @@ function EditCardDialog({
       setFrontExamples(card.frontExamples);
       setBackExamples(card.backExamples);
       setWordClass(card.class ?? null);
+      setGender(((card as { gender?: string | null }).gender as GenderValue | null) ?? null);
+      setVerbType(((card as { verb_type?: string | null }).verb_type as VerbTypeValue | null) ?? null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.id]);
@@ -487,7 +495,7 @@ function EditCardDialog({
         </DialogHeader>
         <form
           onSubmit={form.handleSubmit((values) =>
-            update.mutate({ ...values, frontExamples, backExamples, class: wordClass }),
+            update.mutate({ ...values, frontExamples, backExamples, class: wordClass, gender, verb_type: verbType }),
           )}
           className="space-y-3"
         >
@@ -534,6 +542,46 @@ function EditCardDialog({
           <div className="space-y-2">
             <Label htmlFor="edit-card-class">Class (optional)</Label>
             <ClassSelect id="edit-card-class" value={wordClass} onChange={setWordClass} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-card-gender">Gender (optional)</Label>
+            <Select
+              value={gender ?? NO_GENDER}
+              onValueChange={(v) => setGender(v === NO_GENDER ? null : v as GenderValue)}
+            >
+              <SelectTrigger id="edit-card-gender">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_GENDER}>None</SelectItem>
+                {GENDER_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-card-verb-type">Verb type (optional)</Label>
+            <Select
+              value={verbType ?? NO_VERB_TYPE}
+              onValueChange={(v) => setVerbType(v === NO_VERB_TYPE ? null : v as VerbTypeValue)}
+            >
+              <SelectTrigger id="edit-card-verb-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_VERB_TYPE}>None</SelectItem>
+                {VERB_TYPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

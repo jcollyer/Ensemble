@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 
-import { FlashcardUpdateInput, WORD_CLASS_OPTIONS } from '@flipflow/types';
+import { FlashcardUpdateInput, WORD_CLASS_OPTIONS, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@flipflow/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -434,6 +434,8 @@ function Stat({ label, value }: { label: string; value: number }) {
 // Sentinel for "leave the card uncategorized" — Radix Select can't bind to
 // an empty string or null, so we map at the edges.
 const KEEP_UNCATEGORIZED = '__none__';
+const NO_GENDER = '__no_gender__';
+const NO_VERB_TYPE = '__no_verb_type__';
 
 function EditCardDialog({
   cardId,
@@ -459,6 +461,9 @@ function EditCardDialog({
   const [backExamples, setBackExamples] = useState<string[]>([]);
   // Word class — optional. `null` = clear it on save.
   const [wordClass, setWordClass] = useState<string | null>(null);
+  // Gender and verb type — optional.
+  const [gender, setGender] = useState<GenderValue | null>(null);
+  const [verbType, setVerbType] = useState<VerbTypeValue | null>(null);
 
   // Sync example state when the card data loads.
   useEffect(() => {
@@ -466,6 +471,8 @@ function EditCardDialog({
       setFrontExamples(card.frontExamples);
       setBackExamples(card.backExamples);
       setWordClass(card.class ?? null);
+      setGender(((card as { gender?: string | null }).gender as GenderValue | null) ?? null);
+      setVerbType(((card as { verb_type?: string | null }).verb_type as VerbTypeValue | null) ?? null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.id]);
@@ -496,6 +503,8 @@ function EditCardDialog({
               frontExamples,
               backExamples,
               class: wordClass,
+              gender,
+              verb_type: verbType,
             });
           })}
           className="space-y-3"
@@ -553,6 +562,44 @@ function EditCardDialog({
           <div className="space-y-2">
             <Label htmlFor="edit-card-class">Class (optional)</Label>
             <ClassSelect id="edit-card-class" value={wordClass} onChange={setWordClass} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-card-gender">Gender (optional)</Label>
+            <Select
+              value={gender ?? NO_GENDER}
+              onValueChange={(v) => setGender(v === NO_GENDER ? null : v as GenderValue)}
+            >
+              <SelectTrigger id="edit-card-gender">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_GENDER}>None</SelectItem>
+                {GENDER_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-card-verb-type">Verb type (optional)</Label>
+            <Select
+              value={verbType ?? NO_VERB_TYPE}
+              onValueChange={(v) => setVerbType(v === NO_VERB_TYPE ? null : v as VerbTypeValue)}
+            >
+              <SelectTrigger id="edit-card-verb-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_VERB_TYPE}>None</SelectItem>
+                {VERB_TYPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="back">Back</Label>

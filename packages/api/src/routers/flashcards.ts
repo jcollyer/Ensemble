@@ -64,6 +64,8 @@ export const flashcardsRouter = router({
         frontExamples: input.frontExamples,
         backExamples: input.backExamples,
         class: input.class ?? null,
+        gender: input.gender ?? null,
+        verb_type: input.verb_type ?? null,
         categoryId: input.categoryId ?? null,
         userId: ctx.userId,
       },
@@ -95,6 +97,8 @@ export const flashcardsRouter = router({
         ...(input.frontExamples !== undefined ? { frontExamples: input.frontExamples } : {}),
         ...(input.backExamples !== undefined ? { backExamples: input.backExamples } : {}),
         ...(input.class !== undefined ? { class: input.class } : {}),
+        ...(input.gender !== undefined ? { gender: input.gender } : {}),
+        ...(input.verb_type !== undefined ? { verb_type: input.verb_type } : {}),
       },
     });
   }),
