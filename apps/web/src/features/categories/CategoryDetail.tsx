@@ -25,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MARKDOWN_INPUT_HINT, MarkdownText } from '@/components/ui/markdown-text';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -165,12 +164,8 @@ export function CategoryDetail({ categoryId }: Props) {
             <Card key={card.id}>
               <CardContent className="flex flex-wrap items-start justify-between gap-3 p-4">
                 <div className="min-w-0 flex-1 space-y-1">
-                  <MarkdownText markdown={card.front} variant="preview" className="line-clamp-2 font-medium" />
-                  <MarkdownText
-                    markdown={card.back}
-                    variant="preview"
-                    className="text-muted-foreground line-clamp-2 text-sm"
-                  />
+                  <div className="line-clamp-2 font-medium">{card.front}</div>
+                  <div className="text-muted-foreground line-clamp-2 text-sm">{card.back}</div>
                   {card.frontExamples.length > 0 || card.backExamples.length > 0 ? (
                     <div className="divide-border/50 mt-2 divide-y px-3 py-1">
                       {Array.from({
@@ -178,18 +173,14 @@ export function CategoryDetail({ categoryId }: Props) {
                       }).map((_, i) => (
                         <div key={i} className="flex items-baseline gap-3 py-1 text-xs">
                           <span className="flex min-w-0 items-baseline gap-1">
-                            <MarkdownText
-                              markdown={card.frontExamples[i] ?? ''}
-                              variant="preview"
-                              className="text-foreground font-semibold"
-                            />
+                            <span className="text-foreground font-semibold">
+                              {card.frontExamples[i] ?? ''}
+                            </span>
                           </span>
                           <span className="flex min-w-0 items-baseline gap-1">
-                            <MarkdownText
-                              markdown={card.backExamples[i] ?? ''}
-                              variant="preview"
-                              className="text-muted-foreground"
-                            />
+                            <span className="text-muted-foreground">
+                              {card.backExamples[i] ?? ''}
+                            </span>
                           </span>
                         </div>
                       ))}
@@ -596,13 +587,12 @@ function EditCardDialog({
           <div className="space-y-2">
             <Label htmlFor="front">Front</Label>
             <Textarea id="front" rows={2} {...form.register('front')} />
-            <p className="text-muted-foreground text-xs">{MARKDOWN_INPUT_HINT}</p>
             {frontExamples.length > 0 ? (
               <div className="space-y-2">
                 {frontExamples.map((val, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <Input
-                      placeholder="Example sentence (Markdown supported)…"
+                      placeholder="Example sentence…"
                       value={val}
                       onChange={(e) =>
                         setFrontExamples((prev) => {
@@ -657,13 +647,12 @@ function EditCardDialog({
               ) : null}
             </div>
             <Textarea id="back" rows={3} {...form.register('back')} />
-            <p className="text-muted-foreground text-xs">{MARKDOWN_INPUT_HINT}</p>
             {backExamples.length > 0 ? (
               <div className="space-y-2">
                 {backExamples.map((val, i) => (
                   <Input
                     key={i}
-                    placeholder="Example sentence (Markdown supported)…"
+                    placeholder="Example sentence…"
                     value={val}
                     onChange={(e) =>
                       setBackExamples((prev) => {
