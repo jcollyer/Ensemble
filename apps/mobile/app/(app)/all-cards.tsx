@@ -1,14 +1,17 @@
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   Text,
   View,
 } from 'react-native';
+
+import { WORD_CLASS_OPTIONS } from '@flipflow/types';
 
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
@@ -28,6 +31,24 @@ import { trpc } from '../../src/lib/trpc';
 export default function AllCardsScreen() {
   const router = useRouter();
   const utils = trpc.useUtils();
+
+  // ── Filter state ──────────────────────────────────────────────────────────
+  // Empty array = "all" (no filter applied). Individual items toggled below.
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  const [practiceLimit, setPracticeLimit] = useState(20);
+
+  function toggleCategory(id: string) {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  function toggleClass(value: string) {
+    setSelectedClasses((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
+    );
+  }
 
   const cardsQuery = trpc.flashcards.listAll.useQuery();
   const statsQuery = trpc.practice.stats.useQuery({});
@@ -52,6 +73,19 @@ export default function AllCardsScreen() {
     return map;
   }, [categoriesQuery.data]);
 
+  // Apply filters to the displayed card list.
+  const allCards = cardsQuery.data ?? [];
+  const filteredCards = useMemo(() => {
+    let result = allCards;
+    if (selectedCategoryIds.length > 0) {
+      result = result.filter((c) => c.categoryId && selectedCategoryIds.includes(c.categoryId));
+    }
+    if (selectedClasses.length > 0) {
+      result = result.filter((c) => c.class && selectedClasses.includes(c.class));
+    }
+    return result;
+  }, [allCards, selectedCategoryIds, selectedClasses]);
+
   function confirmDeleteCard(cardId: string) {
     Alert.alert('Delete card?', 'This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
@@ -63,6 +97,18 @@ export default function AllCardsScreen() {
     ]);
   }
 
+  function navigateToPractice() {
+    const params = new URLSearchParams();
+    params.set('limit', String(practiceLimit));
+    if (selectedCategoryIds.length > 0) {
+      params.set('categoryIds', selectedCategoryIds.join(','));
+    }
+    if (selectedClasses.length > 0) {
+      params.set('classes', selectedClasses.join(','));
+    }
+    router.push(`/all-cards-practice?${params.toString()}` as never);
+  }
+
   if (cardsQuery.isLoading && !cardsQuery.data) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
@@ -71,13 +117,19 @@ export default function AllCardsScreen() {
     );
   }
 
-  const cards = cardsQuery.data ?? [];
   const stats = statsQuery.data;
+  const hasActiveFilters =
+    selectedCategoryIds.length > 0 || selectedClasses.length > 0 || practiceLimit !== 20;
+  const practiceCountLabel = hasActiveFilters
+    ? ` (${Math.min(filteredCards.length, practiceLimit)})`
+    : stats?.due
+      ? ` (${stats.due})`
+      : '';
 
   return (
     <View className="flex-1 bg-slate-50">
       <FlatList
-        data={cards}
+        data={filteredCards}
         keyExtractor={(c) => c.id}
         contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
         ItemSeparatorComponent={() => <View className="h-2" />}
@@ -91,22 +143,121 @@ export default function AllCardsScreen() {
             </View>
 
             <View className="flex-row gap-2">
-              <Stat label="Total" value={stats?.total ?? cards.length} />
+              <Stat label="Total" value={stats?.total ?? allCards.length} />
               <Stat label="Due now" value={stats?.due ?? 0} highlight={(stats?.due ?? 0) > 0} />
               <Stat label="Mastered" value={stats?.mastered ?? 0} />
             </View>
 
-            <Button
-              variant="outline"
-              onPress={() => router.push('/all-cards-practice' as never)}
-            >
-              {`Practice${stats?.due ? ` (${stats.due})` : ''}`}
-            </Button>
+            {/* ── Practice filter panel ──────────────────────────────────── */}
+            <Card className="gap-4 p-4">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-sm font-semibold text-slate-700">Practice filters</Text>
+                {hasActiveFilters && (
+                  <Pressable
+                    onPress={() => {
+                      setSelectedCategoryIds([]);
+                      setSelectedClasses([]);
+                      setPracticeLimit(20);
+                    }}
+                    hitSlop={8}
+                  >
+                    <Text className="text-xs font-medium text-blue-500">Reset</Text>
+                  </Pressable>
+                )}
+              </View>
+
+              {/* Card count */}
+              <View className="gap-1.5">
+                <Text className="text-xs text-slate-500">Number of cards</Text>
+                <View className="flex-row gap-1.5">
+                  {[10, 20, 50, 100].map((n) => (
+                    <Pressable
+                      key={n}
+                      onPress={() => setPracticeLimit(n)}
+                      className={`flex-1 items-center rounded-full py-1.5 ${
+                        practiceLimit === n ? 'bg-blue-500' : 'bg-slate-100'
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-semibold ${
+                          practiceLimit === n ? 'text-white' : 'text-slate-600'
+                        }`}
+                      >
+                        {n}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+
+              {/* Categories */}
+              {(categoriesQuery.data?.length ?? 0) > 0 && (
+                <View className="gap-1.5">
+                  <Text className="text-xs text-slate-500">Categories</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View className="flex-row gap-1.5">
+                      {categoriesQuery.data!.map((cat) => {
+                        const selected = selectedCategoryIds.includes(cat.id);
+                        return (
+                          <Pressable
+                            key={cat.id}
+                            onPress={() => toggleCategory(cat.id)}
+                            className={`flex-row items-center gap-1.5 rounded-full px-3 py-1.5 ${
+                              selected ? 'bg-blue-500' : 'bg-slate-100'
+                            }`}
+                          >
+                            <View
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: cat.color ?? '#94a3b8' }}
+                            />
+                            <Text
+                              className={`text-xs font-medium ${
+                                selected ? 'text-white' : 'text-slate-600'
+                              }`}
+                            >
+                              {cat.name}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Word classes */}
+              <View className="gap-1.5">
+                <Text className="text-xs text-slate-500">Word class</Text>
+                <View className="flex-row flex-wrap gap-1.5">
+                  {WORD_CLASS_OPTIONS.map((cls) => {
+                    const selected = selectedClasses.includes(cls.value);
+                    return (
+                      <Pressable
+                        key={cls.value}
+                        onPress={() => toggleClass(cls.value)}
+                        className={`rounded-full px-3 py-1.5 ${
+                          selected ? 'bg-blue-500' : 'bg-slate-100'
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-medium ${
+                            selected ? 'text-white' : 'text-slate-600'
+                          }`}
+                        >
+                          {cls.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <Button onPress={navigateToPractice}>{`Practice${practiceCountLabel}`}</Button>
+            </Card>
           </View>
         }
         renderItem={({ item }) => {
-          const deck = item.categoryId ? decksById.get(item.categoryId) : null;
-          return (
+          const deck = item.categoryId ? decksById.get(item.categoryId) : null;          return (
             <Card className="flex-row items-start gap-3 p-4">
               <View className="flex-1 gap-1">
                 <Text className="font-semibold text-slate-900" numberOfLines={2}>
@@ -180,15 +331,24 @@ export default function AllCardsScreen() {
           );
         }}
         ListEmptyComponent={
-          <Card className="items-center gap-3 border-dashed p-10">
-            <Text className="text-lg font-semibold text-slate-900">No cards yet</Text>
-            <Text className="text-center text-sm text-slate-500">
-              Add your first card here, or create one inside a specific deck.
-            </Text>
-            <View className="mt-2 w-full">
-              <Button onPress={() => router.push('/new-card')}>Add a card</Button>
-            </View>
-          </Card>
+          hasActiveFilters ? (
+            <Card className="items-center gap-3 border-dashed p-10">
+              <Text className="text-lg font-semibold text-slate-900">No matching cards</Text>
+              <Text className="text-center text-sm text-slate-500">
+                No cards match the current filters. Try adjusting your selection above.
+              </Text>
+            </Card>
+          ) : (
+            <Card className="items-center gap-3 border-dashed p-10">
+              <Text className="text-lg font-semibold text-slate-900">No cards yet</Text>
+              <Text className="text-center text-sm text-slate-500">
+                Add your first card here, or create one inside a specific deck.
+              </Text>
+              <View className="mt-2 w-full">
+                <Button onPress={() => router.push('/new-card')}>Add a card</Button>
+              </View>
+            </Card>
+          )
         }
         refreshControl={
           <RefreshControl

@@ -19,6 +19,10 @@ export const practiceRouter = router({
     .input(
       z.object({
         categoryId: z.string().cuid().optional(),
+        /** Filter to multiple categories. Ignored when `categoryId` is set. */
+        categoryIds: z.string().cuid().array().optional(),
+        /** Filter by word class (e.g. 'noun', 'verb'). Empty = all classes. */
+        classes: z.string().array().optional(),
         limit: z.number().int().min(1).max(100).default(20),
         includeAll: z.boolean().default(false),
       }),
@@ -34,11 +38,22 @@ export const practiceRouter = router({
         : null;
       if (input.categoryId && !category) throw new TRPCError({ code: 'NOT_FOUND' });
 
+      // Build category filter: single categoryId takes priority over the array.
+      const categoryFilter = input.categoryId
+        ? { categoryId: input.categoryId }
+        : input.categoryIds?.length
+          ? { categoryId: { in: input.categoryIds } }
+          : {};
+
+      // Build word-class filter.
+      const classFilter = input.classes?.length ? { class: { in: input.classes } } : {};
+
       const now = new Date();
       const cards = await ctx.prisma.flashcard.findMany({
         where: {
           userId: ctx.userId,
-          ...(input.categoryId ? { categoryId: input.categoryId } : {}),
+          ...categoryFilter,
+          ...classFilter,
           ...(input.includeAll ? {} : { OR: [{ nextReview: null }, { nextReview: { lte: now } }] }),
         },
         include: {

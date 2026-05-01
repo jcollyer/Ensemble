@@ -13,6 +13,12 @@ import { trpc } from '@/lib/trpc';
 
 interface Props {
   categoryId?: string;
+  /** Filter to multiple categories. Used by the all-cards filtered practice. */
+  categoryIds?: string[];
+  /** Filter by word classes (e.g. ['noun', 'verb']). Empty = all classes. */
+  classes?: string[];
+  /** Max cards to pull for this session. Defaults to 20. */
+  practiceLimit?: number;
 }
 
 /**
@@ -23,7 +29,7 @@ interface Props {
  *      the UI on the network.
  *   4. When the queue is done, show a summary and invalidate stats.
  */
-export function PracticeScreen({ categoryId }: Props) {
+export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit }: Props) {
   const isAllCards = !categoryId;
   const router = useRouter();
   const utils = trpc.useUtils();
@@ -34,7 +40,13 @@ export function PracticeScreen({ categoryId }: Props) {
   const [practiceAll, setPracticeAll] = useState(false);
 
   const { data, isLoading } = trpc.practice.queue.useQuery(
-    { categoryId, limit: 20, includeAll: practiceAll },
+    {
+      categoryId,
+      categoryIds: categoryIds?.length ? categoryIds : undefined,
+      classes: classes?.length ? classes : undefined,
+      limit: practiceLimit ?? 20,
+      includeAll: practiceAll,
+    },
     { refetchOnMount: 'always' },
   );
 
@@ -110,7 +122,12 @@ export function PracticeScreen({ categoryId }: Props) {
               setIndex(0);
               setReviewed(0);
               setFlipped(false);
-              utils.practice.queue.invalidate({ categoryId, limit: 20 });
+              utils.practice.queue.invalidate({
+                categoryId,
+                categoryIds: categoryIds?.length ? categoryIds : undefined,
+                classes: classes?.length ? classes : undefined,
+                limit: practiceLimit ?? 20,
+              });
             }}
           />
         ) : (
