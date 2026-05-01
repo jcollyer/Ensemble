@@ -61,6 +61,7 @@ export function CategoriesDashboard() {
   });
 
   const decks = (categories ?? []).map((c) => ({ id: c.id, name: c.name }));
+  const hasDecks = (categories?.length ?? 0) > 0;
 
   return (
     <div className="space-y-6">
@@ -85,10 +86,10 @@ export function CategoriesDashboard() {
 
       {isLoading ? (
         <SkeletonGrid />
-      ) : categories && categories.length > 0 ? (
+      ) : hasDecks ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <AllDecksCard />
-          {categories.map((c) => (
+          {(categories ?? []).map((c) => (
             <Link key={c.id} href={`/app/categories/${c.id}`} className="group">
               <Card className="hover:border-primary/40 transition hover:shadow-md">
                 <CardHeader className="flex flex-row items-center gap-3">
@@ -115,7 +116,6 @@ export function CategoriesDashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <AllDecksCard />
           <EmptyState onCreate={() => setDeckOpen(true)} />
         </div>
       )}

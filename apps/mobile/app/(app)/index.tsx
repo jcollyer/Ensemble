@@ -27,6 +27,7 @@ export default function DecksScreen() {
   const { signOut } = useAuth();
   const utils = trpc.useUtils();
   const { data, isLoading, refetch, isRefetching } = trpc.categories.list.useQuery();
+  const hasDecks = (data?.length ?? 0) > 0;
 
   const onRefresh = useCallback(() => {
     utils.categories.list.invalidate();
@@ -72,10 +73,12 @@ export default function DecksScreen() {
                 <Text className="text-sm font-medium text-slate-500">Sign out</Text>
               </Pressable>
             </View>
-            {/* Aggregate "All decks" entry. Visually distinct from real decks
-                (dashed border, library icon, bold label) so it reads as a
-                meta-entry rather than a deck named "All decks". */}
-            <AllDecksEntry />
+            {hasDecks ? (
+              /* Aggregate "All decks" entry. Visually distinct from real decks
+                  (dashed border, library icon, bold label) so it reads as a
+                  meta-entry rather than a deck named "All decks". */
+              <AllDecksEntry />
+            ) : null}
           </View>
         }
         ItemSeparatorComponent={() => <View className="h-3" />}
