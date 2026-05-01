@@ -15,6 +15,12 @@ import { ClassBadge } from '@/features/cards/ClassBadge';
 
 interface Props {
   categoryId?: string;
+  /** Filter to multiple categories. Used by the all-cards filtered practice. */
+  categoryIds?: string[];
+  /** Filter by word classes (e.g. ['noun', 'verb']). Empty = all classes. */
+  classes?: string[];
+  /** Max cards to pull for this session. Defaults to 20. */
+  practiceLimit?: number;
 }
 
 /**
@@ -24,7 +30,7 @@ interface Props {
  *   3. After each rating, fire-and-forget a submitReview mutation; we only
  *      wait for it on the *last* card so the summary screen has fresh stats.
  */
-export function PracticeSession({ categoryId }: Props) {
+export function PracticeSession({ categoryId, categoryIds, classes, practiceLimit }: Props) {
   const utils = trpc.useUtils();
   const isAllCards = !categoryId;
   const backHref = isAllCards ? '/app/all-categories' : `/app/categories/${categoryId}`;
@@ -39,7 +45,13 @@ export function PracticeSession({ categoryId }: Props) {
   const [practiceAll, setPracticeAll] = useState(false);
 
   const { data, isLoading } = trpc.practice.queue.useQuery(
-    { categoryId, limit: 20, includeAll: practiceAll },
+    {
+      categoryId,
+      categoryIds: categoryIds?.length ? categoryIds : undefined,
+      classes: classes?.length ? classes : undefined,
+      limit: practiceLimit ?? 20,
+      includeAll: practiceAll,
+    },
     { refetchOnMount: 'always' },
   );
 

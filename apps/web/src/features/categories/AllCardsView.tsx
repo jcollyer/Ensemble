@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -12,11 +13,12 @@ import {
   Pencil,
   Play,
   Plus,
+  SlidersHorizontal,
   Trash2,
   X,
 } from 'lucide-react';
 
-import { FlashcardUpdateInput } from '@flipflow/types';
+import { FlashcardUpdateInput, WORD_CLASS_OPTIONS } from '@flipflow/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -37,7 +39,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { trpc } from '@/lib/trpc/client';
-import { formatRelative } from '@/lib/utils';
+import { cn, formatRelative } from '@/lib/utils';
 import { CreateCardDialog } from '@/features/cards/CreateCardDialog';
 import { ClassSelect } from '@/features/cards/ClassSelect';
 import { ClassBadge } from '@/features/cards/ClassBadge';
@@ -49,6 +51,7 @@ import { ClassBadge } from '@/features/cards/ClassBadge';
  * don't apply to the aggregate.
  */
 export function AllCardsView() {
+  const router = useRouter();
   const utils = trpc.useUtils();
 
   const { data: cards, isLoading } = trpc.flashcards.listAll.useQuery();
@@ -57,6 +60,35 @@ export function AllCardsView() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // ── Filter state ──────────────────────────────────────────────────────────
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  const [practiceLimit, setPracticeLimit] = useState(20);
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  function toggleCategory(id: string) {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  function toggleClass(value: string) {
+    setSelectedClasses((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
+    );
+  }
+
+  const hasActiveFilters =
+    selectedCategoryIds.length > 0 || selectedClasses.length > 0 || practiceLimit !== 20;
+
+  function buildPracticeHref() {
+    const params = new URLSearchParams();
+    params.set('limit', String(practiceLimit));
+    if (selectedCategoryIds.length > 0) params.set('categoryIds', selectedCategoryIds.join(','));
+    if (selectedClasses.length > 0) params.set('classes', selectedClasses.join(','));
+    return `/app/all-categories/practice?${params.toString()}`;
+  }
 
   const remove = trpc.flashcards.delete.useMutation({
     onSuccess: () => {
@@ -72,6 +104,25 @@ export function AllCardsView() {
   );
 
   const decks = (categories ?? []).map((c) => ({ id: c.id, name: c.name }));
+
+  // Apply client-side filters to the displayed list.
+  const allCards = cards ?? [];
+  const filteredCards = useMemo(() => {
+    let result = allCards;
+    if (selectedCategoryIds.length > 0) {
+      result = result.filter((c) => c.categoryId && selectedCategoryIds.includes(c.categoryId));
+    }
+    if (selectedClasses.length > 0) {
+      result = result.filter((c) => c.class && selectedClasses.includes(c.class));
+    }
+    return result;
+  }, [allCards, selectedCategoryIds, selectedClasses]);
+
+  const practiceCountLabel = hasActiveFilters
+    ? ` (${Math.min(filteredCards.length, practiceLimit)})`
+    : stats?.due
+      ? ` (${stats.due})`
+      : '';
 
   return (
     <div className="space-y-6">
@@ -97,13 +148,19 @@ export function AllCardsView() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link href="/app/all-categories/practice">
-              <Play className="h-4 w-4" />
-              Practice {stats?.due ? `(${stats.due})` : ''}
-            </Link>
+          <Button
+            variant="outline"
+            onClick={() => setFilterOpen((o) => !o)}
+            className={hasActiveFilters ? 'border-primary text-primary' : ''}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Filters{hasActiveFilters ? ` (${(selectedCategoryIds.length + selectedClasses.length) || ''})`.replace(' ()', '') : ''}
           </Button>
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => router.push(buildPracticeHref())}>
+            <Play className="h-4 w-4" />
+            Practice{practiceCountLabel}
+          </Button>
+          <Button variant="outline" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             New card
           </Button>
@@ -111,10 +168,123 @@ export function AllCardsView() {
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <Stat label="Total" value={stats?.total ?? cards?.length ?? 0} />
+        <Stat label="Total" value={stats?.total ?? allCards.length} />
         <Stat label="Due now" value={stats?.due ?? 0} />
         <Stat label="Mastered" value={stats?.mastered ?? 0} />
       </div>
+
+      {/* ── Practice filter panel ──────────────────────────────────────────── */}
+      {filterOpen && (
+        <Card>
+          <CardContent className="space-y-5 pt-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">Practice filters</span>
+              <div className="flex gap-2">
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategoryIds([]);
+                      setSelectedClasses([]);
+                      setPracticeLimit(20);
+                    }}
+                    className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
+                  >
+                    Reset
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setFilterOpen(false)}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="Close filters"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Card count */}
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-xs">Number of cards</p>
+              <div className="flex gap-2">
+                {[10, 20, 50, 100].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setPracticeLimit(n)}
+                    className={cn(
+                      'rounded-full px-4 py-1 text-sm font-medium transition',
+                      practiceLimit === n
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Categories */}
+            {(categories?.length ?? 0) > 0 && (
+              <div className="space-y-2">
+                <p className="text-muted-foreground text-xs">Categories</p>
+                <div className="flex flex-wrap gap-2">
+                  {categories!.map((cat) => {
+                    const selected = selectedCategoryIds.includes(cat.id);
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => toggleCategory(cat.id)}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition',
+                          selected
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: cat.color ?? '#94a3b8' }}
+                        />
+                        {cat.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Word class */}
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-xs">Word class</p>
+              <div className="flex flex-wrap gap-2">
+                {WORD_CLASS_OPTIONS.map((cls) => {
+                  const selected = selectedClasses.includes(cls.value);
+                  return (
+                    <button
+                      key={cls.value}
+                      type="button"
+                      onClick={() => toggleClass(cls.value)}
+                      className={cn(
+                        'rounded-full px-3 py-1 text-sm font-medium transition',
+                        selected
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                      )}
+                    >
+                      {cls.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">
@@ -122,9 +292,9 @@ export function AllCardsView() {
             <div key={i} className="bg-muted/50 h-20 animate-pulse rounded-xl border" />
           ))}
         </div>
-      ) : cards && cards.length > 0 ? (
+      ) : filteredCards.length > 0 ? (
         <div className="space-y-3">
-          {cards.map((card) => {
+          {filteredCards.map((card) => {
             const deck = card.categoryId ? decksById.get(card.categoryId) : null;
             return (
               <Card key={card.id}>
@@ -197,6 +367,15 @@ export function AllCardsView() {
             );
           })}
         </div>
+      ) : hasActiveFilters ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+            <div className="text-lg font-semibold">No matching cards</div>
+            <p className="text-muted-foreground max-w-sm text-sm">
+              No cards match the current filters. Try adjusting your selection above.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
