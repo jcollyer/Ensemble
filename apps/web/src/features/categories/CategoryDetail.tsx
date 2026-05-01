@@ -558,7 +558,7 @@ function EditCardDialog({
           ) : null}
 
           <div className="space-y-2">
-            <Label htmlFor="edit-card-class">Class (optional)</Label>
+            <Label htmlFor="edit-card-class">Category (optional)</Label>
             <ClassSelect id="edit-card-class" value={wordClass} onChange={setWordClass} />
           </div>
 
