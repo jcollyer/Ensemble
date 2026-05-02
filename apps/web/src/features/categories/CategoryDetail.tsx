@@ -244,6 +244,14 @@ export function CategoryDetail({ categoryId }: Props) {
       <div className="flex flex-wrap gap-2 border-t pt-6">
         <Button
           variant="ghost"
+          onClick={() => setEditDeckOpen(true)}
+          disabled={!category}
+        >
+          <Pencil className="h-4 w-4" />
+          Edit deck
+        </Button>
+        <Button
+          variant="ghost"
           className="text-destructive hover:text-destructive"
           onClick={() => {
             if (confirm(`Delete "${category?.name}" and all its cards? This can't be undone.`)) {
@@ -253,14 +261,6 @@ export function CategoryDetail({ categoryId }: Props) {
         >
           <Trash2 className="h-4 w-4" />
           Delete deck
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={() => setEditDeckOpen(true)}
-          disabled={!category}
-        >
-          <Pencil className="h-4 w-4" />
-          Edit deck
         </Button>
       </div>
 
