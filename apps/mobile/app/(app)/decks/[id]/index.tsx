@@ -209,12 +209,22 @@ export default function DeckDetailScreen() {
         }
         ListFooterComponent={
           cards.length > 0 ? (
-            <Pressable
-              onPress={confirmDeleteDeck}
-              className="mt-8 items-center py-3 active:opacity-70"
-            >
-              <Text className="text-destructive text-sm font-medium">Delete deck</Text>
-            </Pressable>
+            <View className="mt-8 flex-row items-center justify-center gap-6 py-3">
+              <Pressable
+                onPress={confirmDeleteDeck}
+                hitSlop={8}
+                className="active:opacity-70"
+              >
+                <Text className="text-destructive text-sm font-medium">Delete deck</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push(`/decks/${categoryId}/edit`)}
+                hitSlop={8}
+                className="active:opacity-70"
+              >
+                <Text className="text-primary text-sm font-medium">Edit deck</Text>
+              </Pressable>
+            </View>
           ) : null
         }
         refreshControl={

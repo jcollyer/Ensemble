@@ -36,6 +36,10 @@ export default function AppLayout() {
       <Stack.Screen name="new-card" options={{ title: 'New card', presentation: 'modal' }} />
       <Stack.Screen name="decks/[id]/index" options={{ title: 'Deck' }} />
       <Stack.Screen name="decks/[id]/practice" options={{ title: 'Practice' }} />
+      <Stack.Screen
+        name="decks/[id]/edit"
+        options={{ title: 'Edit deck', presentation: 'modal' }}
+      />
       {/* Legacy redirect — see decks/[id]/new-card.tsx for context. Kept so
           deep links and stale navigation still resolve. */}
       <Stack.Screen
