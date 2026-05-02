@@ -7,12 +7,13 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Loader2, Pencil, Play, Plus, Trash2, X } from 'lucide-react';
 
-import { BACK_LANGUAGES, type BackLanguageValue, FlashcardUpdateInput, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@flipflow/types';
+import { BACK_LANGUAGES, type BackLanguageValue, CategoryUpdateInput, FlashcardUpdateInput, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@flipflow/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -44,6 +45,13 @@ type TranslateTargetValue = (typeof TRANSLATE_TARGETS)[number]['value'];
 
 const NO_GENDER = '__no_gender__';
 const NO_VERB_TYPE = '__no_verb_type__';
+
+// Same palette as the create-deck dialog so editing matches creating.
+const DECK_COLOR_PALETTE = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+
+// Sentinel because the Radix Select doesn't allow an empty-string value;
+// we translate this back to `null` before submitting.
+const NO_LANGUAGE = '__none__';
 
 interface TranslatePrefs {
   v: 1;
@@ -93,6 +101,7 @@ export function CategoryDetail({ categoryId }: Props) {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDeckOpen, setEditDeckOpen] = useState(false);
 
   const remove = trpc.flashcards.delete.useMutation({
     onSuccess: () => {
@@ -232,7 +241,7 @@ export function CategoryDetail({ categoryId }: Props) {
         </Card>
       )}
 
-      <div className="border-t pt-6">
+      <div className="flex flex-wrap gap-2 border-t pt-6">
         <Button
           variant="ghost"
           className="text-destructive hover:text-destructive"
@@ -244,6 +253,14 @@ export function CategoryDetail({ categoryId }: Props) {
         >
           <Trash2 className="h-4 w-4" />
           Delete deck
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => setEditDeckOpen(true)}
+          disabled={!category}
+        >
+          <Pencil className="h-4 w-4" />
+          Edit deck
         </Button>
       </div>
 
@@ -265,6 +282,19 @@ export function CategoryDetail({ categoryId }: Props) {
             utils.flashcards.listByCategory.invalidate({ categoryId });
             setEditingId(null);
           }}
+        />
+      ) : null}
+
+      {/* Edit deck dialog */}
+      {editDeckOpen && category ? (
+        <EditCategoryDialog
+          category={{
+            id: category.id,
+            name: category.name,
+            color: category.color ?? null,
+            backLanguage: (category.backLanguage as BackLanguageValue | null) ?? null,
+          }}
+          onClose={() => setEditDeckOpen(false)}
         />
       ) : null}
     </div>
@@ -300,7 +330,6 @@ function DeckAudioLanguage({
 
   if (!ttsAvailable) return null;
 
-  const NO_LANGUAGE = '__none__';
   const current = (backLanguage ?? NO_LANGUAGE) as string;
 
   return (
@@ -694,6 +723,141 @@ function EditCardDialog({
               </div>
             ) : null}
           </div>
+
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={update.isPending}>
+              {update.isPending ? 'Saving…' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Modal for editing a deck's name, color, and audio language. The audio
+ * language picker is hidden if the server can't reach Google Cloud TTS,
+ * mirroring what the create-deck dialog does — there's no point exposing
+ * a setting that wouldn't take effect.
+ */
+function EditCategoryDialog({
+  category,
+  onClose,
+}: {
+  category: {
+    id: string;
+    name: string;
+    color: string | null;
+    backLanguage: BackLanguageValue | null;
+  };
+  onClose: () => void;
+}) {
+  const utils = trpc.useUtils();
+
+  const { data: ttsAvailability } = trpc.tts.isAvailable.useQuery(undefined, {
+    staleTime: Infinity,
+  });
+  const ttsAvailable = !!ttsAvailability?.available;
+
+  const update = trpc.categories.update.useMutation({
+    onSuccess: () => {
+      utils.categories.byId.invalidate({ id: category.id });
+      utils.categories.list.invalidate();
+      onClose();
+    },
+  });
+
+  const form = useForm<CategoryUpdateInput>({
+    resolver: zodResolver(CategoryUpdateInput),
+    defaultValues: {
+      id: category.id,
+      name: category.name,
+      // Fall back to the first palette color if the deck has no color set,
+      // so the swatch UI always has a selected option to render.
+      color: category.color ?? DECK_COLOR_PALETTE[0],
+      backLanguage: category.backLanguage,
+    },
+  });
+
+  const selectedColor = form.watch('color') ?? DECK_COLOR_PALETTE[0];
+  const selectedBackLanguage = form.watch('backLanguage');
+
+  return (
+    <Dialog open onOpenChange={(o) => (o ? null : onClose())}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit deck</DialogTitle>
+          <DialogDescription>Update the deck name, color, and audio language.</DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={form.handleSubmit((values) => update.mutate(values))}
+          className="space-y-4"
+        >
+          <div className="space-y-2">
+            <Label htmlFor="edit-deck-name">Name</Label>
+            <Input
+              id="edit-deck-name"
+              placeholder="e.g. Spanish verbs"
+              {...form.register('name')}
+            />
+            {form.formState.errors.name ? (
+              <p className="text-destructive text-sm">{form.formState.errors.name.message}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {DECK_COLOR_PALETTE.map((color) => {
+                const selected = selectedColor === color;
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => form.setValue('color', color, { shouldDirty: true })}
+                    className={`h-8 w-8 rounded-md ring-offset-2 transition ${selected ? 'ring-ring ring-2' : ''}`}
+                    style={{ backgroundColor: color }}
+                    aria-label={`Color ${color}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {ttsAvailable ? (
+            <div className="space-y-2">
+              <Label htmlFor="edit-deck-back-language">Audio language (back of card)</Label>
+              <Select
+                value={selectedBackLanguage ?? NO_LANGUAGE}
+                onValueChange={(v) =>
+                  form.setValue(
+                    'backLanguage',
+                    v === NO_LANGUAGE ? null : (v as BackLanguageValue),
+                    { shouldDirty: true },
+                  )
+                }
+              >
+                <SelectTrigger id="edit-deck-back-language">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_LANGUAGE}>No audio</SelectItem>
+                  {BACK_LANGUAGES.map((lang) => (
+                    <SelectItem key={lang.value} value={lang.value}>
+                      {lang.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Pick a language to enable a speaker button on the back of cards during practice.
+              </p>
+            </div>
+          ) : null}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>
