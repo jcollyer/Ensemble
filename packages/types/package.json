@@ -1,5 +1,5 @@
 {
-  "name": "@flipflow/types",
+  "name": "@ensemble/types",
   "version": "0.0.0",
   "private": true,
   "main": "./src/index.ts",
@@ -15,7 +15,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@flipflow/config": "*",
+    "@ensemble/config": "*",
     "typescript": "^5.6.3"
   }
 }

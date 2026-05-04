@@ -35,7 +35,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             className="text-muted-foreground mx-auto mb-2 inline-flex items-center gap-2 text-sm"
           >
             <RefreshCw className="text-primary h-4 w-4" />
-            FlipFlow
+            ensemble
           </Link>
           <CardTitle className="text-2xl">Welcome back</CardTitle>
           <CardDescription>Sign in to keep your streak alive.</CardDescription>

@@ -7,7 +7,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Loader2, Pencil, Play, Plus, Trash2, X } from 'lucide-react';
 
-import { BACK_LANGUAGES, type BackLanguageValue, CategoryUpdateInput, FlashcardUpdateInput, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@flipflow/types';
+import { BACK_LANGUAGES, type BackLanguageValue, CategoryUpdateInput, FlashcardUpdateInput, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@ensemble/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -62,7 +62,7 @@ interface TranslatePrefs {
 function readTranslatePrefs(scope: string): TranslatePrefs | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(`flipflow:translate:${scope}`);
+    const raw = window.localStorage.getItem(`ensemble:translate:${scope}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<TranslatePrefs>;
     if (
@@ -81,7 +81,7 @@ function readTranslatePrefs(scope: string): TranslatePrefs | null {
 function writeTranslatePrefs(scope: string, prefs: TranslatePrefs) {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(`flipflow:translate:${scope}`, JSON.stringify(prefs));
+    window.localStorage.setItem(`ensemble:translate:${scope}`, JSON.stringify(prefs));
   } catch {
     // non-fatal
   }

@@ -4,8 +4,8 @@ import * as Linking from 'expo-linking';
 
 import { API_URL, APP_SCHEME } from './config';
 
-const TOKEN_KEY = 'flipflow.sessionToken';
-const EXPIRES_KEY = 'flipflow.sessionExpires';
+const TOKEN_KEY = 'ensemble.sessionToken';
+const EXPIRES_KEY = 'ensemble.sessionExpires';
 
 export interface StoredSession {
   token: string;
@@ -45,10 +45,10 @@ export async function clearStoredSession(): Promise<void> {
  *
  * 1. Compute the correct return URL for this runtime:
  *      - Expo Go:         exp://<devserver>/--/auth
- *      - dev/prod build:  flipflow://auth
+ *      - dev/prod build:  ensemble://auth
  * 2. Opens `${API_URL}/auth/mobile?returnUrl=<encoded>` so the server knows
  *    exactly where to bounce us after sign-in (custom schemes don't resolve
- *    inside Expo Go, which is why we can't hardcode flipflow://).
+ *    inside Expo Go, which is why we can't hardcode ensemble://).
  * 3. The server redirects us through Auth.js sign-in (Google / magic link)
  * 4. On success the bridge redirects to `<returnUrl>?token=...&expires=...`
  * 5. `WebBrowser.openAuthSessionAsync` resolves with that URL

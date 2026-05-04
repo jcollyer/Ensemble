@@ -1,4 +1,4 @@
 import { createTRPCReact } from '@trpc/react-query';
-import type { AppRouter } from '@flipflow/api';
+import type { AppRouter } from '@ensemble/api';
 
 export const trpc: ReturnType<typeof createTRPCReact<AppRouter>> = createTRPCReact<AppRouter>();

@@ -6,10 +6,10 @@ async function main() {
   // Idempotent demo seed: creates a "Demo" user with one starter category and a
   // handful of cards. Safe to re-run.
   const user = await prisma.user.upsert({
-    where: { email: 'demo@flipflow.dev' },
+    where: { email: 'demo@ensemble.dev' },
     update: {},
     create: {
-      email: 'demo@flipflow.dev',
+      email: 'demo@ensemble.dev',
       name: 'Demo User',
     },
   });
@@ -52,7 +52,7 @@ async function main() {
     });
   }
 
-  console.log('Seeded FlipFlow demo data.');
+  console.log('Seeded ensemble demo data.');
 }
 
 main()

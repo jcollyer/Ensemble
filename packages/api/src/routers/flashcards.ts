@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { FlashcardCreateInput, FlashcardUpdateInput } from '@flipflow/types';
+import { FlashcardCreateInput, FlashcardUpdateInput } from '@ensemble/types';
 
 import { protectedProcedure, router } from '../trpc';
 

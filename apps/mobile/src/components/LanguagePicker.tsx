@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FlatList, Modal, Pressable, SafeAreaView, Text, View } from 'react-native';
 
-import { BACK_LANGUAGES, type BackLanguageValue } from '@flipflow/types';
+import { BACK_LANGUAGES, type BackLanguageValue } from '@ensemble/types';
 
 /**
  * Sentinel for "no audio". We use a string instead of `null` because the

@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { reviewCard, SubmitReviewInput } from '@flipflow/types';
+import { reviewCard, SubmitReviewInput } from '@ensemble/types';
 
 import { protectedProcedure, router } from '../trpc';
 

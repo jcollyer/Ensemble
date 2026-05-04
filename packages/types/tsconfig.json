@@ -1,5 +1,5 @@
 {
-  "extends": "@flipflow/config/tsconfig.node.json",
+  "extends": "@ensemble/config/tsconfig.node.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist"

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, Loader2, RotateCcw, Volume2 } from 'lucide-react';
 
-import type { BackLanguageValue } from '@flipflow/types';
+import type { BackLanguageValue } from '@ensemble/types';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';

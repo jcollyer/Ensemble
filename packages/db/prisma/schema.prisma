@@ -1,4 +1,4 @@
-// FlipFlow Prisma schema
+// ensemble Prisma schema
 //
 // Models:
 //   - User / Account / Session / VerificationToken: NextAuth v5 adapter

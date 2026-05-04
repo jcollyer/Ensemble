@@ -1,5 +1,5 @@
 {
-  "name": "flipflow",
+  "name": "ensemble",
   "version": "0.1.0",
   "private": true,
   "workspaces": [
@@ -7,9 +7,9 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm --workspace=@flipflow/web run dev",
+    "dev": "npm --workspace=@ensemble/web run dev",
     "ngrok": "ngrok http --url=jointly-topical-leech.ngrok-free.app 3000",
-    "mobile": " EXPO_PUBLIC_API_URL=https://jointly-topical-leech.ngrok-free.app npm --workspace=@flipflow/mobile exec -- expo start --clear",
+    "mobile": " EXPO_PUBLIC_API_URL=https://jointly-topical-leech.ngrok-free.app npm --workspace=@ensemble/mobile exec -- expo start --clear",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",

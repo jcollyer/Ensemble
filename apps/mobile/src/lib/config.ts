@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
  * because localhost on the phone points to the phone). Set it via:
  *   EXPO_PUBLIC_API_URL=http://192.168.1.42:3000 npx expo start
  *
- * In production this is the hosted origin, e.g. https://flipflow.app.
+ * In production this is the hosted origin, e.g. https://ensemble.app.
  */
 const fallbackDevUrl = () => {
   // Best-effort derivation from Expo's dev server host.
@@ -18,4 +18,4 @@ const fallbackDevUrl = () => {
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? fallbackDevUrl();
 
 /** Custom URL scheme registered in app.json. Used for OAuth redirects. */
-export const APP_SCHEME = 'flipflow';
+export const APP_SCHEME = 'ensemble';

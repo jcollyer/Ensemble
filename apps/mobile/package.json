@@ -1,5 +1,5 @@
 {
-  "name": "@flipflow/mobile",
+  "name": "@ensemble/mobile",
   "version": "0.0.0",
   "private": true,
   "main": "expo-router/entry",
@@ -12,8 +12,8 @@
     "clean": "rm -rf .expo node_modules"
   },
   "dependencies": {
-    "@flipflow/api": "*",
-    "@flipflow/types": "*",
+    "@ensemble/api": "*",
+    "@ensemble/types": "*",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native/virtualized-lists": "0.81.5",
     "@tanstack/react-query": "^5.59.20",
@@ -43,7 +43,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
-    "@flipflow/config": "*",
+    "@ensemble/config": "*",
     "@types/react": "~19.1.0",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3"

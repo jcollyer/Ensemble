@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 
-import { FlashcardUpdateInput, WORD_CLASS_OPTIONS, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@flipflow/types';
+import { FlashcardUpdateInput, WORD_CLASS_OPTIONS, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@ensemble/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {

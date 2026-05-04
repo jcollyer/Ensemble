@@ -15,7 +15,7 @@ export default async function HomePage() {
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2 font-semibold">
             <RefreshCw className="text-primary h-5 w-5" />
-            FlipFlow
+            ensemble
           </div>
           <Button asChild variant="ghost" size="sm">
             <Link href="/signin">Sign in</Link>
@@ -32,7 +32,7 @@ export default async function HomePage() {
           Flashcards that <span className="text-primary">actually stick.</span>
         </h1>
         <p className="text-muted-foreground mt-6 max-w-xl text-balance text-lg">
-          Build decks, rate your recall, and let FlipFlow surface exactly the cards you're about to
+          Build decks, rate your recall, and let ensemble surface exactly the cards you're about to
           forget.
         </p>
         <div className="mt-8 flex gap-3">

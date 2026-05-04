@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { BackLanguageSchema } from '@flipflow/types';
+import { BackLanguageSchema } from '@ensemble/types';
 
 import { protectedProcedure, publicProcedure, router } from '../trpc';
 

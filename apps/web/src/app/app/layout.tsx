@@ -32,7 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="container flex h-14 items-center justify-between">
           <Link href="/app" className="flex items-center gap-2 font-semibold">
             <RefreshCw className="text-primary h-5 w-5" />
-            FlipFlow
+            ensemble
           </Link>
 
           <DropdownMenu>

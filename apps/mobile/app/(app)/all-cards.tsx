@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 
-import { WORD_CLASS_OPTIONS } from '@flipflow/types';
+import { WORD_CLASS_OPTIONS } from '@ensemble/types';
 
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';

@@ -1,4 +1,4 @@
-# FlipFlow
+# ensemble
 
 Flashcards with spaced repetition. Turborepo monorepo — one Prisma + tRPC backend feeds both a Next.js web client and an Expo / React Native mobile client. Every procedure is type-shared between the two.
 
@@ -118,10 +118,10 @@ You need two terminals: one for the web server (the mobile app talks to it), one
 
 ```bash
 # Terminal 1 — web backend
-npm run dev --workspace=@flipflow/web
+npm run dev --workspace=@ensemble/web
 
 # Terminal 2 — Expo
-npm --workspace=@flipflow/mobile run start
+npm --workspace=@ensemble/mobile run start
 ```
 
 Then scan the QR code with the **Expo Go** app on iOS or Android.
@@ -136,7 +136,7 @@ ipconfig getifaddr en0        # macOS wifi
 hostname -I | awk '{print $1}' # Linux
 
 # Start Expo with the pointed URL
-EXPO_PUBLIC_API_URL=http://192.168.1.42:3000 npm --workspace=@flipflow/mobile run start
+EXPO_PUBLIC_API_URL=http://192.168.1.42:3000 npm --workspace=@ensemble/mobile run start
 ```
 
 If you don't set `EXPO_PUBLIC_API_URL`, the mobile app falls back to deriving the host from the Expo dev server, which works in the common case of running Metro and Next.js on the same machine.
@@ -146,23 +146,23 @@ If you don't set `EXPO_PUBLIC_API_URL`, the mobile app falls back to deriving th
 If your phone can't reach your dev machine on the LAN, tunnel through ngrok:
 
 ```bash
-npm --workspace=@flipflow/mobile run tunnel
+npm --workspace=@ensemble/mobile run tunnel
 ```
 
 In tunnel mode, set `EXPO_PUBLIC_API_URL` to a publicly reachable URL for your Next.js server (e.g. an `ngrok http 3000` tunnel or a Vercel preview deploy) — the phone can't hit your LAN IP in that scenario.
 
 ### Deep link scheme
 
-The app is registered as `flipflow://` in `apps/mobile/app.json`. The sign-in flow opens `https://<web>/auth/mobile?scheme=flipflow` in an in-app browser, and Auth.js redirects back to `flipflow://auth?token=…&expires=…`. The mobile app parses the token, persists it via `expo-secure-store`, and injects it as a `Bearer` header on every tRPC request.
+The app is registered as `ensemble://` in `apps/mobile/app.json`. The sign-in flow opens `https://<web>/auth/mobile?scheme=ensemble` in an in-app browser, and Auth.js redirects back to `ensemble://auth?token=…&expires=…`. The mobile app parses the token, persists it via `expo-secure-store`, and injects it as a `Bearer` header on every tRPC request.
 
 ### How mobile auth works (no new tRPC procedures)
 
-1. Mobile calls `WebBrowser.openAuthSessionAsync("${API_URL}/auth/mobile?scheme=flipflow")`.
-2. The new `/auth/mobile` route in `apps/web` checks the user's session. If signed out, it bounces to `/signin` with a callback. If signed in, it looks up the corresponding `Session` row and redirects to `flipflow://auth?token=<sessionToken>&expires=<iso>`.
+1. Mobile calls `WebBrowser.openAuthSessionAsync("${API_URL}/auth/mobile?scheme=ensemble")`.
+2. The new `/auth/mobile` route in `apps/web` checks the user's session. If signed out, it bounces to `/signin` with a callback. If signed in, it looks up the corresponding `Session` row and redirects to `ensemble://auth?token=<sessionToken>&expires=<iso>`.
 3. Mobile stores `token` + `expires` in `expo-secure-store`, then sends `Authorization: Bearer <token>` on every tRPC request.
 4. The tRPC handler (`apps/web/src/app/api/trpc/[trpc]/route.ts`) accepts _either_ a cookie session (web) _or_ a bearer token (mobile) — bearer tokens are resolved against the same `Session` table Auth.js already maintains.
 
-Result: zero changes to `@flipflow/api`, and mobile sign-out is just `clearStoredSession()`.
+Result: zero changes to `@ensemble/api`, and mobile sign-out is just `clearStoredSession()`.
 
 ### Google OAuth redirects for mobile
 
@@ -172,10 +172,10 @@ The in-app browser flow reuses the web app's Google OAuth config — no separate
 
 ```bash
 # From the repo root
-npm --workspace=@flipflow/mobile run start      # Metro + QR code
-npm --workspace=@flipflow/mobile run ios        # open iOS simulator
-npm --workspace=@flipflow/mobile run android    # open Android emulator
-npm --workspace=@flipflow/mobile run tunnel     # ngrok-backed tunnel
-npm --workspace=@flipflow/mobile run typecheck  # tsc
-npm --workspace=@flipflow/mobile run clean      # wipe .expo + node_modules
+npm --workspace=@ensemble/mobile run start      # Metro + QR code
+npm --workspace=@ensemble/mobile run ios        # open iOS simulator
+npm --workspace=@ensemble/mobile run android    # open Android emulator
+npm --workspace=@ensemble/mobile run tunnel     # ngrok-backed tunnel
+npm --workspace=@ensemble/mobile run typecheck  # tsc
+npm --workspace=@ensemble/mobile run clean      # wipe .expo + node_modules
 ```

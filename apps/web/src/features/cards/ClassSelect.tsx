@@ -4,7 +4,7 @@ import * as React from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
 
-import { WORD_CLASS_OPTIONS } from '@flipflow/types';
+import { WORD_CLASS_OPTIONS } from '@ensemble/types';
 import { cn } from '@/lib/utils';
 
 /**

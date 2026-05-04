@@ -12,7 +12,7 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// 1. Watch the whole monorepo for changes so edits to @flipflow/api etc.
+// 1. Watch the whole monorepo for changes so edits to @ensemble/api etc.
 //    reload the app.
 config.watchFolders = [workspaceRoot];
 

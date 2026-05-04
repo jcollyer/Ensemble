@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { type BackLanguageValue, CategoryCreateInput } from '@flipflow/types';
+import { type BackLanguageValue, CategoryCreateInput } from '@ensemble/types';
 
 import { Button } from '../../src/components/Button';
 import { LanguagePicker } from '../../src/components/LanguagePicker';

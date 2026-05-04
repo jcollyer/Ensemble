@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { Text, View } from 'react-native';
 
-import { WORD_CLASS_OPTIONS } from '@flipflow/types';
+import { WORD_CLASS_OPTIONS } from '@ensemble/types';
 
 /** Lookup of canonical value → human label. Built once at module load. */
 const LABEL_BY_VALUE = new Map(WORD_CLASS_OPTIONS.map((o) => [o.value, o.label]));

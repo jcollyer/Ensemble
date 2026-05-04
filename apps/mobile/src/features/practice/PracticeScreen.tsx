@@ -4,7 +4,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
-import { type BackLanguageValue } from '@flipflow/types';
+import { type BackLanguageValue } from '@ensemble/types';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';

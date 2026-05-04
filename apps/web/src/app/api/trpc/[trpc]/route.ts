@@ -1,8 +1,8 @@
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import type { NextRequest } from 'next/server';
 
-import { appRouter, createTRPCContext, type SessionLike } from '@flipflow/api';
-import { prisma } from '@flipflow/db';
+import { appRouter, createTRPCContext, type SessionLike } from '@ensemble/api';
+import { prisma } from '@ensemble/db';
 import { auth } from '@/server/auth';
 
 /**

@@ -1,5 +1,5 @@
 {
-  "extends": "@flipflow/config/tsconfig.nextjs.json",
+  "extends": "@ensemble/config/tsconfig.nextjs.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {

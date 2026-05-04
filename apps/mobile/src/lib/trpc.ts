@@ -1,5 +1,5 @@
 import { createTRPCReact } from '@trpc/react-query';
-import type { AppRouter } from '@flipflow/api';
+import type { AppRouter } from '@ensemble/api';
 
 /**
  * Typed tRPC hooks for the mobile app. Imports the same `AppRouter` type that

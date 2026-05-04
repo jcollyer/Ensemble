@@ -1,4 +1,4 @@
-import { prisma, PrismaClient } from '@flipflow/db';
+import { prisma, PrismaClient } from '@ensemble/db';
 
 /**
  * Minimal session shape that the API expects from the consumer (the Next.js

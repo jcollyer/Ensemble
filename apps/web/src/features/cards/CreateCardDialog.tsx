@@ -5,7 +5,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Plus, X } from 'lucide-react';
 
-import { FlashcardCreateInput, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@flipflow/types';
+import { FlashcardCreateInput, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@ensemble/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -58,7 +58,7 @@ interface TranslatePrefs {
 function readTranslatePrefs(scope: string): TranslatePrefs | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(`flipflow:translate:${scope}`);
+    const raw = window.localStorage.getItem(`ensemble:translate:${scope}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<TranslatePrefs>;
     if (
@@ -77,7 +77,7 @@ function readTranslatePrefs(scope: string): TranslatePrefs | null {
 function writeTranslatePrefs(scope: string, prefs: TranslatePrefs) {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(`flipflow:translate:${scope}`, JSON.stringify(prefs));
+    window.localStorage.setItem(`ensemble:translate:${scope}`, JSON.stringify(prefs));
   } catch {
     // localStorage can throw in private mode / quota — non-fatal.
   }

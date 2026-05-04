@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "FlipFlow",
-    "slug": "flipflow",
+    "name": "ensemble",
+    "slug": "ensemble",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "scheme": "flipflow",
+    "scheme": "ensemble",
     "icon": "./assets/icon.png",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.flipflow.app"
+      "bundleIdentifier": "com.ensemble.app"
     },
     "extra": {
       "eas": {

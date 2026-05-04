@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { FlashcardUpdateInput, GENDER_OPTIONS, VERB_TYPE_OPTIONS } from '@flipflow/types';
+import { FlashcardUpdateInput, GENDER_OPTIONS, VERB_TYPE_OPTIONS } from '@ensemble/types';
 
 import { Button } from '../../../../src/components/Button';
 import { TextField } from '../../../../src/components/TextField';
@@ -34,7 +34,7 @@ interface TranslatePrefs {
 }
 
 const prefsKey = (categoryId: string | null) =>
-  categoryId ? `flipflow:translate:${categoryId}` : `flipflow:translate:__none__`;
+  categoryId ? `ensemble:translate:${categoryId}` : `ensemble:translate:__none__`;
 
 async function readPrefs(categoryId: string | null): Promise<TranslatePrefs | null> {
   try {

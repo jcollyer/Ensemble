@@ -4,7 +4,7 @@ import '@/styles/globals.css';
 import { TRPCProvider } from '@/lib/trpc/Provider';
 
 export const metadata: Metadata = {
-  title: 'FlipFlow',
+  title: 'ensemble',
   description: 'Flashcards with spaced repetition that actually sticks.',
 };
 

@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Layers, Clock, Library } from 'lucide-react';
 
-import { BACK_LANGUAGES, CategoryCreateInput } from '@flipflow/types';
+import { BACK_LANGUAGES, CategoryCreateInput } from '@ensemble/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {

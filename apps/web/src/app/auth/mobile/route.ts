@@ -1,22 +1,22 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 
-import { prisma } from '@flipflow/db';
+import { prisma } from '@ensemble/db';
 import { auth } from '@/server/auth';
 
 /**
  * Mobile auth bridge.
  *
  * Flow:
- *   1. Expo app opens WebBrowser.openAuthSessionAsync() at `/auth/mobile?scheme=flipflow`
+ *   1. Expo app opens WebBrowser.openAuthSessionAsync() at `/auth/mobile?scheme=ensemble`
  *   2. If no Auth.js session cookie, we redirect into the normal sign-in flow
  *      with this URL as the callback so we end up back here after sign-in.
  *   3. Once signed in, we look up an active Session row for this user and hand
- *      the session token back to the app via the `flipflow://auth?token=...`
+ *      the session token back to the app via the `ensemble://auth?token=...`
  *      custom URL scheme. Expo's auth session resolves and gives the app the
  *      token, which it then stores in SecureStore.
  *
- * No changes to `@flipflow/api` — this bridge lives entirely in the Next app.
+ * No changes to `@ensemble/api` — this bridge lives entirely in the Next app.
  */
 export async function GET(req: Request) {
   // In Next.js route handlers behind a proxy (ngrok, Vercel, etc.) `req.url`
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
     (forwardedHost ? `${forwardedProto}://${forwardedHost}` : new URL(req.url).origin);
 
   const url = new URL(req.url);
-  const scheme = url.searchParams.get('scheme') ?? 'flipflow';
+  const scheme = url.searchParams.get('scheme') ?? 'ensemble';
 
   // Prefer an explicit returnUrl passed by the client (needed in Expo Go,
   // which doesn't register custom URL schemes — the real return URL looks
@@ -84,7 +84,7 @@ export async function GET(req: Request) {
 
 /**
  * Safely append query params to a URL that may use a custom scheme
- * (`flipflow://`, `exp://`), where `new URL(...).searchParams` behavior can
+ * (`ensemble://`, `exp://`), where `new URL(...).searchParams` behavior can
  * be quirky across runtimes. String concatenation keeps the scheme intact.
  */
 function appendParams(base: string, params: Record<string, string>): string {

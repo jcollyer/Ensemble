@@ -4,7 +4,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import Google from 'next-auth/providers/google';
 import Resend from 'next-auth/providers/resend';
 
-import { prisma } from '@flipflow/db';
+import { prisma } from '@ensemble/db';
 
 declare module 'next-auth' {
   interface Session {
@@ -29,7 +29,7 @@ if (process.env.AUTH_RESEND_KEY) {
   providers.push(
     Resend({
       apiKey: process.env.AUTH_RESEND_KEY,
-      from: process.env.EMAIL_FROM ?? 'FlipFlow <onboarding@resend.dev>',
+      from: process.env.EMAIL_FROM ?? 'ensemble <onboarding@resend.dev>',
     }),
   );
 }

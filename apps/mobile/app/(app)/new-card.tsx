@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { FlashcardCreateInput, GENDER_OPTIONS, VERB_TYPE_OPTIONS } from '@flipflow/types';
+import { FlashcardCreateInput, GENDER_OPTIONS, VERB_TYPE_OPTIONS } from '@ensemble/types';
 
 import { Button } from '../../src/components/Button';
 import { TextField } from '../../src/components/TextField';
@@ -38,7 +38,7 @@ interface TranslatePrefs {
 // in French mode. Cards created without a deck use a single shared key —
 // there's no per-deck context to remember.
 const prefsKey = (categoryId: string | null) =>
-  categoryId ? `flipflow:translate:${categoryId}` : `flipflow:translate:__none__`;
+  categoryId ? `ensemble:translate:${categoryId}` : `ensemble:translate:__none__`;
 
 async function readPrefs(categoryId: string | null): Promise<TranslatePrefs | null> {
   try {

@@ -2,7 +2,7 @@
 
 import { Tag } from 'lucide-react';
 
-import { WORD_CLASS_OPTIONS } from '@flipflow/types';
+import { WORD_CLASS_OPTIONS } from '@ensemble/types';
 import { cn } from '@/lib/utils';
 
 /** Lookup of canonical value → human label. Built once at module load. */

@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 
-import { type BackLanguageValue } from '@flipflow/types';
+import { type BackLanguageValue } from '@ensemble/types';
 
 import { Button } from '../../../../src/components/Button';
 import { Card } from '../../../../src/components/Card';
