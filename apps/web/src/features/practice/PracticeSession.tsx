@@ -163,7 +163,7 @@ export function PracticeSession({ categoryId, categoryIds, classes, practiceLimi
           ) : (
             <div className="flex justify-center">
               <Button onClick={() => setFlipped(true)} size="lg">
-                Show answer
+                Flip
                 <span className="bg-muted text-muted-foreground ml-2 rounded border px-1.5 py-0.5 text-xs">
                   Space
                 </span>
@@ -207,7 +207,7 @@ function FlipCard({
         'flip-card block min-h-72 w-full select-text outline-none',
         flipped && 'is-flipped',
       )}
-      aria-label={flipped ? 'Hide answer' : 'Show answer'}
+      aria-label={flipped ? 'Hide answer' : 'Flip'}
     >
       <div className="flip-card-inner">
         <Card className="flip-card-face flex items-center justify-center p-6 text-center shadow-md">

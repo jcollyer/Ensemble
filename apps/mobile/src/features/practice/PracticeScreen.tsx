@@ -205,7 +205,7 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
             ) : (
               <View className="mt-6">
                 <Button size="lg" onPress={() => setFlipped(true)}>
-                  Show answer
+                  Flip
                 </Button>
               </View>
             )}
