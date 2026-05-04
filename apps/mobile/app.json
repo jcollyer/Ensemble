@@ -10,13 +10,13 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ensemble.app",
+      "bundleIdentifier": "com.ensemblelanguage.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.ensemble.app",
+      "package": "com.ensemblelanguage.app",
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       }
@@ -37,8 +37,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "84eb5fe8-4511-4644-9f2a-9287de8d1511"
+        "projectId": "628316e8-9855-4e5a-a611-88ae77bc42c8"
       }
-    }
+    },
+    "owner": "jcollyer"
   }
 }
