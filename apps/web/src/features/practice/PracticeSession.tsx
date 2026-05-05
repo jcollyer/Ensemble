@@ -501,15 +501,19 @@ function AudioButton({
 }
 
 const RATINGS: { value: number; label: string; sub: string; tone: string }[] = [
-  { value: 0, label: 'Again', sub: 'No idea', tone: 'border-red-500/40 hover:bg-red-500/10' },
-  { value: 2, label: 'Hard', sub: 'Wrong', tone: 'border-orange-500/40 hover:bg-orange-500/10' },
-  { value: 3, label: 'Good', sub: 'Got it', tone: 'border-blue-500/40 hover:bg-blue-500/10' },
-  { value: 5, label: 'Easy', sub: 'Perfect', tone: 'border-green-500/40 hover:bg-green-500/10' },
+  {
+    value: 2,
+    label: 'Challenging',
+    sub: 'Not yet',
+    tone: 'border-orange-500/40 hover:bg-orange-500/10',
+  },
+  { value: 3, label: 'Good', sub: 'Warm', tone: 'border-blue-500/40 hover:bg-blue-500/10' },
+  { value: 5, label: 'Esay', sub: 'Got it', tone: 'border-green-500/40 hover:bg-green-500/10' },
 ];
 
 function RatingButtons({ onRate, disabled }: { onRate: (q: number) => void; disabled?: boolean }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="grid grid-cols-3 gap-2">
       {RATINGS.map((r) => (
         <button
           key={r.value}

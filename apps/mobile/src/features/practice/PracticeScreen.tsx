@@ -272,20 +272,19 @@ function NavButton({
 }
 
 const RATINGS: { value: number; label: string; sub: string; tone: string }[] = [
-  { value: 0, label: 'Again', sub: 'No idea', tone: 'border-red-300' },
-  { value: 2, label: 'Hard', sub: 'Wrong', tone: 'border-orange-300' },
-  { value: 3, label: 'Good', sub: 'Got it', tone: 'border-blue-300' },
-  { value: 5, label: 'Easy', sub: 'Perfect', tone: 'border-green-300' },
+  { value: 2, label: 'Challenging', sub: 'Not yet', tone: 'border-orange-300' },
+  { value: 3, label: 'Good', sub: 'Warm', tone: 'border-blue-300' },
+  { value: 5, label: 'Esay', sub: 'Got it', tone: 'border-green-300' },
 ];
 
 function RatingButtons({ onRate }: { onRate: (q: number) => void }) {
   return (
-    <View className="mt-6 flex-row flex-wrap gap-2">
+    <View className="mt-6 flex-row gap-2">
       {RATINGS.map((r) => (
         <Pressable
           key={r.value}
           onPress={() => onRate(r.value)}
-          className={`min-w-[45%] flex-1 items-center rounded-lg border bg-white py-3 active:opacity-70 ${r.tone}`}
+          className={`min-w-0 flex-1 items-center rounded-lg border bg-white px-2 py-3 active:opacity-70 ${r.tone}`}
         >
           <Text className="text-base font-semibold text-slate-900">{r.label}</Text>
           <Text className="text-xs text-slate-500">{r.sub}</Text>
