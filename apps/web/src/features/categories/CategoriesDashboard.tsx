@@ -47,6 +47,7 @@ export function CategoriesDashboard() {
   const utils = trpc.useUtils();
   const { data: categories, isLoading } = trpc.categories.list.useQuery();
   const { data: folders } = trpc.folders.list.useQuery();
+  const { data: stats } = trpc.practice.stats.useQuery({});
 
   const create = trpc.categories.create.useMutation({
     onSuccess: () => {
@@ -120,6 +121,32 @@ export function CategoriesDashboard() {
             New folder
           </Button>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <ProgressSnapshotCard
+          label="Total cards"
+          value={stats?.total ?? 0}
+          tone="slate"
+        />
+        <ProgressSnapshotCard
+          label="Challenging cards"
+          value={stats?.confidenceBreakdown.challenging ?? 0}
+          percentage={getPercentage(stats?.confidenceBreakdown.challenging ?? 0, stats?.total ?? 0)}
+          tone="amber"
+        />
+        <ProgressSnapshotCard
+          label="Good cards"
+          value={stats?.confidenceBreakdown.good ?? 0}
+          percentage={getPercentage(stats?.confidenceBreakdown.good ?? 0, stats?.total ?? 0)}
+          tone="blue"
+        />
+        <ProgressSnapshotCard
+          label="Easy cards"
+          value={stats?.confidenceBreakdown.easy ?? 0}
+          percentage={getPercentage(stats?.confidenceBreakdown.easy ?? 0, stats?.total ?? 0)}
+          tone="green"
+        />
       </div>
 
       {isLoading ? (
@@ -341,6 +368,52 @@ function AllDecksCard() {
       </Card>
     </Link>
   );
+}
+
+function ProgressSnapshotCard({
+  label,
+  value,
+  percentage,
+  tone,
+}: {
+  label: string;
+  value: number;
+  percentage?: number;
+  tone: 'slate' | 'amber' | 'blue' | 'green';
+}) {
+  const accentClass = {
+    slate: 'bg-slate-500/10 text-slate-700 dark:text-slate-200',
+    amber: 'bg-amber-500/10 text-amber-700 dark:text-amber-200',
+    blue: 'bg-blue-500/10 text-blue-700 dark:text-blue-200',
+    green: 'bg-green-500/10 text-green-700 dark:text-green-200',
+  }[tone];
+
+  return (
+    <Card>
+      <CardContent className="flex items-start justify-between gap-4 p-5">
+        <div className="space-y-1">
+          <p className="text-muted-foreground text-sm">{label}</p>
+          <p className="text-3xl font-semibold tracking-tight">{value}</p>
+          {percentage !== undefined ? (
+            <p className="text-muted-foreground text-sm">{percentage}% of total cards</p>
+          ) : (
+            <p className="text-muted-foreground text-sm">Across every deck</p>
+          )}
+        </div>
+        <div
+          aria-hidden
+          className={`flex h-10 min-w-10 items-center justify-center rounded-full px-3 text-sm font-semibold ${accentClass}`}
+        >
+          {percentage !== undefined ? `${percentage}%` : 'All'}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function getPercentage(value: number, total: number) {
+  if (total <= 0) return 0;
+  return Math.round((value / total) * 100);
 }
 
 /**

@@ -119,7 +119,7 @@ export const practiceRouter = router({
       };
       const now = new Date();
 
-      const [total, due, mastered] = await Promise.all([
+      const [total, due, mastered, challenging, good, easy] = await Promise.all([
         ctx.prisma.flashcard.count({ where }),
         ctx.prisma.flashcard.count({
           where: {
@@ -131,8 +131,26 @@ export const practiceRouter = router({
         ctx.prisma.flashcard.count({
           where: { ...where, repetitions: { gte: 3 } },
         }),
+        ctx.prisma.flashcard.count({
+          where: { ...where, confidence: 2 },
+        }),
+        ctx.prisma.flashcard.count({
+          where: { ...where, confidence: 3 },
+        }),
+        ctx.prisma.flashcard.count({
+          where: { ...where, confidence: 5 },
+        }),
       ]);
 
-      return { total, due, mastered };
+      return {
+        total,
+        due,
+        mastered,
+        confidenceBreakdown: {
+          challenging,
+          good,
+          easy,
+        },
+      };
     }),
 });
