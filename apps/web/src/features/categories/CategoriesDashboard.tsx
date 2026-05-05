@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Layers, Clock, Library, FolderTree } from 'lucide-react';
+import { Plus, Layers, Clock, Library, FolderTree, Users } from 'lucide-react';
 
 import { BACK_LANGUAGES, CategoryCreateInput } from '@ensemble/types';
 import { Button } from '@/components/ui/button';
@@ -155,6 +155,7 @@ export function CategoriesDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <AllFoldersCard count={folders?.length ?? 0} />
           <AllDecksCard />
+          <MoreDecksCard />
           {(categories ?? []).map((c) => (
             <Link key={c.id} href={`/app/categories/${c.id}`} className="group">
               <Card className="hover:border-primary/40 transition hover:shadow-md">
@@ -438,6 +439,30 @@ function AllFoldersCard({ count }: { count: number }) {
           <span className="inline-flex items-center gap-1.5">
             <FolderTree className="h-4 w-4" />
             {count} {count === 1 ? 'folder' : 'folders'}
+          </span>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+function MoreDecksCard() {
+  return (
+    <Link href="/app/more" className="group">
+      <Card className="hover:border-primary/60 border-dashed transition hover:shadow-md">
+        <CardHeader className="flex flex-row items-center gap-3">
+          <div
+            aria-hidden
+            className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-md"
+          >
+            <Users className="h-5 w-5" />
+          </div>
+          <CardTitle className="group-hover:text-primary truncate font-bold">More decks</CardTitle>
+        </CardHeader>
+        <CardContent className="text-muted-foreground flex items-center gap-4 text-sm">
+          <span className="inline-flex items-center gap-1.5">
+            <Users className="h-4 w-4" />
+            Explore public decks
           </span>
         </CardContent>
       </Card>

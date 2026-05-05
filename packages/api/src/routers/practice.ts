@@ -30,13 +30,28 @@ export const practiceRouter = router({
     .query(async ({ ctx, input }) => {
       const category = input.categoryId
         ? await ctx.prisma.category.findFirst({
-            where: { id: input.categoryId, userId: ctx.userId },
+            where: { id: input.categoryId },
             // backLanguage powers the per-card audio button; the practice UI
             // hides the button entirely when it's null.
-            select: { id: true, name: true, color: true, backLanguage: true },
+            select: {
+              id: true,
+              name: true,
+              color: true,
+              backLanguage: true,
+              private: true,
+              userId: true,
+              user: { select: { private: true } },
+            },
           })
         : null;
       if (input.categoryId && !category) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      const categoryIsOwner = category ? category.userId === ctx.userId : false;
+      const categoryIsPublic =
+        category ? category.private === false && category.user.private === false : false;
+      if (input.categoryId && !categoryIsOwner && !categoryIsPublic) {
+        throw new TRPCError({ code: 'NOT_FOUND' });
+      }
 
       // Build category filter: single categoryId takes priority over the array.
       const categoryFilter = input.categoryId
@@ -47,14 +62,17 @@ export const practiceRouter = router({
 
       // Build word-class filter.
       const classFilter = input.classes?.length ? { class: { in: input.classes } } : {};
+      const isReadOnlyPublicCategory = !!input.categoryId && !categoryIsOwner;
 
       const now = new Date();
       const cards = await ctx.prisma.flashcard.findMany({
         where: {
-          userId: ctx.userId,
+          ...(input.categoryId ? {} : { userId: ctx.userId }),
           ...categoryFilter,
           ...classFilter,
-          ...(input.includeAll ? {} : { OR: [{ nextReview: null }, { nextReview: { lte: now } }] }),
+          ...(input.includeAll || isReadOnlyPublicCategory
+            ? {}
+            : { OR: [{ nextReview: null }, { nextReview: { lte: now } }] }),
         },
         include: {
           category: {
@@ -67,7 +85,18 @@ export const practiceRouter = router({
         take: input.limit,
       });
 
-      return { category, cards };
+      return {
+        category: category
+          ? {
+              id: category.id,
+              name: category.name,
+              color: category.color,
+              backLanguage: category.backLanguage,
+              isOwner: categoryIsOwner,
+            }
+          : null,
+        cards,
+      };
     }),
 
   /**

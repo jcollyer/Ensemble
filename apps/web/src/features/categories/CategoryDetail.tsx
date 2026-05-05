@@ -107,7 +107,11 @@ export function CategoryDetail({ categoryId }: Props) {
 
   const { data: category } = trpc.categories.byId.useQuery({ id: categoryId });
   const { data: cards, isLoading } = trpc.flashcards.listByCategory.useQuery({ categoryId });
-  const { data: stats } = trpc.practice.stats.useQuery({ categoryId });
+  const isOwner = category?.isOwner ?? false;
+  const { data: stats } = trpc.practice.stats.useQuery(
+    { categoryId },
+    { enabled: category?.isOwner === true },
+  );
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -133,9 +137,9 @@ export function CategoryDetail({ categoryId }: Props) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <Button asChild variant="ghost" size="sm" className="-ml-2">
-            <Link href="/app">
+            <Link href={isOwner ? '/app' : '/app/more'}>
               <ArrowLeft className="h-4 w-4" />
-              All decks
+              {isOwner ? 'All decks' : 'More decks'}
             </Link>
           </Button>
           <div className="flex items-center gap-3">
@@ -153,23 +157,29 @@ export function CategoryDetail({ categoryId }: Props) {
           <Button asChild variant="outline">
             <Link href={`/app/categories/${categoryId}/practice`}>
               <Play className="h-4 w-4" />
-              Practice {stats?.due ? `(${stats.due})` : ''}
+              Practice {isOwner && stats?.due ? `(${stats.due})` : ''}
             </Link>
           </Button>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" />
-            New card
-          </Button>
+          {isOwner ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" />
+              New card
+            </Button>
+          ) : null}
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Total" value={stats?.total ?? cards?.length ?? 0} />
-        <Stat label="Due now" value={stats?.due ?? 0} />
-        <Stat label="Mastered" value={stats?.mastered ?? 0} />
-      </div>
+      {isOwner ? (
+        <div className="grid grid-cols-3 gap-3">
+          <Stat label="Total" value={stats?.total ?? cards?.length ?? 0} />
+          <Stat label="Due now" value={stats?.due ?? 0} />
+          <Stat label="Mastered" value={stats?.mastered ?? 0} />
+        </div>
+      ) : null}
 
-      <DeckAudioLanguage categoryId={categoryId} backLanguage={category?.backLanguage ?? null} />
+      {isOwner ? (
+        <DeckAudioLanguage categoryId={categoryId} backLanguage={category?.backLanguage ?? null} />
+      ) : null}
 
       {isLoading ? (
         <div className="space-y-3">
@@ -207,31 +217,37 @@ export function CategoryDetail({ categoryId }: Props) {
                   ) : null}
                   <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs">
                     {card.class ? <ClassBadge value={card.class} /> : null}
-                    <span>Next review: {formatRelative(card.nextReview)}</span>
-                    <span>·</span>
-                    <span>{card.repetitions} reps</span>
+                    {isOwner ? (
+                      <>
+                        <span>Next review: {formatRelative(card.nextReview)}</span>
+                        <span>·</span>
+                        <span>{card.repetitions} reps</span>
+                      </>
+                    ) : null}
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setEditingId(card.id)}
-                    aria-label="Edit"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      if (confirm('Delete this card?')) remove.mutate({ id: card.id });
-                    }}
-                    aria-label="Delete"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                {isOwner ? (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditingId(card.id)}
+                      aria-label="Edit"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        if (confirm('Delete this card?')) remove.mutate({ id: card.id });
+                      }}
+                      aria-label="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
           ))}
@@ -241,45 +257,53 @@ export function CategoryDetail({ categoryId }: Props) {
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
             <div className="text-lg font-semibold">No cards yet</div>
             <p className="text-muted-foreground max-w-sm text-sm">
-              Add your first card to start practicing this deck.
+              {isOwner
+                ? 'Add your first card to start practicing this deck.'
+                : 'This public deck does not have any cards yet.'}
             </p>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add a card
-            </Button>
+            {isOwner ? (
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Add a card
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       )}
 
-      <div className="flex flex-wrap gap-2 border-t pt-6">
-        <Button variant="ghost" onClick={() => setEditDeckOpen(true)} disabled={!category}>
-          <Pencil className="h-4 w-4" />
-          Edit deck
-        </Button>
-        <Button
-          variant="ghost"
-          className="text-destructive hover:text-destructive"
-          onClick={() => {
-            if (confirm(`Delete "${category?.name}" and all its cards? This can't be undone.`)) {
-              deleteCategory.mutate({ id: categoryId });
-            }
-          }}
-        >
-          <Trash2 className="h-4 w-4" />
-          Delete deck
-        </Button>
-      </div>
+      {isOwner ? (
+        <div className="flex flex-wrap gap-2 border-t pt-6">
+          <Button variant="ghost" onClick={() => setEditDeckOpen(true)} disabled={!category}>
+            <Pencil className="h-4 w-4" />
+            Edit deck
+          </Button>
+          <Button
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={() => {
+              if (confirm(`Delete "${category?.name}" and all its cards? This can't be undone.`)) {
+                deleteCategory.mutate({ id: categoryId });
+              }
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete deck
+          </Button>
+        </div>
+      ) : null}
 
       {/* Create card dialog (deck is fixed to this category). */}
-      <CreateCardDialog
-        mode="fixed"
-        categoryId={categoryId}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-      />
+      {isOwner ? (
+        <CreateCardDialog
+          mode="fixed"
+          categoryId={categoryId}
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+        />
+      ) : null}
 
       {/* Edit card dialog */}
-      {editingId ? (
+      {isOwner && editingId ? (
         <EditCardDialog
           cardId={editingId}
           categoryId={categoryId}
@@ -292,7 +316,7 @@ export function CategoryDetail({ categoryId }: Props) {
       ) : null}
 
       {/* Edit deck dialog */}
-      {editDeckOpen && category ? (
+      {isOwner && editDeckOpen && category ? (
         <EditCategoryDialog
           category={{
             id: category.id,

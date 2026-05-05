@@ -67,6 +67,8 @@ export function PracticeSession({ categoryId, categoryIds, classes, practiceLimi
   const [reviewed, setReviewed] = useState(0);
 
   const cards = data?.cards ?? [];
+  const isReadOnlyPublicDeck = Boolean(categoryId && data?.category && !data.category.isOwner);
+  const canRate = !isReadOnlyPublicDeck;
   const current = cards[index];
   const done = !isLoading && cards.length > 0 && index >= cards.length;
 
@@ -108,7 +110,7 @@ export function PracticeSession({ categoryId, categoryIds, classes, practiceLimi
   }, [current, done, canGoPrev, canGoNext, handlePrev, handleNext]);
 
   function handleRate(quality: number) {
-    if (!current) return;
+    if (!current || !canRate) return;
     submit.mutate({ cardId: current.id, confidence: quality });
     setReviewed((n) => n + 1);
     setFlipped(false);
@@ -134,7 +136,7 @@ export function PracticeSession({ categoryId, categoryIds, classes, practiceLimi
 
   // When the session ends, refresh anything that shows due/mastered counts.
   useEffect(() => {
-    if (done) {
+    if (done && canRate) {
       utils.categories.list.invalidate();
       utils.practice.stats.invalidate({ categoryId });
       if (categoryId) {
@@ -167,14 +169,16 @@ export function PracticeSession({ categoryId, categoryIds, classes, practiceLimi
           backHref={backHref}
           backLabel={backLabel}
           emptyTitle={isAllCards ? 'No cards to practice' : 'No cards in this deck'}
-          practiceAll={practiceAll}
+          practiceAll={isReadOnlyPublicDeck ? true : practiceAll}
+          canPracticeAnyway={!isReadOnlyPublicDeck}
           onPracticeAnyway={() => setPracticeAll(true)}
         />
       ) : done ? (
         <SessionSummary
           backHref={backHref}
           backLabel={backLabel}
-          reviewed={reviewed}
+          reviewed={canRate ? reviewed : cards.length}
+          canRate={canRate}
           onPracticeAgain={handlePracticeAgain}
         />
       ) : (
@@ -211,8 +215,12 @@ export function PracticeSession({ categoryId, categoryIds, classes, practiceLimi
             <NavButton direction="next" onClick={handleNext} disabled={!canGoNext} />
           </div>
 
-          {flipped ? (
+          {flipped && canRate ? (
             <RatingButtons onRate={handleRate} disabled={submit.isPending} />
+          ) : flipped ? (
+            <div className="text-muted-foreground text-center text-sm">
+              Public deck practice is read-only. Use the arrow buttons to move between cards.
+            </div>
           ) : (
             <div className="flex justify-center">
               <Button onClick={() => setFlipped(true)} size="lg">
@@ -537,12 +545,14 @@ function EmptyQueue({
   backLabel,
   emptyTitle,
   practiceAll,
+  canPracticeAnyway,
   onPracticeAnyway,
 }: {
   backHref: string;
   backLabel: string;
   emptyTitle: string;
   practiceAll: boolean;
+  canPracticeAnyway: boolean;
   onPracticeAnyway: () => void;
 }) {
   // If the user already opted into "Practice anyway" and we still got zero
@@ -568,7 +578,9 @@ function EmptyQueue({
           <Button asChild variant="outline">
             <Link href={backHref}>{backLabel}</Link>
           </Button>
-          {!deckIsEmpty && <Button onClick={onPracticeAnyway}>Practice anyway</Button>}
+          {!deckIsEmpty && canPracticeAnyway ? (
+            <Button onClick={onPracticeAnyway}>Practice anyway</Button>
+          ) : null}
         </div>
       </CardContent>
     </Card>
@@ -579,11 +591,13 @@ function SessionSummary({
   backHref,
   backLabel,
   reviewed,
+  canRate,
   onPracticeAgain,
 }: {
   backHref: string;
   backLabel: string;
   reviewed: number;
+  canRate: boolean;
   onPracticeAgain: () => void;
 }) {
   return (
@@ -594,7 +608,8 @@ function SessionSummary({
         </div>
         <div className="text-lg font-semibold">Session complete</div>
         <p className="text-muted-foreground text-sm">
-          You reviewed <strong>{reviewed}</strong> {reviewed === 1 ? 'card' : 'cards'}. Nice.
+          {canRate ? 'You reviewed ' : 'You went through '}
+          <strong>{reviewed}</strong> {reviewed === 1 ? 'card' : 'cards'}.
         </p>
         <div className="flex gap-2">
           <Button asChild variant="outline">

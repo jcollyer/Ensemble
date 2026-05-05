@@ -41,15 +41,84 @@ export const categoriesRouter = router({
     }));
   }),
 
+  /** Public users and their public decks for the "More decks" explorer. */
+  publicLibrary: protectedProcedure.query(async ({ ctx }) => {
+    const users = await ctx.prisma.user.findMany({
+      where: {
+        private: false,
+        id: { not: ctx.userId },
+      },
+      orderBy: [{ name: 'asc' }, { createdAt: 'asc' }],
+      select: {
+        id: true,
+        name: true,
+        _count: {
+          select: {
+            categories: {
+              where: { private: false },
+            },
+          },
+        },
+        categories: {
+          where: { private: false },
+          orderBy: [{ updatedAt: 'desc' }, { name: 'asc' }],
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            _count: { select: { cards: true } },
+          },
+        },
+      },
+    });
+
+    return users.map((user) => ({
+      id: user.id,
+      name: user.name?.trim() || 'Unnamed user',
+      deckCount: user._count.categories,
+      decks: user.categories.map((deck) => ({
+        id: deck.id,
+        name: deck.name,
+        color: deck.color,
+        cardCount: deck._count.cards,
+      })),
+    }));
+  }),
+
   /** Single category (with ownership check). */
   byId: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(async ({ ctx, input }) => {
       const category = await ctx.prisma.category.findFirst({
-        where: { id: input.id, userId: ctx.userId },
+        where: { id: input.id },
+        select: {
+          id: true,
+          name: true,
+          color: true,
+          backLanguage: true,
+          private: true,
+          userId: true,
+          createdAt: true,
+          updatedAt: true,
+          user: { select: { private: true } },
+        },
       });
       if (!category) throw new TRPCError({ code: 'NOT_FOUND' });
-      return category;
+
+      const isOwner = category.userId === ctx.userId;
+      const isPubliclyVisible = category.private === false && category.user.private === false;
+      if (!isOwner && !isPubliclyVisible) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      return {
+        id: category.id,
+        name: category.name,
+        color: category.color,
+        backLanguage: category.backLanguage,
+        private: category.private,
+        createdAt: category.createdAt,
+        updatedAt: category.updatedAt,
+        isOwner,
+      };
     }),
 
   create: protectedProcedure.input(CategoryCreateInput).mutation(async ({ ctx, input }) =>

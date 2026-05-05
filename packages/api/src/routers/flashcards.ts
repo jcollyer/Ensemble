@@ -10,17 +10,36 @@ export const flashcardsRouter = router({
   listByCategory: protectedProcedure
     .input(z.object({ categoryId: z.string().cuid() }))
     .query(async ({ ctx, input }) => {
-      // Confirm the user owns the category before returning its cards.
       const category = await ctx.prisma.category.findFirst({
-        where: { id: input.categoryId, userId: ctx.userId },
-        select: { id: true },
+        where: { id: input.categoryId },
+        select: {
+          id: true,
+          userId: true,
+          private: true,
+          user: { select: { private: true } },
+        },
       });
       if (!category) throw new TRPCError({ code: 'NOT_FOUND' });
 
-      return ctx.prisma.flashcard.findMany({
+      const isOwner = category.userId === ctx.userId;
+      const isPubliclyVisible = category.private === false && category.user.private === false;
+      if (!isOwner && !isPubliclyVisible) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      const cards = await ctx.prisma.flashcard.findMany({
         where: { categoryId: input.categoryId },
         orderBy: { createdAt: 'desc' },
       });
+
+      if (isOwner) return cards;
+
+      return cards.map((card) => ({
+        ...card,
+        confidence: 0,
+        easeFactor: 2.5,
+        interval: 0,
+        repetitions: 0,
+        nextReview: null,
+      }));
     }),
 
   /**
