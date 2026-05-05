@@ -421,19 +421,25 @@ function EditCardDialog({
   // Translate prefs share the same scope key as the create dialog for this deck.
   const [translateOn, setTranslateOn] = useState(false);
   const [target, setTarget] = useState<TranslateTargetValue>('fr');
+  const skipInitialPrefsWriteRef = useRef(true);
 
   useEffect(() => {
     const stored = readTranslatePrefs(categoryId);
     if (stored) {
-      setTranslateOn(stored.enabled);
+      setTranslateOn(false);
       setTarget(stored.target);
     } else {
       setTranslateOn(false);
       setTarget('fr');
     }
+    skipInitialPrefsWriteRef.current = true;
   }, [categoryId]);
 
   useEffect(() => {
+    if (skipInitialPrefsWriteRef.current) {
+      skipInitialPrefsWriteRef.current = false;
+      return;
+    }
     writeTranslatePrefs(categoryId, { v: 1, enabled: translateOn, target });
   }, [categoryId, translateOn, target]);
 
