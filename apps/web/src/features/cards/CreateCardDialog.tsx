@@ -5,7 +5,13 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Plus, X } from 'lucide-react';
 
-import { FlashcardCreateInput, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@ensemble/types';
+import {
+  FlashcardCreateInput,
+  GENDER_OPTIONS,
+  type GenderValue,
+  VERB_TYPE_OPTIONS,
+  type VerbTypeValue,
+} from '@ensemble/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -100,24 +106,24 @@ function writeTranslatePrefs(scope: string, prefs: TranslatePrefs) {
  */
 export type CreateCardDialogProps =
   | {
-    mode: 'fixed';
-    categoryId: string;
-    open: boolean;
-    onOpenChange: (next: boolean) => void;
-    /** Called after the card is successfully created. */
-    onCreated?: () => void;
-  }
+      mode: 'fixed';
+      categoryId: string;
+      open: boolean;
+      onOpenChange: (next: boolean) => void;
+      /** Called after the card is successfully created. */
+      onCreated?: () => void;
+    }
   | {
-    mode: 'selectable';
-    open: boolean;
-    onOpenChange: (next: boolean) => void;
-    /** Decks the user can choose between. Empty array hides the selector. */
-    decks: Array<{ id: string; name: string }>;
-    /** Optional pre-selected deck. Defaults to "No deck". */
-    defaultCategoryId?: string | null;
-    /** Called after the card is successfully created. */
-    onCreated?: () => void;
-  };
+      mode: 'selectable';
+      open: boolean;
+      onOpenChange: (next: boolean) => void;
+      /** Decks the user can choose between. Empty array hides the selector. */
+      decks: Array<{ id: string; name: string }>;
+      /** Optional pre-selected deck. Defaults to "No deck". */
+      defaultCategoryId?: string | null;
+      /** Called after the card is successfully created. */
+      onCreated?: () => void;
+    };
 
 export function CreateCardDialog(props: CreateCardDialogProps) {
   const utils = trpc.useUtils();
@@ -334,7 +340,7 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="overflow-auto max-h-[80dvh]">
+      <DialogContent className="max-h-[80dvh] overflow-auto">
         <DialogHeader>
           <DialogTitle>New card</DialogTitle>
           <DialogDescription>The front is the prompt, the back is the answer.</DialogDescription>
@@ -351,10 +357,10 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
                   <SelectItem value={NO_DECK}>No deck</SelectItem>
                   {props.mode === 'selectable'
                     ? props.decks.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name}
-                      </SelectItem>
-                    ))
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))
                     : null}
                 </SelectContent>
               </Select>
@@ -411,7 +417,7 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
             <Label htmlFor="card-gender">Gender (optional)</Label>
             <Select
               value={gender ?? NO_GENDER}
-              onValueChange={(v) => setGender(v === NO_GENDER ? null : v as GenderValue)}
+              onValueChange={(v) => setGender(v === NO_GENDER ? null : (v as GenderValue))}
             >
               <SelectTrigger id="card-gender">
                 <SelectValue />
@@ -430,7 +436,7 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
             <Label htmlFor="card-verb-type">Verb type (optional)</Label>
             <Select
               value={verbType ?? NO_VERB_TYPE}
-              onValueChange={(v) => setVerbType(v === NO_VERB_TYPE ? null : v as VerbTypeValue)}
+              onValueChange={(v) => setVerbType(v === NO_VERB_TYPE ? null : (v as VerbTypeValue))}
             >
               <SelectTrigger id="card-verb-type">
                 <SelectValue />

@@ -58,10 +58,9 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
 
   const cards = data?.cards ?? [];
   const current = cards[index];
-  const backLanguage =
-    ((current?.category?.backLanguage ?? data?.category?.backLanguage ?? null) as
-      | BackLanguageValue
-      | null);
+  const backLanguage = (current?.category?.backLanguage ??
+    data?.category?.backLanguage ??
+    null) as BackLanguageValue | null;
   const done = !isLoading && cards.length > 0 && index >= cards.length;
   const backTarget = isAllCards ? '/all-cards' : `/decks/${categoryId}`;
   const backLabel = isAllCards ? 'Back to all cards' : 'Back to deck';
@@ -120,7 +119,9 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
 
   return (
     <View className="flex-1 bg-slate-50">
-      <Stack.Screen options={{ title: data?.category?.name ?? (isAllCards ? 'All cards' : 'Practice') }} />
+      <Stack.Screen
+        options={{ title: data?.category?.name ?? (isAllCards ? 'All cards' : 'Practice') }}
+      />
 
       <ScrollView contentContainerStyle={{ padding: 16, flexGrow: 1 }}>
         {cards.length === 0 ? (
@@ -156,81 +157,67 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
             </Text>
 
             <View className="mt-6 flex-row items-stretch gap-2">
-              <NavButton
-                direction="prev"
-                onPress={handlePrev}
-                disabled={!canGoPrev}
-              />
-              <Pressable
-                onPress={() => setFlipped((f) => !f)}
-                className="flex-1 active:opacity-90"
-              >
-              <Card
-                className={`relative min-h-[280px] items-center justify-center p-6 ${
-                  flipped ? 'border-primary bg-blue-50' : ''
-                }`}
-              >
-                {current?.class ? (
-                  <View className="mb-3">
-                    <ClassBadge value={current.class} size="md" />
-                  </View>
-                ) : null}
-                <Text
-                  className={`text-center leading-snug ${
-                    flipped
-                      ? 'text-xl font-bold text-slate-900'
-                      : 'text-2xl font-bold text-slate-900'
+              <NavButton direction="prev" onPress={handlePrev} disabled={!canGoPrev} />
+              <Pressable onPress={() => setFlipped((f) => !f)} className="flex-1 active:opacity-90">
+                <Card
+                  className={`relative min-h-[280px] items-center justify-center p-6 ${
+                    flipped ? 'border-primary bg-blue-50' : ''
                   }`}
                 >
-                  {flipped ? current?.back : current?.front}
-                </Text>
-                {flipped &&
-                (current as { pronunciation?: string | null } | undefined)?.pronunciation ? (
-                  <Text className="mt-2 text-center text-base italic text-slate-500">
-                    {
-                      (current as { pronunciation?: string | null } | undefined)
-                        ?.pronunciation
-                    }
+                  {current?.class ? (
+                    <View className="mb-3">
+                      <ClassBadge value={current.class} size="md" />
+                    </View>
+                  ) : null}
+                  <Text
+                    className={`text-center leading-snug ${
+                      flipped
+                        ? 'text-xl font-bold text-slate-900'
+                        : 'text-2xl font-bold text-slate-900'
+                    }`}
+                  >
+                    {flipped ? current?.back : current?.front}
                   </Text>
-                ) : null}
-                {flipped && (current?.backExamples?.length ?? 0) > 0 ? (
-                  <View className="mt-3 w-full gap-1 self-start pl-2">
-                    {current!.backExamples.map((ex, i) => (
-                      <Text key={i} className="text-sm italic text-slate-500">
-                        {ex}
-                      </Text>
-                    ))}
-                  </View>
-                ) : !flipped && (current?.frontExamples?.length ?? 0) > 0 ? (
-                  <View className="mt-3 w-full gap-1 self-start pl-2">
-                    {current!.frontExamples.map((ex, i) => (
-                      <Text key={i} className="text-sm italic text-slate-500">
-                        {ex}
-                      </Text>
-                    ))}
-                  </View>
-                ) : null}
-                <Text className="mt-6 text-xs uppercase tracking-wider text-slate-400">
-                  {flipped ? 'Answer' : 'Tap to reveal'}
-                </Text>
+                  {flipped &&
+                  (current as { pronunciation?: string | null } | undefined)?.pronunciation ? (
+                    <Text className="mt-2 text-center text-base italic text-slate-500">
+                      {(current as { pronunciation?: string | null } | undefined)?.pronunciation}
+                    </Text>
+                  ) : null}
+                  {flipped && (current?.backExamples?.length ?? 0) > 0 ? (
+                    <View className="mt-3 w-full gap-1 self-start pl-2">
+                      {current!.backExamples.map((ex, i) => (
+                        <Text key={i} className="text-sm italic text-slate-500">
+                          {ex}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : !flipped && (current?.frontExamples?.length ?? 0) > 0 ? (
+                    <View className="mt-3 w-full gap-1 self-start pl-2">
+                      {current!.frontExamples.map((ex, i) => (
+                        <Text key={i} className="text-sm italic text-slate-500">
+                          {ex}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                  <Text className="mt-6 text-xs uppercase tracking-wider text-slate-400">
+                    {flipped ? 'Answer' : 'Tap to reveal'}
+                  </Text>
 
-                {flipped && current?.id && backLanguage ? (
-                  <View className="absolute right-3 top-3 z-10">
-                    <AudioButton
-                      cardId={current.id}
-                      text={current.back}
-                      examples={current.backExamples ?? []}
-                      languageCode={backLanguage}
-                    />
-                  </View>
-                ) : null}
-              </Card>
+                  {flipped && current?.id && backLanguage ? (
+                    <View className="absolute right-3 top-3 z-10">
+                      <AudioButton
+                        cardId={current.id}
+                        text={current.back}
+                        examples={current.backExamples ?? []}
+                        languageCode={backLanguage}
+                      />
+                    </View>
+                  ) : null}
+                </Card>
               </Pressable>
-              <NavButton
-                direction="next"
-                onPress={handleNext}
-                disabled={!canGoNext}
-              />
+              <NavButton direction="next" onPress={handleNext} disabled={!canGoNext} />
             </View>
 
             {flipped ? (

@@ -257,7 +257,8 @@ export default function AllCardsScreen() {
           </View>
         }
         renderItem={({ item }) => {
-          const deck = item.categoryId ? decksById.get(item.categoryId) : null;          return (
+          const deck = item.categoryId ? decksById.get(item.categoryId) : null;
+          return (
             <Card className="flex-row items-start gap-3 p-4">
               <View className="flex-1 gap-1">
                 <Text className="font-semibold text-slate-900" numberOfLines={2}>

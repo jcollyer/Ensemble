@@ -23,7 +23,14 @@ import { Textarea } from '@/components/ui/textarea';
  * visual vocabulary. We'd refactor this into a shared constant if the rest
  * of the codebase grew more places using it.
  */
-export const FOLDER_COLOR_PALETTE = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+export const FOLDER_COLOR_PALETTE = [
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#8b5cf6',
+  '#ec4899',
+];
 
 export type FolderModalMode =
   | {
@@ -125,11 +132,7 @@ export function FolderModal({ open, onOpenChange, mode }: Props) {
         >
           <div className="space-y-2">
             <Label htmlFor="folder-name">Name</Label>
-            <Input
-              id="folder-name"
-              placeholder="e.g. Languages"
-              {...form.register('name')}
-            />
+            <Input id="folder-name" placeholder="e.g. Languages" {...form.register('name')} />
             {form.formState.errors.name ? (
               <p className="text-destructive text-sm">{form.formState.errors.name.message}</p>
             ) : null}

@@ -74,9 +74,7 @@ export function FolderDetail({ folderId }: Props) {
               className="h-9 w-9 rounded-md"
               style={{ backgroundColor: folder?.color ?? '#94a3b8' }}
             />
-            <h1 className="text-3xl font-semibold tracking-tight">
-              {folder?.name ?? 'Loading…'}
-            </h1>
+            <h1 className="text-3xl font-semibold tracking-tight">{folder?.name ?? 'Loading…'}</h1>
           </div>
           {folder?.description ? (
             <p className="text-muted-foreground pl-12 text-sm">{folder.description}</p>

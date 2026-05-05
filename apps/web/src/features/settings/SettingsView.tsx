@@ -97,9 +97,7 @@ export function SettingsView() {
                   maxLength={80}
                 />
                 {error ? <p className="text-destructive text-sm">{error}</p> : null}
-                {savedAt && !dirty ? (
-                  <p className="text-muted-foreground text-sm">Saved.</p>
-                ) : null}
+                {savedAt && !dirty ? <p className="text-muted-foreground text-sm">Saved.</p> : null}
               </div>
 
               <div className="space-y-2">

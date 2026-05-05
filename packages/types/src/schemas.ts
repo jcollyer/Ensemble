@@ -110,9 +110,7 @@ export type GenderValue = (typeof GENDER_OPTIONS)[number]['value'];
 /**
  * Optional gender for a flashcard's front word. `null`/`undefined`/`''` = none.
  */
-export const GenderSchema = z
-  .union([z.enum(['male', 'female']), z.literal('')])
-  .nullish();
+export const GenderSchema = z.union([z.enum(['male', 'female']), z.literal('')]).nullish();
 
 /** Verb-type options for a flashcard's front word. */
 export const VERB_TYPE_OPTIONS = [
@@ -124,9 +122,7 @@ export type VerbTypeValue = (typeof VERB_TYPE_OPTIONS)[number]['value'];
 /**
  * Optional verb type for a flashcard's front word. `null`/`undefined`/`''` = none.
  */
-export const VerbTypeSchema = z
-  .union([z.enum(['regular', 'irregular']), z.literal('')])
-  .nullish();
+export const VerbTypeSchema = z.union([z.enum(['regular', 'irregular']), z.literal('')]).nullish();
 
 /**
  * Optional pronunciation hint for the front word (e.g. IPA, romanization).

@@ -18,7 +18,14 @@ import {
   X,
 } from 'lucide-react';
 
-import { FlashcardUpdateInput, WORD_CLASS_OPTIONS, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@ensemble/types';
+import {
+  FlashcardUpdateInput,
+  WORD_CLASS_OPTIONS,
+  GENDER_OPTIONS,
+  type GenderValue,
+  VERB_TYPE_OPTIONS,
+  type VerbTypeValue,
+} from '@ensemble/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -154,7 +161,10 @@ export function AllCardsView() {
             className={hasActiveFilters ? 'border-primary text-primary' : ''}
           >
             <SlidersHorizontal className="h-4 w-4" />
-            Filters{hasActiveFilters ? ` (${(selectedCategoryIds.length + selectedClasses.length) || ''})`.replace(' ()', '') : ''}
+            Filters
+            {hasActiveFilters
+              ? ` (${selectedCategoryIds.length + selectedClasses.length || ''})`.replace(' ()', '')
+              : ''}
           </Button>
           <Button onClick={() => router.push(buildPracticeHref())}>
             <Play className="h-4 w-4" />
@@ -481,7 +491,9 @@ function EditCardDialog({
       setBackExamples(card.backExamples);
       setWordClass(card.class ?? null);
       setGender(((card as { gender?: string | null }).gender as GenderValue | null) ?? null);
-      setVerbType(((card as { verb_type?: string | null }).verb_type as VerbTypeValue | null) ?? null);
+      setVerbType(
+        ((card as { verb_type?: string | null }).verb_type as VerbTypeValue | null) ?? null,
+      );
       setPronunciation((card as { pronunciation?: string | null }).pronunciation ?? '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -499,7 +511,7 @@ function EditCardDialog({
 
   return (
     <Dialog open onOpenChange={(o) => (o ? null : onClose())}>
-      <DialogContent className="overflow-auto max-h-[80dvh]">
+      <DialogContent className="max-h-[80dvh] overflow-auto">
         <DialogHeader>
           <DialogTitle>Edit card</DialogTitle>
         </DialogHeader>
@@ -578,7 +590,7 @@ function EditCardDialog({
             <Label htmlFor="edit-card-gender">Gender (optional)</Label>
             <Select
               value={gender ?? NO_GENDER}
-              onValueChange={(v) => setGender(v === NO_GENDER ? null : v as GenderValue)}
+              onValueChange={(v) => setGender(v === NO_GENDER ? null : (v as GenderValue))}
             >
               <SelectTrigger id="edit-card-gender">
                 <SelectValue />
@@ -597,7 +609,7 @@ function EditCardDialog({
             <Label htmlFor="edit-card-verb-type">Verb type (optional)</Label>
             <Select
               value={verbType ?? NO_VERB_TYPE}
-              onValueChange={(v) => setVerbType(v === NO_VERB_TYPE ? null : v as VerbTypeValue)}
+              onValueChange={(v) => setVerbType(v === NO_VERB_TYPE ? null : (v as VerbTypeValue))}
             >
               <SelectTrigger id="edit-card-verb-type">
                 <SelectValue />

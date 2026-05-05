@@ -42,7 +42,7 @@ export function FoldersDashboard() {
     onSuccess: () => utils.folders.list.invalidate(),
   });
 
-  const editing = editingId ? (folders ?? []).find((f) => f.id === editingId) ?? null : null;
+  const editing = editingId ? ((folders ?? []).find((f) => f.id === editingId) ?? null) : null;
   const hasFolders = (folders?.length ?? 0) > 0;
 
   return (

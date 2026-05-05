@@ -185,11 +185,7 @@ export function PracticeSession({ categoryId, categoryIds, classes, practiceLimi
           </div>
 
           <div className="flex items-stretch gap-2 sm:gap-3">
-            <NavButton
-              direction="prev"
-              onClick={handlePrev}
-              disabled={!canGoPrev}
-            />
+            <NavButton direction="prev" onClick={handlePrev} disabled={!canGoPrev} />
             <div className="min-w-0 flex-1">
               <FlipCard
                 front={current?.front ?? ''}
@@ -206,17 +202,13 @@ export function PracticeSession({ categoryId, categoryIds, classes, practiceLimi
                 // Cast: backLanguage is widened to `string | null` from the wire,
                 // but on the server we only ever store BackLanguageValue values.
                 backLanguage={
-                  ((current?.category?.backLanguage ?? data?.category?.backLanguage ?? null) as
-                    | BackLanguageValue
-                    | null)
+                  (current?.category?.backLanguage ??
+                    data?.category?.backLanguage ??
+                    null) as BackLanguageValue | null
                 }
               />
             </div>
-            <NavButton
-              direction="next"
-              onClick={handleNext}
-              disabled={!canGoNext}
-            />
+            <NavButton direction="next" onClick={handleNext} disabled={!canGoNext} />
           </div>
 
           {flipped ? (
@@ -260,7 +252,7 @@ function NavButton({
       className={cn(
         'bg-background hover:bg-muted focus:ring-ring inline-flex w-10 shrink-0 items-center justify-center self-stretch rounded-md border transition sm:w-12',
         'focus:outline-none focus:ring-2 focus:ring-offset-1',
-        'disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-background',
+        'disabled:hover:bg-background disabled:cursor-not-allowed disabled:opacity-30',
       )}
     >
       <Icon className="h-5 w-5" />
@@ -330,7 +322,7 @@ function FlipCard({
             ) : null}
             <p className="text-xl font-bold leading-snug">{back}</p>
             {backExamples.length > 0 ? (
-              <ul className="space-y-1 w-fit text-left  divide-y divide-gray-200">
+              <ul className="w-fit space-y-1 divide-y divide-gray-200 text-left">
                 {backExamples.map((ex, i) => (
                   <li key={i} className="text-base">
                     {ex}
@@ -348,9 +340,9 @@ function FlipCard({
               languageCode={backLanguage}
             />
           ) : null}
-               {pronunciation && (
-              <p className="text-muted-foreground text-right italic mt-auto">[{pronunciation}]</p>
-            )}
+          {pronunciation && (
+            <p className="text-muted-foreground mt-auto text-right italic">[{pronunciation}]</p>
+          )}
         </Card>
       </div>
     </button>
@@ -560,7 +552,9 @@ function EmptyQueue({
         <div className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full">
           <CheckCircle2 className="h-6 w-6" />
         </div>
-        <div className="text-lg font-semibold">{deckIsEmpty ? emptyTitle : 'Nothing due right now'}</div>
+        <div className="text-lg font-semibold">
+          {deckIsEmpty ? emptyTitle : 'Nothing due right now'}
+        </div>
         <p className="text-muted-foreground max-w-sm text-sm">
           {deckIsEmpty
             ? "There's nothing here to practice yet. Add some cards to get started."

@@ -7,7 +7,16 @@ import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Loader2, Pencil, Play, Plus, Trash2, X } from 'lucide-react';
 
-import { BACK_LANGUAGES, type BackLanguageValue, CategoryUpdateInput, FlashcardUpdateInput, GENDER_OPTIONS, type GenderValue, VERB_TYPE_OPTIONS, type VerbTypeValue } from '@ensemble/types';
+import {
+  BACK_LANGUAGES,
+  type BackLanguageValue,
+  CategoryUpdateInput,
+  FlashcardUpdateInput,
+  GENDER_OPTIONS,
+  type GenderValue,
+  VERB_TYPE_OPTIONS,
+  type VerbTypeValue,
+} from '@ensemble/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -243,11 +252,7 @@ export function CategoryDetail({ categoryId }: Props) {
       )}
 
       <div className="flex flex-wrap gap-2 border-t pt-6">
-        <Button
-          variant="ghost"
-          onClick={() => setEditDeckOpen(true)}
-          disabled={!category}
-        >
+        <Button variant="ghost" onClick={() => setEditDeckOpen(true)} disabled={!category}>
           <Pencil className="h-4 w-4" />
           Edit deck
         </Button>
@@ -453,7 +458,9 @@ function EditCardDialog({
       setBackExamples(card.backExamples);
       setWordClass(card.class ?? null);
       setGender(((card as { gender?: string | null }).gender as GenderValue | null) ?? null);
-      setVerbType(((card as { verb_type?: string | null }).verb_type as VerbTypeValue | null) ?? null);
+      setVerbType(
+        ((card as { verb_type?: string | null }).verb_type as VerbTypeValue | null) ?? null,
+      );
       setPronunciation((card as { pronunciation?: string | null }).pronunciation ?? '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -530,7 +537,7 @@ function EditCardDialog({
 
   return (
     <Dialog open onOpenChange={(o) => (o ? null : onClose())}>
-      <DialogContent className="overflow-auto max-h-[80dvh]">
+      <DialogContent className="max-h-[80dvh] overflow-auto">
         <DialogHeader>
           <DialogTitle>Edit card</DialogTitle>
         </DialogHeader>
@@ -597,7 +604,7 @@ function EditCardDialog({
             <Label htmlFor="edit-card-gender">Gender (optional)</Label>
             <Select
               value={gender ?? NO_GENDER}
-              onValueChange={(v) => setGender(v === NO_GENDER ? null : v as GenderValue)}
+              onValueChange={(v) => setGender(v === NO_GENDER ? null : (v as GenderValue))}
             >
               <SelectTrigger id="edit-card-gender">
                 <SelectValue />
@@ -617,7 +624,7 @@ function EditCardDialog({
             <Label htmlFor="edit-card-verb-type">Verb type (optional)</Label>
             <Select
               value={verbType ?? NO_VERB_TYPE}
-              onValueChange={(v) => setVerbType(v === NO_VERB_TYPE ? null : v as VerbTypeValue)}
+              onValueChange={(v) => setVerbType(v === NO_VERB_TYPE ? null : (v as VerbTypeValue))}
             >
               <SelectTrigger id="edit-card-verb-type">
                 <SelectValue />
@@ -834,10 +841,7 @@ function EditCategoryDialog({
           <DialogTitle>Edit deck</DialogTitle>
           <DialogDescription>Update the deck name, color, and audio language.</DialogDescription>
         </DialogHeader>
-        <form
-          onSubmit={form.handleSubmit((values) => update.mutate(values))}
-          className="space-y-4"
-        >
+        <form onSubmit={form.handleSubmit((values) => update.mutate(values))} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="edit-deck-name">Name</Label>
             <Input

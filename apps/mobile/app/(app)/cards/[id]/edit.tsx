@@ -125,9 +125,7 @@ export default function EditCardScreen() {
       setBackExamples(card.backExamples ?? []);
       setGender(card.gender ?? null);
       setVerbType(card.verb_type ?? null);
-      setPronunciation(
-        (card as { pronunciation?: string | null }).pronunciation ?? '',
-      );
+      setPronunciation((card as { pronunciation?: string | null }).pronunciation ?? '');
       setHydrated(true);
     }
   }, [card, hydrated]);

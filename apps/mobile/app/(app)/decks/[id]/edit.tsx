@@ -159,10 +159,7 @@ export default function EditDeckScreen() {
                 Off keeps the deck private to you. On makes it public.
               </Text>
             </View>
-            <Switch
-              value={!isPrivate}
-              onValueChange={(checked) => setIsPrivate(!checked)}
-            />
+            <Switch value={!isPrivate} onValueChange={(checked) => setIsPrivate(!checked)} />
           </View>
         </View>
 
