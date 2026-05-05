@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { trpc } from '@/lib/trpc/client';
 
 /**
@@ -24,6 +25,7 @@ export function SettingsView() {
   const { data: me, isLoading } = trpc.auth.me.useQuery();
 
   const [name, setName] = useState('');
+  const [allowPublicUser, setAllowPublicUser] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
@@ -36,7 +38,11 @@ export function SettingsView() {
     }
   }, [me?.name]);
 
-  const updateName = trpc.auth.updateName.useMutation({
+  useEffect(() => {
+    setAllowPublicUser(me?.private === false);
+  }, [me?.private]);
+
+  const updateSettings = trpc.auth.updateSettings.useMutation({
     onSuccess: () => {
       utils.auth.me.invalidate();
       utils.auth.getSession.invalidate();
@@ -51,13 +57,15 @@ export function SettingsView() {
   });
 
   const trimmed = name.trim();
-  const dirty = trimmed.length > 0 && trimmed !== (me?.name ?? '');
+  const dirty =
+    trimmed.length > 0 &&
+    (trimmed !== (me?.name ?? '') || allowPublicUser !== (me?.private === false));
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (!dirty) return;
-    updateName.mutate({ name: trimmed });
+    updateSettings.mutate({ name: trimmed, private: !allowPublicUser });
   }
 
   return (
@@ -114,9 +122,29 @@ export function SettingsView() {
                 </p>
               </div>
 
+              <div className="bg-muted/30 flex items-start justify-between gap-4 rounded-md border p-4">
+                <div className="space-y-1">
+                  <Label htmlFor="settings-public" className="cursor-pointer">
+                    Allow public user
+                  </Label>
+                  <p className="text-muted-foreground text-sm">
+                    If this switch is turned on, your profile will be public for other users to see.
+                  </p>
+                </div>
+                <Switch
+                  id="settings-public"
+                  checked={allowPublicUser}
+                  onCheckedChange={(checked) => {
+                    setAllowPublicUser(checked);
+                    setError(null);
+                    setSavedAt(null);
+                  }}
+                />
+              </div>
+
               <div className="flex justify-end">
-                <Button type="submit" disabled={!dirty || updateName.isPending}>
-                  {updateName.isPending ? 'Saving…' : 'Save changes'}
+                <Button type="submit" disabled={!dirty || updateSettings.isPending}>
+                  {updateSettings.isPending ? 'Saving…' : 'Save changes'}
                 </Button>
               </div>
             </form>
