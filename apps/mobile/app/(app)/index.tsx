@@ -77,7 +77,10 @@ export default function DecksScreen() {
               /* Aggregate "All decks" entry. Visually distinct from real decks
                   (dashed border, library icon, bold label) so it reads as a
                   meta-entry rather than a deck named "All decks". */
-              <AllDecksEntry />
+              <View className="gap-3">
+                <AllDecksEntry />
+                <MoreDecksEntry />
+              </View>
             ) : null}
           </View>
         }
@@ -172,6 +175,28 @@ function AllDecksEntry() {
             <Text className={`text-sm ${due > 0 ? 'text-primary font-medium' : 'text-slate-500'}`}>
               {due} due
             </Text>
+          </View>
+        </Card>
+      </Pressable>
+    </Link>
+  );
+}
+
+function MoreDecksEntry() {
+  return (
+    <Link href="/more" asChild>
+      <Pressable className="active:opacity-70">
+        <Card className="border-2 border-dashed border-slate-300 p-4">
+          <View className="flex-row items-center gap-3">
+            <View className="bg-primary/10 h-10 w-10 items-center justify-center rounded-md">
+              <Text className="text-primary text-lg font-bold">◎</Text>
+            </View>
+            <Text className="flex-1 text-lg font-bold text-slate-900" numberOfLines={1}>
+              More decks
+            </Text>
+          </View>
+          <View className="mt-3 flex-row gap-4">
+            <Text className="text-sm text-slate-500">Explore public decks from other users</Text>
           </View>
         </Card>
       </Pressable>

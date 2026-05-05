@@ -36,6 +36,14 @@ export default function EditDeckScreen() {
 
   const { data: category, isLoading } = trpc.categories.byId.useQuery({ id: categoryId });
 
+  useEffect(() => {
+    if (category && category.isOwner === false) {
+      Alert.alert('Read-only deck', 'You can only edit decks that you own.', [
+        { text: 'OK', onPress: () => router.replace(`/decks/${categoryId}`) },
+      ]);
+    }
+  }, [category, router, categoryId]);
+
   // Only surface the audio-language picker if the server can actually call
   // Google Cloud TTS — otherwise the option would be a dead end.
   const { data: ttsAvailability } = trpc.tts.isAvailable.useQuery();
@@ -89,7 +97,7 @@ export default function EditDeckScreen() {
     update.mutate(parsed.data);
   }
 
-  if (isLoading || !category) {
+  if (isLoading || !category || category.isOwner === false) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#3b82f6" />

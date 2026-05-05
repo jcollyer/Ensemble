@@ -31,7 +31,11 @@ export default function DeckDetailScreen() {
 
   const { data: category } = trpc.categories.byId.useQuery({ id: categoryId });
   const cardsQuery = trpc.flashcards.listByCategory.useQuery({ categoryId });
-  const statsQuery = trpc.practice.stats.useQuery({ categoryId });
+  const isOwner = category?.isOwner ?? false;
+  const statsQuery = trpc.practice.stats.useQuery(
+    { categoryId },
+    { enabled: category?.isOwner === true },
+  );
 
   const remove = trpc.flashcards.delete.useMutation({
     onSuccess: () => {
@@ -109,9 +113,17 @@ export default function DeckDetailScreen() {
             </View>
 
             <View className="flex-row gap-2">
-              <Stat label="Total" value={stats?.total ?? cards.length} />
-              <Stat label="Due now" value={stats?.due ?? 0} highlight={(stats?.due ?? 0) > 0} />
-              <Stat label="Mastered" value={stats?.mastered ?? 0} />
+              {isOwner ? (
+                <>
+                  <Stat label="Total" value={stats?.total ?? cards.length} />
+                  <Stat
+                    label="Due now"
+                    value={stats?.due ?? 0}
+                    highlight={(stats?.due ?? 0) > 0}
+                  />
+                  <Stat label="Mastered" value={stats?.mastered ?? 0} />
+                </>
+              ) : null}
             </View>
 
             <View className="flex-row gap-2">
@@ -120,20 +132,24 @@ export default function DeckDetailScreen() {
                   variant="outline"
                   onPress={() => router.push(`/decks/${categoryId}/practice`)}
                 >
-                  {`Practice${stats?.due ? ` (${stats.due})` : ''}`}
+                  {`Practice${isOwner && stats?.due ? ` (${stats.due})` : ''}`}
                 </Button>
               </View>
-              <View className="flex-1">
-                <Button onPress={() => router.push(`/new-card?categoryId=${categoryId}`)}>
-                  + New card
-                </Button>
-              </View>
+              {isOwner ? (
+                <View className="flex-1">
+                  <Button onPress={() => router.push(`/new-card?categoryId=${categoryId}`)}>
+                    + New card
+                  </Button>
+                </View>
+              ) : null}
             </View>
 
-            <DeckAudioLanguage
-              categoryId={categoryId}
-              backLanguage={(category?.backLanguage ?? null) as BackLanguageValue | null}
-            />
+            {isOwner ? (
+              <DeckAudioLanguage
+                categoryId={categoryId}
+                backLanguage={(category?.backLanguage ?? null) as BackLanguageValue | null}
+              />
+            ) : null}
           </View>
         }
         renderItem={({ item }) => (
@@ -169,46 +185,56 @@ export default function DeckDetailScreen() {
               ) : null}
               <View className="mt-1 flex-row flex-wrap items-center gap-x-2 gap-y-1">
                 {item.class ? <ClassBadge value={item.class} /> : null}
-                <Text className="text-xs text-slate-400">
-                  Next: {formatRelative(item.nextReview)}
-                </Text>
-                <Text className="text-xs text-slate-400">•</Text>
-                <Text className="text-xs text-slate-400">{item.repetitions} reps</Text>
+                {isOwner ? (
+                  <>
+                    <Text className="text-xs text-slate-400">
+                      Next: {formatRelative(item.nextReview)}
+                    </Text>
+                    <Text className="text-xs text-slate-400">•</Text>
+                    <Text className="text-xs text-slate-400">{item.repetitions} reps</Text>
+                  </>
+                ) : null}
               </View>
             </View>
-            <View className="flex-row">
-              <Pressable
-                onPress={() => router.push(`/cards/${item.id}/edit`)}
-                hitSlop={8}
-                className="px-2 py-1"
-              >
-                <Text className="text-primary text-sm font-medium">Edit</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => confirmDeleteCard(item.id)}
-                hitSlop={8}
-                className="px-2 py-1"
-              >
-                <Text className="text-destructive text-sm font-medium">Delete</Text>
-              </Pressable>
-            </View>
+            {isOwner ? (
+              <View className="flex-row">
+                <Pressable
+                  onPress={() => router.push(`/cards/${item.id}/edit`)}
+                  hitSlop={8}
+                  className="px-2 py-1"
+                >
+                  <Text className="text-primary text-sm font-medium">Edit</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => confirmDeleteCard(item.id)}
+                  hitSlop={8}
+                  className="px-2 py-1"
+                >
+                  <Text className="text-destructive text-sm font-medium">Delete</Text>
+                </Pressable>
+              </View>
+            ) : null}
           </Card>
         )}
         ListEmptyComponent={
           <Card className="items-center gap-3 border-dashed p-8">
             <Text className="text-lg font-semibold text-slate-900">No cards yet</Text>
             <Text className="text-center text-sm text-slate-500">
-              Add your first card to start practicing this deck.
+              {isOwner
+                ? 'Add your first card to start practicing this deck.'
+                : 'This public deck does not have any cards yet.'}
             </Text>
-            <View className="mt-2 w-full">
-              <Button onPress={() => router.push(`/decks/${categoryId}/new-card`)}>
-                Add a card
-              </Button>
-            </View>
+            {isOwner ? (
+              <View className="mt-2 w-full">
+                <Button onPress={() => router.push(`/decks/${categoryId}/new-card`)}>
+                  Add a card
+                </Button>
+              </View>
+            ) : null}
           </Card>
         }
         ListFooterComponent={
-          cards.length > 0 ? (
+          cards.length > 0 && isOwner ? (
             <View className="mt-8 flex-row items-center justify-center gap-6 py-3">
               <Pressable onPress={confirmDeleteDeck} hitSlop={8} className="active:opacity-70">
                 <Text className="text-destructive text-sm font-medium">Delete deck</Text>
@@ -228,7 +254,7 @@ export default function DeckDetailScreen() {
             refreshing={cardsQuery.isRefetching}
             onRefresh={() => {
               cardsQuery.refetch();
-              statsQuery.refetch();
+              if (isOwner) statsQuery.refetch();
             }}
             tintColor="#3b82f6"
           />

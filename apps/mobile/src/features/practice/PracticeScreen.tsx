@@ -57,6 +57,8 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
   const [reviewed, setReviewed] = useState(0);
 
   const cards = data?.cards ?? [];
+  const isReadOnlyPublicDeck = Boolean(categoryId && data?.category && !data.category.isOwner);
+  const canRate = !isReadOnlyPublicDeck;
   const current = cards[index];
   const backLanguage = (current?.category?.backLanguage ??
     data?.category?.backLanguage ??
@@ -66,7 +68,7 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
   const backLabel = isAllCards ? 'Back to all cards' : 'Back to deck';
 
   function handleRate(quality: number) {
-    if (!current) return;
+    if (!current || !canRate) return;
     submit.mutate({ cardId: current.id, confidence: quality });
     setReviewed((n) => n + 1);
     setFlipped(false);
@@ -93,7 +95,7 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
 
   // Refresh counts when the session wraps up.
   useEffect(() => {
-    if (done) {
+    if (done && canRate) {
       utils.categories.list.invalidate();
       utils.practice.stats.invalidate({ categoryId });
       if (categoryId) {
@@ -126,7 +128,8 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
       <ScrollView contentContainerStyle={{ padding: 16, flexGrow: 1 }}>
         {cards.length === 0 ? (
           <EmptyQueue
-            practiceAll={practiceAll}
+            practiceAll={isReadOnlyPublicDeck ? true : practiceAll}
+            canPracticeAnyway={!isReadOnlyPublicDeck}
             backLabel={backLabel}
             emptyTitle={isAllCards ? 'No cards to practice' : 'No cards in this deck'}
             onBack={() => router.push(backTarget as never)}
@@ -134,7 +137,8 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
           />
         ) : done ? (
           <SessionSummary
-            reviewed={reviewed}
+            reviewed={canRate ? reviewed : cards.length}
+            canRate={canRate}
             backLabel={backLabel}
             onBack={() => router.push(backTarget as never)}
             onAgain={() => {
@@ -146,6 +150,7 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
                 categoryIds: categoryIds?.length ? categoryIds : undefined,
                 classes: classes?.length ? classes : undefined,
                 limit: practiceLimit ?? 20,
+                includeAll: practiceAll,
               });
             }}
           />
@@ -220,8 +225,14 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
               <NavButton direction="next" onPress={handleNext} disabled={!canGoNext} />
             </View>
 
-            {flipped ? (
+            {flipped && canRate ? (
               <RatingButtons onRate={handleRate} />
+            ) : flipped ? (
+              <View className="mt-6">
+                <Text className="text-center text-sm text-slate-500">
+                  Public deck practice is read-only. Use the arrow buttons to move between cards.
+                </Text>
+              </View>
             ) : (
               <View className="mt-6">
                 <Button size="lg" onPress={() => setFlipped(true)}>
@@ -296,12 +307,14 @@ function RatingButtons({ onRate }: { onRate: (q: number) => void }) {
 
 function EmptyQueue({
   practiceAll,
+  canPracticeAnyway,
   backLabel,
   emptyTitle,
   onBack,
   onPracticeAnyway,
 }: {
   practiceAll: boolean;
+  canPracticeAnyway: boolean;
   backLabel: string;
   emptyTitle: string;
   onBack: () => void;
@@ -326,7 +339,9 @@ function EmptyQueue({
         <Button variant="outline" onPress={onBack}>
           {backLabel}
         </Button>
-        {!deckIsEmpty && <Button onPress={onPracticeAnyway}>Practice anyway</Button>}
+        {!deckIsEmpty && canPracticeAnyway ? (
+          <Button onPress={onPracticeAnyway}>Practice anyway</Button>
+        ) : null}
       </View>
     </Card>
   );
@@ -484,11 +499,13 @@ function AudioButton({
 
 function SessionSummary({
   reviewed,
+  canRate,
   backLabel,
   onBack,
   onAgain,
 }: {
   reviewed: number;
+  canRate: boolean;
   backLabel: string;
   onBack: () => void;
   onAgain: () => void;
@@ -500,8 +517,8 @@ function SessionSummary({
       </View>
       <Text className="text-lg font-semibold text-slate-900">Session complete</Text>
       <Text className="text-center text-sm text-slate-500">
-        You reviewed <Text className="font-semibold">{reviewed}</Text>{' '}
-        {reviewed === 1 ? 'card' : 'cards'}. Nice.
+        {canRate ? 'You reviewed ' : 'You went through '}
+        <Text className="font-semibold">{reviewed}</Text> {reviewed === 1 ? 'card' : 'cards'}.
       </Text>
       <View className="mt-2 w-full flex-row gap-2">
         <View className="flex-1">
