@@ -196,6 +196,57 @@ function extractGender(section: string, lang: DictionaryLang): 'male' | 'female'
  * template like `{{es-IPA}}`, so reading from HTML side-steps the template
  * expansion problem.
  */
+/**
+ * Map Wiktionary's level-3 part-of-speech headings to the app's
+ * WORD_CLASS_VALUES. Headings we don't recognize (e.g. "Numeral", "Particle",
+ * "Letter") fall through to `null`, which the UI surfaces as "no value
+ * returned" — better to leave the dropdown alone than coerce something that
+ * doesn't fit the app's vocabulary.
+ *
+ * Iteration order matches Wiktionary's typical heading ordering, but
+ * `extractWordClass` returns the first match it finds in the section, so
+ * what matters is each entry being individually correct rather than the
+ * overall list ordering.
+ */
+const POS_TO_WORDCLASS: ReadonlyArray<readonly [RegExp, string]> = [
+  // Proper noun collapses to noun — the app doesn't model proper nouns
+  // separately, and getting "noun" is more useful than "no value returned".
+  [/^proper\s*nouns?$/i, 'noun'],
+  [/^nouns?$/i, 'noun'],
+  [/^pronouns?$/i, 'pronoun'],
+  [/^verbs?$/i, 'verb'],
+  [/^adjectives?$/i, 'adjective'],
+  [/^adverbs?$/i, 'adverb'],
+  [/^prepositions?$/i, 'preposition'],
+  // Postpositions are rare in en/fr/es/de but Wiktionary uses them and the
+  // closest match in our vocabulary is "preposition".
+  [/^postpositions?$/i, 'preposition'],
+  [/^conjunctions?$/i, 'conjunction'],
+  [/^interjections?$/i, 'interjection'],
+  [/^determiners?$/i, 'determiner'],
+  // Articles are a subtype of determiner — collapse so the app's
+  // "Determiner/Article" dropdown entry actually gets selected.
+  [/^articles?$/i, 'determiner'],
+];
+
+/**
+ * Walk the level-3 headings in a language section and return the canonical
+ * word class for the first one we recognize. Wiktionary occasionally
+ * disambiguates with trailing indices ("===Noun 1===", "===Noun 2===") for
+ * homograph entries — strip those before matching.
+ */
+function extractWordClass(section: string): string | null {
+  const re = /(?:^|\n)===\s*([^=\n]+?)\s*===\s*(?:\n|$)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(section)) !== null) {
+    const heading = (m[1] ?? '').replace(/\s*\d+\s*$/, '').trim();
+    for (const [pattern, value] of POS_TO_WORDCLASS) {
+      if (pattern.test(heading)) return value;
+    }
+  }
+  return null;
+}
+
 function extractIpaFromHtml(html: string, heading: string): string | null {
   // Modern Wiktionary HTML:
   //   <div class="mw-heading mw-heading2"><h2 id="French">French</h2>…</div>
@@ -235,6 +286,24 @@ export const dictionaryRouter = router({
     const gender = extractGender(section, input.target);
     if (!gender) return { kind: 'no_value' as const };
     return { kind: 'ok' as const, gender };
+  }),
+
+  /** Best-effort part-of-speech lookup. Returns one of the canonical
+   *  WORD_CLASS_VALUES (noun, verb, adjective, …) when Wiktionary has a
+   *  matching level-3 heading, otherwise a soft miss. Picks the first
+   *  recognized POS heading in the language section, which matches
+   *  Wiktionary's convention of listing the most common interpretation
+   *  first. */
+  getCategory: protectedProcedure.input(Input).mutation(async ({ input }) => {
+    if (isMultipleWords(input.word)) return { kind: 'multiple_words' as const };
+    const page = await lookupWord(input.word);
+    if (!page) return { kind: 'not_in_dictionary' as const };
+    const heading = SECTION_HEADINGS[input.target];
+    const section = extractLanguageSection(page.wikitext, heading);
+    if (!section) return { kind: 'no_value' as const };
+    const category = extractWordClass(section);
+    if (!category) return { kind: 'no_value' as const };
+    return { kind: 'ok' as const, category };
   }),
 
   getPronunciation: protectedProcedure.input(Input).mutation(async ({ input }) => {

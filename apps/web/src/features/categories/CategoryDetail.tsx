@@ -491,8 +491,13 @@ function EditCardDialog({
     tone: 'error' | 'info';
     text: string;
   } | null>(null);
+  const [classLookupMsg, setClassLookupMsg] = useState<{
+    tone: 'error' | 'info';
+    text: string;
+  } | null>(null);
   const lookupGender = trpc.dictionary.getGender.useMutation();
   const lookupPronunciation = trpc.dictionary.getPronunciation.useMutation();
+  const lookupCategory = trpc.dictionary.getCategory.useMutation();
 
   // Sync form + example state when the card data loads.
   useEffect(() => {
@@ -610,6 +615,25 @@ function EditCardDialog({
     );
   }
 
+  function handleGetCategory() {
+    if (!canLookup) return;
+    setClassLookupMsg(null);
+    lookupCategory.mutate(
+      { word: trimmedBack, target: dictionaryTarget },
+      {
+        onSuccess: (res) => {
+          if (res.kind === 'ok') {
+            setWordClass(res.category);
+            setClassLookupMsg(null);
+          } else {
+            setClassLookupMsg({ tone: 'info', text: describeMiss(res.kind) });
+          }
+        },
+        onError: (err) => setClassLookupMsg({ tone: 'error', text: err.message }),
+      },
+    );
+  }
+
   function handleGetPronunciation() {
     if (!canLookup) return;
     setPronLookupMsg(null);
@@ -691,7 +715,37 @@ function EditCardDialog({
 
           <div className="space-y-2">
             <Label htmlFor="edit-card-class">Category (optional)</Label>
-            <ClassSelect id="edit-card-class" value={wordClass} onChange={setWordClass} />
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <ClassSelect id="edit-card-class" value={wordClass} onChange={setWordClass} />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGetCategory}
+                disabled={!canLookup || lookupCategory.isPending}
+                title="Look up part of speech from the dictionary using the Back word"
+              >
+                {lookupCategory.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                Get category
+              </Button>
+            </div>
+            {classLookupMsg ? (
+              <p
+                className={
+                  classLookupMsg.tone === 'error'
+                    ? 'text-destructive text-xs'
+                    : 'text-muted-foreground text-xs'
+                }
+              >
+                {classLookupMsg.text}
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">

@@ -232,8 +232,13 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
     tone: 'error' | 'info';
     text: string;
   } | null>(null);
+  const [classLookupMsg, setClassLookupMsg] = useState<{
+    tone: 'error' | 'info';
+    text: string;
+  } | null>(null);
   const lookupGender = trpc.dictionary.getGender.useMutation();
   const lookupPronunciation = trpc.dictionary.getPronunciation.useMutation();
+  const lookupCategory = trpc.dictionary.getCategory.useMutation();
 
   // Reset form state when the dialog closes so the next open starts clean.
   // We deliberately do NOT reset translateOn / target — those are sticky.
@@ -254,8 +259,10 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
       setPronunciation('');
       setGenderLookupMsg(null);
       setPronLookupMsg(null);
+      setClassLookupMsg(null);
       lookupGender.reset();
       lookupPronunciation.reset();
+      lookupCategory.reset();
       lastTranslatedExamplesRef.current.clear();
     }
     // form / translate are stable refs from their hooks — don't include them
@@ -375,6 +382,25 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
     );
   }
 
+  function handleGetCategory() {
+    if (!canLookup) return;
+    setClassLookupMsg(null);
+    lookupCategory.mutate(
+      { word: trimmedBack, target: dictionaryTarget },
+      {
+        onSuccess: (res) => {
+          if (res.kind === 'ok') {
+            setWordClass(res.category);
+            setClassLookupMsg(null);
+          } else {
+            setClassLookupMsg({ tone: 'info', text: describeMiss(res.kind) });
+          }
+        },
+        onError: (err) => setClassLookupMsg({ tone: 'error', text: err.message }),
+      },
+    );
+  }
+
   function handleGetPronunciation() {
     if (!canLookup) return;
     setPronLookupMsg(null);
@@ -484,7 +510,37 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
           ) : null}
           <div className="space-y-2">
             <Label htmlFor="card-class">Category (optional)</Label>
-            <ClassSelect id="card-class" value={wordClass} onChange={setWordClass} />
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <ClassSelect id="card-class" value={wordClass} onChange={setWordClass} />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGetCategory}
+                disabled={!canLookup || lookupCategory.isPending}
+                title="Look up part of speech from the dictionary using the Back word"
+              >
+                {lookupCategory.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                Get category
+              </Button>
+            </div>
+            {classLookupMsg ? (
+              <p
+                className={
+                  classLookupMsg.tone === 'error'
+                    ? 'text-destructive text-xs'
+                    : 'text-muted-foreground text-xs'
+                }
+              >
+                {classLookupMsg.text}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="card-gender">Gender (optional)</Label>
