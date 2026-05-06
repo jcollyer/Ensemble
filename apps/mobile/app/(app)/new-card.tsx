@@ -352,7 +352,7 @@ export default function NewCardScreen() {
       backExamples,
       class: wordClass,
       gender: gender ?? undefined,
-      verb_type: verbType ?? undefined,
+      verb_type: wordClass === 'verb' ? (verbType ?? undefined) : null,
       pronunciation: pronunciation.trim() ? pronunciation.trim() : null,
     });
     if (!parsed.success) {
@@ -537,6 +537,36 @@ export default function NewCardScreen() {
             <Text className="text-primary text-sm font-medium">+ Add example</Text>
           </Pressable>
 
+          {/* Pronunciation hint (optional) — IPA, romanization, etc. */}
+          <View className="gap-1.5">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-sm font-medium text-slate-700">Pronunciation (optional)</Text>
+              <Button
+                variant="outline"
+                size="sm"
+                onPress={handleGetPronunciation}
+                disabled={!canLookup || lookupPronunciation.isPending}
+                loading={lookupPronunciation.isPending}
+              >
+                Get pronunciation
+              </Button>
+            </View>
+            <TextField
+              placeholder="e.g. /bɔ̃.ʒuʁ/ or bohn-zhoor"
+              value={pronunciation}
+              onChangeText={setPronunciation}
+            />
+            {pronLookupMsg ? (
+              <Text
+                className={`text-xs ${
+                  pronLookupMsg.tone === 'error' ? 'text-destructive' : 'text-slate-500'
+                }`}
+              >
+                {pronLookupMsg.text}
+              </Text>
+            ) : null}
+          </View>
+
           {/* Word class picker */}
           <View className="gap-2">
             <View className="flex-row items-center justify-between">
@@ -628,80 +658,52 @@ export default function NewCardScreen() {
             </View>
           </View>
 
-          {/* Verb type picker */}
-          <View className="gap-2">
-            <Text className="text-sm font-medium text-slate-700">Verb type (optional)</Text>
-            <View className="flex-row gap-2">
-              <Pressable
-                onPress={() => setVerbType(null)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: verbType === null }}
-                className={`flex-1 rounded-md border px-3 py-2 active:opacity-80 ${
-                  verbType === null ? 'border-primary bg-primary' : 'border-slate-200 bg-white'
-                }`}
-              >
-                <Text
-                  className={`text-center text-sm font-semibold ${
-                    verbType === null ? 'text-white' : 'text-slate-700'
+          {/* Verb type picker — only shown when the category is "verb". */}
+          {wordClass === 'verb' ? (
+            <View className="gap-2">
+              <Text className="text-sm font-medium text-slate-700">Verb type (optional)</Text>
+              <View className="flex-row gap-2">
+                <Pressable
+                  onPress={() => setVerbType(null)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: verbType === null }}
+                  className={`flex-1 rounded-md border px-3 py-2 active:opacity-80 ${
+                    verbType === null ? 'border-primary bg-primary' : 'border-slate-200 bg-white'
                   }`}
                 >
-                  None
-                </Text>
-              </Pressable>
-              {VERB_TYPE_OPTIONS.map((opt) => {
-                const active = verbType === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => setVerbType(opt.value)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
-                    className={`flex-1 rounded-md border px-3 py-2 active:opacity-80 ${
-                      active ? 'border-primary bg-primary' : 'border-slate-200 bg-white'
+                  <Text
+                    className={`text-center text-sm font-semibold ${
+                      verbType === null ? 'text-white' : 'text-slate-700'
                     }`}
                   >
-                    <Text
-                      className={`text-center text-sm font-semibold ${
-                        active ? 'text-white' : 'text-slate-700'
+                    None
+                  </Text>
+                </Pressable>
+                {VERB_TYPE_OPTIONS.map((opt) => {
+                  const active = verbType === opt.value;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => setVerbType(opt.value)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      className={`flex-1 rounded-md border px-3 py-2 active:opacity-80 ${
+                        active ? 'border-primary bg-primary' : 'border-slate-200 bg-white'
                       }`}
                     >
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+                      <Text
+                        className={`text-center text-sm font-semibold ${
+                          active ? 'text-white' : 'text-slate-700'
+                        }`}
+                      >
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
-          </View>
-
-          {/* Pronunciation hint (optional) — IPA, romanization, etc. */}
-          <View className="gap-1.5">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm font-medium text-slate-700">Pronunciation (optional)</Text>
-              <Button
-                variant="outline"
-                size="sm"
-                onPress={handleGetPronunciation}
-                disabled={!canLookup || lookupPronunciation.isPending}
-                loading={lookupPronunciation.isPending}
-              >
-                Get pronunciation
-              </Button>
-            </View>
-            <TextField
-              placeholder="e.g. /bɔ̃.ʒuʁ/ or bohn-zhoor"
-              value={pronunciation}
-              onChangeText={setPronunciation}
-            />
-            {pronLookupMsg ? (
-              <Text
-                className={`text-xs ${
-                  pronLookupMsg.tone === 'error' ? 'text-destructive' : 'text-slate-500'
-                }`}
-              >
-                {pronLookupMsg.text}
-              </Text>
-            ) : null}
-          </View>
+          ) : null}
         </View>
 
         <View className="mt-8 flex-row gap-3">
