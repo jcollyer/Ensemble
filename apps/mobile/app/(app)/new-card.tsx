@@ -17,6 +17,7 @@ import { FlashcardCreateInput, GENDER_OPTIONS, VERB_TYPE_OPTIONS } from '@ensemb
 
 import { Button } from '../../src/components/Button';
 import { TextField } from '../../src/components/TextField';
+import { WordClassPicker } from '../../src/components/WordClassPicker';
 import { useDebouncedValue } from '../../src/lib/hooks';
 import { trpc } from '../../src/lib/trpc';
 
@@ -100,13 +101,15 @@ export default function NewCardScreen() {
   const [backError, setBackError] = useState<string | undefined>();
   const [frontExamples, setFrontExamples] = useState<string[]>([]);
   const [backExamples, setBackExamples] = useState<string[]>([]);
+  // Word class (part of speech) — optional.
+  const [wordClass, setWordClass] = useState<string | null>(null);
   // Gender and verb type — optional.
   const [gender, setGender] = useState<string | null>(null);
   const [verbType, setVerbType] = useState<string | null>(null);
   // Optional pronunciation hint (e.g. IPA or romanization).
   const [pronunciation, setPronunciation] = useState('');
 
-  // Free Dictionary lookups. Each button keeps its own message slot so they
+  // Wiktionary lookups. Each button keeps its own message slot so they
   // never clobber each other.
   const [genderLookupMsg, setGenderLookupMsg] = useState<{
     tone: 'error' | 'info';
@@ -116,8 +119,13 @@ export default function NewCardScreen() {
     tone: 'error' | 'info';
     text: string;
   } | null>(null);
+  const [classLookupMsg, setClassLookupMsg] = useState<{
+    tone: 'error' | 'info';
+    text: string;
+  } | null>(null);
   const lookupGender = trpc.dictionary.getGender.useMutation();
   const lookupPronunciation = trpc.dictionary.getPronunciation.useMutation();
+  const lookupCategory = trpc.dictionary.getCategory.useMutation();
 
   // Translation state. `hydrated` gates the persist effect so the initial
   // defaults don't clobber stored prefs before the read completes.
@@ -145,6 +153,7 @@ export default function NewCardScreen() {
       setBack('');
       setFrontExamples([]);
       setBackExamples([]);
+      setWordClass(null);
       setPronunciation('');
       lastTranslatedRef.current = null;
       lastTranslatedExamplesRef.current.clear();
@@ -285,6 +294,25 @@ export default function NewCardScreen() {
     );
   }
 
+  function handleGetCategory() {
+    if (!canLookup) return;
+    setClassLookupMsg(null);
+    lookupCategory.mutate(
+      { word: trimmedBack, target: dictionaryTarget },
+      {
+        onSuccess: (res) => {
+          if (res.kind === 'ok') {
+            setWordClass(res.category);
+            setClassLookupMsg(null);
+          } else {
+            setClassLookupMsg({ tone: 'info', text: describeMiss(res.kind) });
+          }
+        },
+        onError: (err) => setClassLookupMsg({ tone: 'error', text: err.message }),
+      },
+    );
+  }
+
   function handleGetPronunciation() {
     if (!canLookup) return;
     setPronLookupMsg(null);
@@ -322,6 +350,7 @@ export default function NewCardScreen() {
       categoryId: selectedCategoryId,
       frontExamples,
       backExamples,
+      class: wordClass,
       gender: gender ?? undefined,
       verb_type: verbType ?? undefined,
       pronunciation: pronunciation.trim() ? pronunciation.trim() : null,
@@ -507,6 +536,32 @@ export default function NewCardScreen() {
           >
             <Text className="text-primary text-sm font-medium">+ Add example</Text>
           </Pressable>
+
+          {/* Word class picker */}
+          <View className="gap-2">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-sm font-medium text-slate-700">Category (optional)</Text>
+              <Button
+                variant="outline"
+                size="sm"
+                onPress={handleGetCategory}
+                disabled={!canLookup || lookupCategory.isPending}
+                loading={lookupCategory.isPending}
+              >
+                Get category
+              </Button>
+            </View>
+            <WordClassPicker value={wordClass} onChange={setWordClass} />
+            {classLookupMsg ? (
+              <Text
+                className={`text-xs ${
+                  classLookupMsg.tone === 'error' ? 'text-destructive' : 'text-slate-500'
+                }`}
+              >
+                {classLookupMsg.text}
+              </Text>
+            ) : null}
+          </View>
 
           {/* Gender picker */}
           <View className="gap-2">
