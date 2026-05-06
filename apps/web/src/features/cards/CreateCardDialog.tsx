@@ -432,7 +432,7 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
       backExamples,
       class: wordClass,
       gender: gender,
-      verb_type: verbType,
+      verb_type: wordClass === 'verb' ? verbType : null,
       pronunciation: pronunciation.trim() ? pronunciation.trim() : null,
     });
   });
@@ -508,108 +508,6 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
               ) : null}
             </div>
           ) : null}
-          <div className="space-y-2">
-            <Label htmlFor="card-class">Category (optional)</Label>
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <ClassSelect id="card-class" value={wordClass} onChange={setWordClass} />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleGetCategory}
-                disabled={!canLookup || lookupCategory.isPending}
-                title="Look up part of speech from the dictionary using the Back word"
-              >
-                {lookupCategory.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
-                )}
-                Get category
-              </Button>
-            </div>
-            {classLookupMsg ? (
-              <p
-                className={
-                  classLookupMsg.tone === 'error'
-                    ? 'text-destructive text-xs'
-                    : 'text-muted-foreground text-xs'
-                }
-              >
-                {classLookupMsg.text}
-              </p>
-            ) : null}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="card-gender">Gender (optional)</Label>
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <Select
-                  value={gender ?? NO_GENDER}
-                  onValueChange={(v) => setGender(v === NO_GENDER ? null : (v as GenderValue))}
-                >
-                  <SelectTrigger id="card-gender">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_GENDER}>None</SelectItem>
-                    {GENDER_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleGetGender}
-                disabled={!canLookup || lookupGender.isPending}
-                title="Look up gender from the dictionary using the Back word"
-              >
-                {lookupGender.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
-                )}
-                Get gender
-              </Button>
-            </div>
-            {genderLookupMsg ? (
-              <p
-                className={
-                  genderLookupMsg.tone === 'error'
-                    ? 'text-destructive text-xs'
-                    : 'text-muted-foreground text-xs'
-                }
-              >
-                {genderLookupMsg.text}
-              </p>
-            ) : null}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="card-verb-type">Verb type (optional)</Label>
-            <Select
-              value={verbType ?? NO_VERB_TYPE}
-              onValueChange={(v) => setVerbType(v === NO_VERB_TYPE ? null : (v as VerbTypeValue))}
-            >
-              <SelectTrigger id="card-verb-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_VERB_TYPE}>None</SelectItem>
-                {VERB_TYPE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="space-y-2">
             <Label htmlFor="front">Front</Label>
             <Textarea id="front" rows={2} {...form.register('front')} />
@@ -732,6 +630,112 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
               </p>
             ) : null}
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="card-class">Category (optional)</Label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <ClassSelect id="card-class" value={wordClass} onChange={setWordClass} />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGetCategory}
+                disabled={!canLookup || lookupCategory.isPending}
+                title="Look up part of speech from the dictionary using the Back word"
+              >
+                {lookupCategory.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                Get category
+              </Button>
+            </div>
+            {classLookupMsg ? (
+              <p
+                className={
+                  classLookupMsg.tone === 'error'
+                    ? 'text-destructive text-xs'
+                    : 'text-muted-foreground text-xs'
+                }
+              >
+                {classLookupMsg.text}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="card-gender">Gender (optional)</Label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <Select
+                  value={gender ?? NO_GENDER}
+                  onValueChange={(v) => setGender(v === NO_GENDER ? null : (v as GenderValue))}
+                >
+                  <SelectTrigger id="card-gender">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_GENDER}>None</SelectItem>
+                    {GENDER_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGetGender}
+                disabled={!canLookup || lookupGender.isPending}
+                title="Look up gender from the dictionary using the Back word"
+              >
+                {lookupGender.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                Get gender
+              </Button>
+            </div>
+            {genderLookupMsg ? (
+              <p
+                className={
+                  genderLookupMsg.tone === 'error'
+                    ? 'text-destructive text-xs'
+                    : 'text-muted-foreground text-xs'
+                }
+              >
+                {genderLookupMsg.text}
+              </p>
+            ) : null}
+          </div>
+          {wordClass === 'verb' ? (
+            <div className="space-y-2">
+              <Label htmlFor="card-verb-type">Verb type (optional)</Label>
+              <Select
+                value={verbType ?? NO_VERB_TYPE}
+                onValueChange={(v) =>
+                  setVerbType(v === NO_VERB_TYPE ? null : (v as VerbTypeValue))
+                }
+              >
+                <SelectTrigger id="card-verb-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_VERB_TYPE}>None</SelectItem>
+                  {VERB_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => props.onOpenChange(false)}>
               Cancel

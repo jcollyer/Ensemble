@@ -638,7 +638,7 @@ function EditCardDialog({
               backExamples,
               class: wordClass,
               gender,
-              verb_type: verbType,
+              verb_type: wordClass === 'verb' ? verbType : null,
               pronunciation: pronunciation.trim() ? pronunciation.trim() : null,
             });
           })}
@@ -692,6 +692,66 @@ function EditCardDialog({
                 <Plus className="h-3.5 w-3.5" />
                 Add example
               </Button>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-card-pronunciation">Pronunciation (optional)</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="edit-card-pronunciation"
+                value={pronunciation}
+                onChange={(e) => setPronunciation(e.target.value)}
+                placeholder="e.g. /bɔ̃.ʒuʁ/ or bohn-zhoor"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGetPronunciation}
+                disabled={!canLookup || lookupPronunciation.isPending}
+                title="Look up IPA from the dictionary using the Back word"
+              >
+                {lookupPronunciation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                Get pronunciation
+              </Button>
+            </div>
+            {pronLookupMsg ? (
+              <p
+                className={
+                  pronLookupMsg.tone === 'error'
+                    ? 'text-destructive text-xs'
+                    : 'text-muted-foreground text-xs'
+                }
+              >
+                {pronLookupMsg.text}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="back">Back</Label>
+            <Textarea id="back" rows={3} {...form.register('back')} />
+            {backExamples.length > 0 ? (
+              <div className="space-y-2">
+                {backExamples.map((val, i) => (
+                  <Input
+                    key={i}
+                    placeholder="Example…"
+                    value={val}
+                    onChange={(e) =>
+                      setBackExamples((prev) => {
+                        const next = [...prev];
+                        next[i] = e.target.value;
+                        return next;
+                      })
+                    }
+                  />
+                ))}
+              </div>
             ) : null}
           </div>
           <div className="space-y-2">
@@ -777,85 +837,29 @@ function EditCardDialog({
               </p>
             ) : null}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-card-verb-type">Verb type (optional)</Label>
-            <Select
-              value={verbType ?? NO_VERB_TYPE}
-              onValueChange={(v) => setVerbType(v === NO_VERB_TYPE ? null : (v as VerbTypeValue))}
-            >
-              <SelectTrigger id="edit-card-verb-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_VERB_TYPE}>None</SelectItem>
-                {VERB_TYPE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-card-pronunciation">Pronunciation (optional)</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="edit-card-pronunciation"
-                value={pronunciation}
-                onChange={(e) => setPronunciation(e.target.value)}
-                placeholder="e.g. /bɔ̃.ʒuʁ/ or bohn-zhoor"
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleGetPronunciation}
-                disabled={!canLookup || lookupPronunciation.isPending}
-                title="Look up IPA from the dictionary using the Back word"
-              >
-                {lookupPronunciation.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
-                )}
-                Get pronunciation
-              </Button>
-            </div>
-            {pronLookupMsg ? (
-              <p
-                className={
-                  pronLookupMsg.tone === 'error'
-                    ? 'text-destructive text-xs'
-                    : 'text-muted-foreground text-xs'
+          {wordClass === 'verb' ? (
+            <div className="space-y-2">
+              <Label htmlFor="edit-card-verb-type">Verb type (optional)</Label>
+              <Select
+                value={verbType ?? NO_VERB_TYPE}
+                onValueChange={(v) =>
+                  setVerbType(v === NO_VERB_TYPE ? null : (v as VerbTypeValue))
                 }
               >
-                {pronLookupMsg.text}
-              </p>
-            ) : null}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="back">Back</Label>
-            <Textarea id="back" rows={3} {...form.register('back')} />
-            {backExamples.length > 0 ? (
-              <div className="space-y-2">
-                {backExamples.map((val, i) => (
-                  <Input
-                    key={i}
-                    placeholder="Example…"
-                    value={val}
-                    onChange={(e) =>
-                      setBackExamples((prev) => {
-                        const next = [...prev];
-                        next[i] = e.target.value;
-                        return next;
-                      })
-                    }
-                  />
-                ))}
-              </div>
-            ) : null}
-          </div>
+                <SelectTrigger id="edit-card-verb-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_VERB_TYPE}>None</SelectItem>
+                  {VERB_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
           {showAssign ? (
             <div className="space-y-2">
               <Label htmlFor="assign-deck">Assign to deck</Label>
