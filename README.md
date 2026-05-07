@@ -1,181 +1,173 @@
-# ensemble
+<div align="center">
 
-Flashcards with spaced repetition. Turborepo monorepo — one Prisma + tRPC backend feeds both a Next.js web client and an Expo / React Native mobile client. Every procedure is type-shared between the two.
+# FlipFlow
 
-## What's in the box
+**Spaced-repetition flashcards, on the web and in your pocket.**
 
-- `apps/web` — Next.js 15 (App Router), Tailwind, shadcn/ui, Auth.js v5, tRPC client, TanStack Query
-- `apps/mobile` — Expo SDK 51 + Expo Router, NativeWind, tRPC + TanStack Query, SecureStore, Auth via `expo-web-browser`
-- `packages/api` — tRPC routers (`auth`, `categories`, `flashcards`, `practice`) — the single source of truth for the backend
-- `packages/db` — Prisma schema and generated client
-- `packages/types` — shared Zod schemas and the SM-2 spaced-repetition algorithm
-- `packages/config` — shared TypeScript configs
+A type-safe TypeScript monorepo where one backend powers two clients — a Next.js web app and an Expo / React Native mobile app — with the SM-2 algorithm, Google Translate, Google Cloud Text-to-Speech, and Wiktionary baked in.
+
+[**Live site → flip-flow-web.vercel.app**](https://flip-flow-web.vercel.app/)
+
+</div>
+
+---
+
+## Highlights
+
+- **One backend, two clients.** A single tRPC router is consumed by both the web app and the native mobile app, so every feature ships everywhere with no duplicated business logic.
+- **End-to-end type safety.** Zod schemas, Prisma models, and tRPC procedures form an unbroken type chain from Postgres to the React Native screen.
+- **Spaced repetition that actually adapts.** The SM-2 algorithm schedules each card based on the user's self-rated recall, so review queues stay short and effective.
+- **Pronunciation, translation, and dictionary lookups built in.** Google Cloud Translate auto-fills card backs, Google Cloud Text-to-Speech reads cards aloud in the deck's target language, and Wiktionary surfaces definitions and example sentences inline.
+- **Auth done once.** Auth.js v5 with Google OAuth and Resend magic links — and the mobile app reuses the same session table via a tiny deep-link handoff, so there is zero auth code duplicated across platforms.
+- **Public deck library.** Users can flip a deck public and share it with the world; private is the safe default.
+
+---
+
+## Architecture
+
+<p align="center">
+  <img src="docs/architecture.svg" alt="FlipFlow architecture: web and mobile clients consume shared TypeScript packages, which back a tRPC handler and Auth.js on Vercel, talking to Postgres, Google Translate, Google TTS, and Wiktionary." width="100%">
+</p>
+
+The web and mobile apps are siblings under `apps/`. Everything reusable — the Prisma schema, the tRPC router, the SM-2 implementation, the Zod input/output schemas — lives under `packages/` and is imported as a workspace dependency.
 
 ```
 apps/
-  web/                Next.js App Router
-  mobile/             Expo Router (React Native)
+  web/      Next.js 15 (App Router) · Auth.js v5 · shadcn/ui
+  mobile/   Expo SDK 54 · Expo Router · NativeWind · SecureStore
 packages/
-  api/                tRPC router (consumed by web + mobile)
-  db/                 Prisma schema + client
-  types/              Zod schemas + SM-2 algorithm
-  config/             tsconfig presets
+  api/      tRPC routers — auth, categories, folders, flashcards,
+            practice, dictionary, translate, tts
+  db/       Prisma schema + generated client
+  types/    Zod schemas · SM-2 spaced-repetition algorithm
+  config/   Shared tsconfig presets
 ```
 
-## Prerequisites
+Turborepo orchestrates builds, typechecks, and dev tasks across the workspaces, so a change to a shared package is seen by both clients on the next compile.
 
-- Node.js 20+
-- npm 10+
-- A Postgres database (we recommend [Neon](https://neon.tech) for Phase 1 — free tier, branching, serverless-friendly)
-- Optional: a Google OAuth client and/or a Resend API key for sign-in
+---
 
-## Setup
+## Tech stack
+
+<table>
+<tr><th align="left" width="180">Layer</th><th align="left">Choices</th></tr>
+<tr><td><b>Language</b></td><td>TypeScript 5 · strict mode end-to-end</td></tr>
+<tr><td><b>Web client</b></td><td>Next.js 15 (App Router) · React 19 · Tailwind CSS · shadcn/ui · Radix UI · React Hook Form · TanStack Query</td></tr>
+<tr><td><b>Mobile client</b></td><td>Expo SDK 54 · React Native 0.81 · Expo Router · NativeWind · React Native Reanimated · TanStack Query</td></tr>
+<tr><td><b>API layer</b></td><td>tRPC v11 · Zod input validation · superjson · cookie-or-bearer auth</td></tr>
+<tr><td><b>Auth</b></td><td>Auth.js v5 · Google OAuth · Resend magic-link email · Prisma adapter</td></tr>
+<tr><td><b>Database</b></td><td>Postgres (Neon serverless) · Prisma 5 ORM · pooled + direct URLs for migrations</td></tr>
+<tr><td><b>External APIs</b></td><td>Google Cloud Translate · Google Cloud Text-to-Speech · Wiktionary parse API</td></tr>
+<tr><td><b>Tooling</b></td><td>Turborepo · npm workspaces · ESLint · Prettier (with Tailwind plugin)</td></tr>
+<tr><td><b>Hosting</b></td><td>Vercel (web + API) · Neon (database) · EAS (mobile builds)</td></tr>
+</table>
+
+---
+
+## Feature tour
+
+**Decks, folders, and cards.** Users organize flashcards into decks (categories), and group decks into folders. Each card holds a front, a back, optional pronunciation, part-of-speech, gender, verb-type metadata, and arrays of example sentences for both sides — enough structure to act like a lightweight language-learning workbook without ever feeling like a database admin tool.
+
+**Spaced-repetition practice.** `packages/types/src/sm2.ts` implements the [SM-2 algorithm](https://en.wikipedia.org/wiki/SuperMemo#Description_of_SM-2_algorithm). When the user rates a card 0–5, `practice.submitReview` updates `repetitions`, `easeFactor`, `interval`, and `nextReview`. The practice queue endpoint returns cards where `nextReview` is null (never seen) or has come due. Failed recalls reset the streak; passes grow the interval geometrically.
+
+**Translation-assisted card creation.** Toggle on a target language (French, Spanish, or German), type the front in English, and the back is auto-filled by the `translate.translate` tRPC mutation, which proxies Google Cloud Translate. The Translate API key is server-side only — the client just feature-detects via `translate.isAvailable` and hides the toggle if it isn't configured.
+
+**Audio pronunciation.** Each deck has a BCP-47 `backLanguage` (e.g. `fr-FR`, `es-ES`, `ja-JP`). The practice screen calls `tts.synthesize`, which hits Google Cloud Text-to-Speech and returns a base64-encoded MP3, played inline on web with a plain `<audio>` element and on mobile via `expo-av`. The same key powers translation _and_ TTS, so most users plug in one secret and get both.
+
+**Inline dictionary lookups.** The dictionary router parses Wiktionary's wikitext for the requested headword and language section, returning structured definitions, examples, and word-class info. The card editor shows it inline, so adding a card to a French deck surfaces the French entry without leaving the page.
+
+**Public deck library.** Decks are private by default (the schema has a `private: Boolean @default(true)` guard). Flipping a deck public lists it on `/library`, where any signed-in user can clone it into their own collection.
+
+**Mobile auth without duplicating Auth.js.** The native app opens an in-app browser to `/auth/mobile?scheme=ensemble`. The web route checks the user's Auth.js session, looks up the matching `Session` row, and redirects back to `ensemble://auth?token=…`. The mobile app stores that token in `expo-secure-store` and sends it as `Authorization: Bearer …` on every tRPC request. The tRPC handler accepts either a cookie session (web) or a bearer token (mobile), resolved against the same session table. Result: zero duplicate auth code, and Google OAuth needs only the web client ID.
+
+**Graceful degradation by feature flag.** Each integration has an `isAvailable` query, so if the deployer doesn't set a Google API key, the translate toggle and audio button simply don't render. Nothing breaks.
+
+---
+
+## How a request flows
+
+A single SM-2 review request — the same code path on web and on mobile — touches every layer of the stack:
+
+```
+  User taps "Good" (quality = 4)
+        │
+        ▼
+  TanStack Query  ──►  POST /api/trpc/practice.submitReview
+                            (cookie session on web · Bearer token on mobile)
+        │
+        ▼
+  tRPC handler resolves the session  ──►  ctx.user
+        │
+        ▼
+  Zod validates { cardId, quality }   ──►  @ensemble/types
+        │
+        ▼
+  reviewCard(prev, q)                 ──►  SM-2 next state
+        │
+        ▼
+  prisma.flashcard.update(...)        ──►  @ensemble/db  ──►  Postgres (Neon)
+        │
+        ▼
+  Typed Flashcard flows back through tRPC, into the cache, onto the screen.
+```
+
+Because the client, the router, the schemas, and the database all share a single source of types, renaming a field or tightening a Zod constraint surfaces as a TypeScript error in every place that needs to change — across web _and_ mobile — before the build succeeds.
+
+---
+
+## Repository layout, in one screenful
+
+```
+FlipFlow/
+├── apps/
+│   ├── web/              Next.js 15 · App Router
+│   │   └── src/
+│   │       ├── app/      Routes (incl. /api/trpc, /api/auth, /auth/mobile)
+│   │       ├── features/ Practice, cards, categories, folders, settings
+│   │       ├── components/ui  shadcn/ui primitives
+│   │       └── server/   Auth handlers, tRPC context
+│   └── mobile/           Expo SDK 54 · Expo Router
+│       ├── app/          File-based routes (signin, decks, practice, …)
+│       └── src/
+│           ├── features/practice
+│           ├── components
+│           └── lib       Auth bridge, secure-store, tRPC client
+├── packages/
+│   ├── api/src/routers/  auth · categories · folders · flashcards
+│   │                     practice · dictionary · translate · tts
+│   ├── db/prisma/        schema.prisma + seed.ts
+│   ├── types/src/        sm2.ts · schemas.ts · languages.ts · wordClass.ts
+│   └── config/           tsconfig presets
+├── turbo.json            Pipeline definitions
+└── package.json          npm workspaces + Turborepo scripts
+```
+
+---
+
+## Local development
+
+A short version, for the curious. The repo runs on Node 20+ and a Postgres database (Neon's free tier works well).
 
 ```bash
-# 1. Install
 npm install
-
-# 2. Copy env template and fill in your values
-cp .env.example .env.local
-
-# 3. Generate the Prisma client and push the schema to your DB
-npm run db:generate
-npm run db:push   # or: npm run db:migrate for migration history
-
-# 4. (optional) Seed a demo deck
-npm run db:seed
-
-# 5. Run the dev server
-npm run dev
+cp .env.example .env.local      # fill in DATABASE_URL, AUTH_*, optional Google keys
+npm run db:push                  # sync Prisma schema
+npm run dev                      # web app on http://localhost:3000
 ```
 
-The web app is at `http://localhost:3000`.
-
-## Environment variables
-
-All variables live in `.env.local` at the repo root (Turbo passes them through to each workspace).
-
-| Variable                                | Purpose                                                          |
-| --------------------------------------- | ---------------------------------------------------------------- |
-| `DATABASE_URL`                          | Pooled Postgres URL (Neon "Pooled connection")                   |
-| `DIRECT_URL`                            | Unpooled URL for `prisma migrate`                                |
-| `AUTH_SECRET`                           | Random string for Auth.js (`openssl rand -base64 32`)            |
-| `AUTH_URL`                              | Base URL of the app (`http://localhost:3000` in dev)             |
-| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth credentials                                         |
-| `AUTH_RESEND_KEY`                       | Resend API key for magic-link email                              |
-| `EMAIL_FROM`                            | "From" address for magic-link emails                             |
-| `GOOGLE_TRANSLATE_API_KEY`              | Optional. Enables the translation toggle on the New Card dialog. |
-
-If a provider's env vars are missing, that sign-in option is hidden — the app still runs. Same goes for `GOOGLE_TRANSLATE_API_KEY`: when it's not set, the new-card dialog quietly omits the translation toggle.
-
-### Setting up Google OAuth
-
-1. Create an OAuth client at <https://console.cloud.google.com/apis/credentials>
-2. Authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
-3. Paste the client ID and secret into `.env.local`
-
-### Setting up magic-link email (Resend)
-
-1. Create an API key at <https://resend.com/api-keys>
-2. Verify a sending domain (or use the `onboarding@resend.dev` test sender)
-3. Set `AUTH_RESEND_KEY` and `EMAIL_FROM` in `.env.local`
-
-### Setting up Google Translate (optional)
-
-The New Card dialog has an opt-in translation mode that auto-fills the back of a flashcard with a translation of the front (assumed English) into French, Spanish, or German. The toggle and chosen language are persisted per deck in `localStorage`.
-
-1. In Google Cloud Console, enable the **Cloud Translation API** for your project.
-2. Create an API key at <https://console.cloud.google.com/apis/credentials>. Restrict it to the Translation API.
-3. Set `GOOGLE_TRANSLATE_API_KEY` in `.env.local`.
-
-Translation calls go through the `translate.translate` tRPC mutation — the key never leaves the server. The web dialog feature-detects the key via `translate.isAvailable`, so when it's not set the toggle is hidden and everything else still works. Mobile parity will land in a follow-up.
-
-## Useful scripts
+To run the mobile app, point Expo at the LAN IP of your dev machine and scan the QR code with Expo Go:
 
 ```bash
-npm run dev              # turbo: runs dev tasks in every app that has one
-npm run build            # production build
-npm run typecheck        # tsc across every workspace
-npm run lint             # next lint + future packages
-npm run db:studio        # Prisma Studio
-npm run db:migrate       # create + apply a migration
-npm run db:seed          # seed a demo deck
+EXPO_PUBLIC_API_URL=http://192.168.1.42:3000 \
+  npm --workspace=@ensemble/mobile run start
 ```
 
-`npm run dev` only starts the _web_ dev server; the mobile app runs separately because Metro has its own lifecycle and QR-code UI.
+The web app and mobile app share the same backend at `EXPO_PUBLIC_API_URL`, so authenticating once on the phone hits the same Postgres rows that the web client writes to.
 
-## How the spaced-repetition piece works
+---
 
-`packages/types/src/sm2.ts` implements the SM-2 algorithm. Each `Flashcard` row tracks `repetitions`, `easeFactor`, `interval`, and `nextReview`. When the user rates a card 0–5, `practice.submitReview` runs SM-2 and persists the new schedule. The practice queue endpoint (`practice.queue`) returns cards where `nextReview` is `null` (never seen) or `<= now`.
+<div align="center">
 
-## Mobile app (Expo)
+Built by [Jeremy Collyer](mailto:collyerdesign@gmail.com) · [Live demo](https://flip-flow-web.vercel.app/)
 
-The mobile app lives in `apps/mobile`. It has feature parity with the web: deck list, deck detail with card CRUD, and the SM-2 practice flow. Authentication is delegated to the web app via a hosted bridge, so there's no duplicate auth code to maintain.
-
-### Running the mobile app
-
-You need two terminals: one for the web server (the mobile app talks to it), one for Expo.
-
-```bash
-# Terminal 1 — web backend
-npm run dev --workspace=@ensemble/web
-
-# Terminal 2 — Expo
-npm --workspace=@ensemble/mobile run start
-```
-
-Then scan the QR code with the **Expo Go** app on iOS or Android.
-
-### `EXPO_PUBLIC_API_URL` — pointing the phone at the web server
-
-On your phone, `localhost` means "this phone," not your dev machine. Set the API URL to your machine's LAN IP:
-
-```bash
-# Find your LAN IP
-ipconfig getifaddr en0        # macOS wifi
-hostname -I | awk '{print $1}' # Linux
-
-# Start Expo with the pointed URL
-EXPO_PUBLIC_API_URL=http://192.168.1.42:3000 npm --workspace=@ensemble/mobile run start
-```
-
-If you don't set `EXPO_PUBLIC_API_URL`, the mobile app falls back to deriving the host from the Expo dev server, which works in the common case of running Metro and Next.js on the same machine.
-
-### Using tunnel mode (coffee-shop / restrictive Wi-Fi / different networks)
-
-If your phone can't reach your dev machine on the LAN, tunnel through ngrok:
-
-```bash
-npm --workspace=@ensemble/mobile run tunnel
-```
-
-In tunnel mode, set `EXPO_PUBLIC_API_URL` to a publicly reachable URL for your Next.js server (e.g. an `ngrok http 3000` tunnel or a Vercel preview deploy) — the phone can't hit your LAN IP in that scenario.
-
-### Deep link scheme
-
-The app is registered as `ensemble://` in `apps/mobile/app.json`. The sign-in flow opens `https://<web>/auth/mobile?scheme=ensemble` in an in-app browser, and Auth.js redirects back to `ensemble://auth?token=…&expires=…`. The mobile app parses the token, persists it via `expo-secure-store`, and injects it as a `Bearer` header on every tRPC request.
-
-### How mobile auth works (no new tRPC procedures)
-
-1. Mobile calls `WebBrowser.openAuthSessionAsync("${API_URL}/auth/mobile?scheme=ensemble")`.
-2. The new `/auth/mobile` route in `apps/web` checks the user's session. If signed out, it bounces to `/signin` with a callback. If signed in, it looks up the corresponding `Session` row and redirects to `ensemble://auth?token=<sessionToken>&expires=<iso>`.
-3. Mobile stores `token` + `expires` in `expo-secure-store`, then sends `Authorization: Bearer <token>` on every tRPC request.
-4. The tRPC handler (`apps/web/src/app/api/trpc/[trpc]/route.ts`) accepts _either_ a cookie session (web) _or_ a bearer token (mobile) — bearer tokens are resolved against the same `Session` table Auth.js already maintains.
-
-Result: zero changes to `@ensemble/api`, and mobile sign-out is just `clearStoredSession()`.
-
-### Google OAuth redirects for mobile
-
-The in-app browser flow reuses the web app's Google OAuth config — no separate iOS / Android OAuth clients are needed. Just make sure your Google OAuth client has `http://<your-web-origin>/api/auth/callback/google` listed as an authorized redirect URI for whichever origin Expo will hit (LAN IP in dev, production URL in prod).
-
-### Useful mobile scripts
-
-```bash
-# From the repo root
-npm --workspace=@ensemble/mobile run start      # Metro + QR code
-npm --workspace=@ensemble/mobile run ios        # open iOS simulator
-npm --workspace=@ensemble/mobile run android    # open Android emulator
-npm --workspace=@ensemble/mobile run tunnel     # ngrok-backed tunnel
-npm --workspace=@ensemble/mobile run typecheck  # tsc
-npm --workspace=@ensemble/mobile run clean      # wipe .expo + node_modules
-```
+</div>

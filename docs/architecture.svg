@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 620" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <style>
+      .box       { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+      .box-accent{ fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.5; }
+      .title     { font-size: 14px; font-weight: 600; fill: #0f172a; }
+      .sub       { font-size: 11px; fill: #475569; }
+      .layer     { font-size: 10.5px; font-weight: 700; fill: #64748b; letter-spacing: 0.12em; }
+      .arrow     { fill: none; stroke: #94a3b8; stroke-width: 1.4; }
+      .arrow-dash{ fill: none; stroke: #94a3b8; stroke-width: 1.2; stroke-dasharray: 4 4; }
+      .arrow-lbl { font-size: 10px; fill: #64748b; font-style: italic; }
+      @media (prefers-color-scheme: dark) {
+        .box        { fill: #0f172a; stroke: #334155; }
+        .box-accent { fill: #111827; stroke: #475569; }
+        .title      { fill: #e2e8f0; }
+        .sub        { fill: #94a3b8; }
+        .layer      { fill: #94a3b8; }
+        .arrow      { stroke: #64748b; }
+        .arrow-dash { stroke: #64748b; }
+        .arrow-lbl  { fill: #94a3b8; }
+      }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <!-- ───── Clients ───── -->
+  <text class="layer" x="30" y="36">CLIENTS</text>
+
+  <rect class="box" x="100" y="50" width="280" height="86" rx="10"/>
+  <text class="title" x="240" y="80"  text-anchor="middle">apps/web</text>
+  <text class="sub"   x="240" y="100" text-anchor="middle">Next.js 15 · React 19</text>
+  <text class="sub"   x="240" y="116" text-anchor="middle">Tailwind · shadcn/ui · TanStack Query</text>
+
+  <rect class="box" x="540" y="50" width="280" height="86" rx="10"/>
+  <text class="title" x="680" y="80"  text-anchor="middle">apps/mobile</text>
+  <text class="sub"   x="680" y="100" text-anchor="middle">Expo SDK 54 · React Native 0.81</text>
+  <text class="sub"   x="680" y="116" text-anchor="middle">NativeWind · Expo Router</text>
+
+  <!-- ───── Shared packages ───── -->
+  <text class="layer" x="30" y="186">SHARED TYPESCRIPT PACKAGES</text>
+
+  <rect class="box-accent" x="60"  y="200" width="240" height="80" rx="10"/>
+  <text class="title" x="180" y="232" text-anchor="middle">@ensemble/api</text>
+  <text class="sub"   x="180" y="252" text-anchor="middle">tRPC routers · Zod inputs</text>
+
+  <rect class="box-accent" x="340" y="200" width="240" height="80" rx="10"/>
+  <text class="title" x="460" y="232" text-anchor="middle">@ensemble/types</text>
+  <text class="sub"   x="460" y="252" text-anchor="middle">Zod schemas · SM-2 algorithm</text>
+
+  <rect class="box-accent" x="620" y="200" width="240" height="80" rx="10"/>
+  <text class="title" x="740" y="232" text-anchor="middle">@ensemble/db</text>
+  <text class="sub"   x="740" y="252" text-anchor="middle">Prisma schema + client</text>
+
+  <!-- ───── Backend ───── -->
+  <text class="layer" x="30" y="330">BACKEND  ·  HOSTED ON VERCEL</text>
+
+  <rect class="box" x="100" y="346" width="320" height="74" rx="10"/>
+  <text class="title" x="260" y="376" text-anchor="middle">tRPC HTTP handler</text>
+  <text class="sub"   x="260" y="396" text-anchor="middle">Cookie session OR Bearer token</text>
+
+  <rect class="box" x="500" y="346" width="320" height="74" rx="10"/>
+  <text class="title" x="660" y="376" text-anchor="middle">Auth.js v5</text>
+  <text class="sub"   x="660" y="396" text-anchor="middle">Google OAuth · Resend magic link</text>
+
+  <!-- ───── External ───── -->
+  <text class="layer" x="30" y="470">EXTERNAL SERVICES</text>
+
+  <rect class="box" x="40"  y="486" width="190" height="62" rx="10"/>
+  <text class="title" x="135" y="514" text-anchor="middle">Postgres</text>
+  <text class="sub"   x="135" y="532" text-anchor="middle">Neon serverless</text>
+
+  <rect class="box" x="250" y="486" width="190" height="62" rx="10"/>
+  <text class="title" x="345" y="514" text-anchor="middle">Google Translate</text>
+  <text class="sub"   x="345" y="532" text-anchor="middle">Cloud Translation API</text>
+
+  <rect class="box" x="460" y="486" width="190" height="62" rx="10"/>
+  <text class="title" x="555" y="514" text-anchor="middle">Google TTS</text>
+  <text class="sub"   x="555" y="532" text-anchor="middle">Cloud Text-to-Speech</text>
+
+  <rect class="box" x="670" y="486" width="190" height="62" rx="10"/>
+  <text class="title" x="765" y="514" text-anchor="middle">Wiktionary</text>
+  <text class="sub"   x="765" y="532" text-anchor="middle">Parse API</text>
+
+  <!-- ───── Arrows: Clients → @ensemble/api ───── -->
+  <path class="arrow"      d="M 240 136 L 240 200" marker-end="url(#arrow)"/>
+  <path class="arrow"      d="M 680 136 C 680 170, 240 170, 240 200" marker-end="url(#arrow)"/>
+  <text class="arrow-lbl"  x="252" y="160">tRPC · TanStack Query</text>
+  <text class="arrow-lbl"  x="455" y="186" text-anchor="middle">Bearer token (mobile)</text>
+
+  <!-- Shared types are imported by clients (dashed back-references) -->
+  <path class="arrow-dash" d="M 380 75 C 480 75, 480 200, 460 200"/>
+  <path class="arrow-dash" d="M 540 75 C 480 75, 480 200, 460 200"/>
+
+  <!-- ───── @ensemble/api → tRPC handler ───── -->
+  <path class="arrow"      d="M 180 280 C 180 320, 260 320, 260 346" marker-end="url(#arrow)"/>
+
+  <!-- ───── @ensemble/db → handler & Postgres ───── -->
+  <path class="arrow"      d="M 740 280 C 740 320, 660 320, 660 346" marker-end="url(#arrow)"/>
+  <path class="arrow"      d="M 260 420 C 200 450, 160 470, 135 486" marker-end="url(#arrow)"/>
+
+  <!-- ───── Auth.js → Postgres (sessions) ───── -->
+  <path class="arrow"      d="M 580 420 C 360 450, 200 470, 135 486" marker-end="url(#arrow)"/>
+
+  <!-- ───── Handler → external APIs ───── -->
+  <path class="arrow"      d="M 320 420 C 330 450, 340 470, 345 486" marker-end="url(#arrow)"/>
+  <path class="arrow"      d="M 380 420 C 460 450, 520 470, 555 486" marker-end="url(#arrow)"/>
+  <path class="arrow"      d="M 420 420 C 580 450, 700 470, 765 486" marker-end="url(#arrow)"/>
+</svg>
