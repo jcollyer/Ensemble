@@ -163,10 +163,17 @@ export function CategoriesDashboard() {
                 <CardHeader className="flex flex-row items-center gap-3">
                   <div
                     aria-hidden
-                    className="h-10 w-10 rounded-md"
+                    className="h-10 w-10 shrink-0 rounded-md"
                     style={{ backgroundColor: c.color ?? '#94a3b8' }}
                   />
-                  <CardTitle className="group-hover:text-primary truncate">{c.name}</CardTitle>
+                  <div className="min-w-0">
+                    <CardTitle className="group-hover:text-primary truncate">{c.name}</CardTitle>
+                    {c.description ? (
+                      <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs font-normal">
+                        {c.description}
+                      </p>
+                    ) : null}
+                  </div>
                 </CardHeader>
                 <CardContent className="text-muted-foreground flex items-center gap-4 text-sm">
                   <span className="inline-flex items-center gap-1.5">

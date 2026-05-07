@@ -124,12 +124,19 @@ export default function DeckDetailScreen() {
           <View className="mb-4 gap-4">
             <View className="flex-row items-center gap-3">
               <View
-                className="h-10 w-10 rounded-md"
+                className="h-10 w-10 shrink-0 rounded-md"
                 style={{ backgroundColor: category?.color ?? '#94a3b8' }}
               />
-              <Text className="flex-1 text-2xl font-bold text-slate-900" numberOfLines={1}>
-                {category?.name ?? 'Loading…'}
-              </Text>
+              <View className="flex-1">
+                <Text className="text-2xl font-bold text-slate-900" numberOfLines={1}>
+                  {category?.name ?? 'Loading…'}
+                </Text>
+                {(category as { description?: string | null } | undefined)?.description ? (
+                  <Text className="mt-0.5 text-sm text-slate-500">
+                    {(category as { description?: string | null }).description}
+                  </Text>
+                ) : null}
+              </View>
             </View>
 
             <View className="flex-row gap-2">

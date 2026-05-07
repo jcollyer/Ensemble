@@ -91,12 +91,19 @@ export default function DecksScreen() {
               <Card className="p-4">
                 <View className="flex-row items-center gap-3">
                   <View
-                    className="h-10 w-10 rounded-md"
+                    className="h-10 w-10 shrink-0 rounded-md"
                     style={{ backgroundColor: item.color ?? '#94a3b8' }}
                   />
-                  <Text className="flex-1 text-lg font-semibold text-slate-900" numberOfLines={1}>
-                    {item.name}
-                  </Text>
+                  <View className="flex-1">
+                    <Text className="text-lg font-semibold text-slate-900" numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    {item.description ? (
+                      <Text className="mt-0.5 text-xs text-slate-500" numberOfLines={2}>
+                        {item.description}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
                 <View className="mt-3 flex-row gap-4">
                   <Text className="text-sm text-slate-500">
