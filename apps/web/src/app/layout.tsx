@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Alex_Brush } from 'next/font/google';
+import { Alex_Brush, Nunito_Sans } from 'next/font/google';
 import '@/styles/globals.css';
 
 import { TRPCProvider } from '@/lib/trpc/Provider';
@@ -11,14 +11,24 @@ const alexBrush = Alex_Brush({
   display: 'swap',
 });
 
+const nunitoSans = Nunito_Sans({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'ensemble',
   description: 'Flashcards with spaced repetition that actually sticks.',
+  icons: {
+    icon: '/icon.png',
+    apple: '/apple-icon.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={alexBrush.variable}>
+    <html lang="en" suppressHydrationWarning className={`${alexBrush.variable} ${nunitoSans.variable}`}>
       <body className="bg-background min-h-dvh font-sans">
         <TRPCProvider>{children}</TRPCProvider>
       </body>

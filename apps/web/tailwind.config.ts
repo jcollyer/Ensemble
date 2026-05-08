@@ -49,6 +49,7 @@ const config: Config = {
         },
       },
       fontFamily: {
+        sans: ['var(--font-sans)', 'sans-serif'],
         brand: ['var(--font-brand)', 'cursive'],
       },
       borderRadius: {

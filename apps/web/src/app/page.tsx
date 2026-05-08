@@ -32,7 +32,7 @@ export default async function HomePage() {
           <Sparkles className="h-3 w-3" />
           Learn on your own, or together
         </div>
-        <h1 className="font-brand text-primary max-w-3xl text-balance text-6xl font-semibold leading-[0.8] sm:text-8xl">
+        <h1 className="font-brand text-primary max-w-3xl text-balance text-6xl font-semibold leading-tight sm:text-8xl sm:leading-[0.7]">
           ensemble
         </h1>
         <h2 className="text-xl text-gray-700">
