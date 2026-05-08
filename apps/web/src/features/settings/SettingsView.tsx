@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Camera, Loader2, User } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { trpc } from '@/lib/trpc/client';
+
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
+const MAX_BYTES = 5 * 1024 * 1024; // 5 MB — must match the server-side cap
 
 /**
  * /app/settings — read-only profile info plus an inline editor for the user's
@@ -29,26 +32,36 @@ export function SettingsView() {
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
-  // Sync the input with whatever we just fetched from the server. We only
-  // overwrite local edits when the server value actually changes, so a slow
-  // refetch doesn't blow away mid-edit text.
+  // ── Avatar upload state ──────────────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  /** Local object URL shown as a preview before the upload completes. */
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  /** The file the user just picked, waiting to be uploaded on Save. */
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Sync inputs from the server. Only overwrite when the server value changes
+  // so a slow refetch doesn't clobber mid-edit text.
   useEffect(() => {
-    if (me?.name != null) {
-      setName(me.name);
-    }
+    if (me?.name != null) setName(me.name);
   }, [me?.name]);
 
   useEffect(() => {
     setAllowPublicUser(me?.private === false);
   }, [me?.private]);
 
+  const getUploadUrl = trpc.auth.getAvatarUploadUrl.useMutation();
+
   const updateSettings = trpc.auth.updateSettings.useMutation({
     onSuccess: () => {
       utils.auth.me.invalidate();
       utils.auth.getSession.invalidate();
       setSavedAt(Date.now());
+      setPendingFile(null);
+      setAvatarPreview(null);
       // Refresh the server component layout so the header dropdown picks up
-      // the new name without a full page reload.
+      // the new name / avatar without a full page reload.
       router.refresh();
     },
     onError: (err) => {
@@ -57,16 +70,90 @@ export function SettingsView() {
   });
 
   const trimmed = name.trim();
+  const avatarDirty = pendingFile !== null;
   const dirty =
     trimmed.length > 0 &&
-    (trimmed !== (me?.name ?? '') || allowPublicUser !== (me?.private === false));
+    (trimmed !== (me?.name ?? '') || allowPublicUser !== (me?.private === false) || avatarDirty);
 
-  function handleSubmit(e: React.FormEvent) {
+  // ── File picker handler ──────────────────────────────────────────────────
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!e.target.files) return;
+    // Reset so the same file can be re-selected after an error
+    e.target.value = '';
+
+    if (!file) return;
+
+    if (!ACCEPTED_TYPES.includes(file.type as (typeof ACCEPTED_TYPES)[number])) {
+      setAvatarError('Please choose a JPEG, PNG, WebP, or GIF image.');
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setAvatarError('Image must be smaller than 5 MB.');
+      return;
+    }
+
+    // Revoke any previous object URL to avoid memory leaks
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+
+    setAvatarError(null);
+    setPendingFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+    setSavedAt(null);
+  }
+
+  // ── Submit ───────────────────────────────────────────────────────────────
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (!dirty) return;
-    updateSettings.mutate({ name: trimmed, private: !allowPublicUser });
+
+    let newImageUrl: string | undefined;
+
+    if (pendingFile) {
+      setIsUploading(true);
+      try {
+        // 1. Get a presigned POST policy from the server
+        const { url, fields, publicUrl } = await getUploadUrl.mutateAsync({
+          contentType: pendingFile.type as (typeof ACCEPTED_TYPES)[number],
+          contentLength: pendingFile.size,
+        });
+
+        // 2. Upload directly to S3 via multipart form POST.
+        //    All policy fields must come before the file, and we must NOT
+        //    set a Content-Type header — the browser sets it automatically
+        //    with the correct multipart boundary.
+        const formData = new FormData();
+        Object.entries(fields).forEach(([k, v]) => formData.append(k, v as string));
+        formData.append('file', pendingFile);
+
+        const res = await fetch(url, { method: 'POST', body: formData });
+
+        // S3 returns 204 No Content on success for POST uploads
+        if (!res.ok) {
+          throw new Error(`Upload failed (${res.status}). Please try again.`);
+        }
+
+        newImageUrl = publicUrl;
+      } catch (err) {
+        setAvatarError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
+        setIsUploading(false);
+        return;
+      } finally {
+        setIsUploading(false);
+      }
+    }
+
+    // 3. Persist name, privacy, and (optionally) the new avatar URL
+    updateSettings.mutate({
+      name: trimmed,
+      private: !allowPublicUser,
+      ...(newImageUrl !== undefined ? { image: newImageUrl } : {}),
+    });
   }
+
+  // ── Displayed avatar src: prefer the local preview, fall back to server ──
+  const displayedAvatar = avatarPreview ?? me?.image ?? null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -83,13 +170,81 @@ export function SettingsView() {
       <Card>
         <CardHeader>
           <CardTitle>Profile</CardTitle>
-          <CardDescription>Update how your name appears across the app.</CardDescription>
+          <CardDescription>
+            Update your avatar and how your name appears across the app.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <p className="text-muted-foreground text-sm">Loading…</p>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* ── Avatar ── */}
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ACCEPTED_TYPES.join(',')}
+                  className="sr-only"
+                  onChange={handleFileChange}
+                  aria-label="Upload avatar image"
+                />
+
+                {/* Clickable avatar circle */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="border-border bg-muted hover:border-primary focus-visible:ring-ring group relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-full border-2 border-dashed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-60"
+                  aria-label="Change avatar"
+                >
+                  {isUploading ? (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+                    </div>
+                  ) : displayedAvatar ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={displayedAvatar}
+                        alt="Your avatar"
+                        className="h-full w-full object-cover"
+                      />
+                      {/* Hover overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                        <Camera className="h-5 w-5 text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-muted-foreground group-hover:text-primary flex h-full w-full flex-col items-center justify-center gap-1">
+                      <User className="h-7 w-7" />
+                      <Camera className="h-4 w-4" />
+                    </div>
+                  )}
+                </button>
+
+                <div className="space-y-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    {displayedAvatar ? 'Change photo' : 'Upload photo'}
+                  </Button>
+                  <p className="text-muted-foreground text-xs">JPEG, PNG, WebP or GIF · max 5 MB</p>
+                  {avatarError ? <p className="text-destructive text-sm">{avatarError}</p> : null}
+                  {avatarDirty && !isUploading ? (
+                    <p className="text-muted-foreground text-xs">
+                      Photo ready — click &quot;Save changes&quot; to apply.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* ── Name ── */}
               <div className="space-y-2">
                 <Label htmlFor="settings-name">Name</Label>
                 <Input
@@ -108,6 +263,7 @@ export function SettingsView() {
                 {savedAt && !dirty ? <p className="text-muted-foreground text-sm">Saved.</p> : null}
               </div>
 
+              {/* ── Email (read-only) ── */}
               <div className="space-y-2">
                 <Label htmlFor="settings-email">Email</Label>
                 <Input
@@ -122,6 +278,7 @@ export function SettingsView() {
                 </p>
               </div>
 
+              {/* ── Public profile toggle ── */}
               <div className="bg-muted/30 flex items-start justify-between gap-4 rounded-md border p-4">
                 <div className="space-y-1">
                   <Label htmlFor="settings-public" className="cursor-pointer">
@@ -143,8 +300,15 @@ export function SettingsView() {
               </div>
 
               <div className="flex justify-end">
-                <Button type="submit" disabled={!dirty || updateSettings.isPending}>
-                  {updateSettings.isPending ? 'Saving…' : 'Save changes'}
+                <Button type="submit" disabled={!dirty || updateSettings.isPending || isUploading}>
+                  {isUploading || updateSettings.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    'Save changes'
+                  )}
                 </Button>
               </div>
             </form>

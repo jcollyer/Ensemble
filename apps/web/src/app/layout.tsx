@@ -28,7 +28,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${alexBrush.variable} ${nunitoSans.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${alexBrush.variable} ${nunitoSans.variable}`}
+    >
       <body className="bg-background min-h-dvh font-sans">
         <TRPCProvider>{children}</TRPCProvider>
       </body>
