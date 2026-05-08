@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ArrowRight, Sparkles, Zap, RefreshCw, Languages, Volume2, Wand2 } from 'lucide-react';
+import { ArrowRight, Sparkles, Zap, RefreshCw, Languages, Volume2, Wand2, Star, Tags, Users } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { auth } from '@/server/auth';
@@ -13,7 +13,7 @@ export default async function HomePage() {
     <main className="flex min-h-dvh flex-col">
       <header className="border-b">
         <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2 font-semibold">
+          <div className="flex items-center gap-2 font-semibold text-primary">
             <RefreshCw className="text-primary h-5 w-5" />
             ensemble
           </div>
@@ -26,14 +26,15 @@ export default async function HomePage() {
       <section className="container flex flex-1 flex-col items-center justify-center py-24 text-center">
         <div className="bg-muted/50 text-muted-foreground mb-4 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs">
           <Sparkles className="h-3 w-3" />
-          Spaced repetition, the way it should be
+          Learn on your own, or together
         </div>
-        <h1 className="max-w-3xl text-balance text-4xl font-bold tracking-tight sm:text-6xl">
-          Flashcards that <span className="text-primary">actually stick.</span>
+        <h1 className="max-w-3xl text-primary text-balance text-4xl font-bold tracking-tight sm:text-6xl">
+          ensemble
         </h1>
-        <p className="text-muted-foreground mt-6 max-w-xl text-balance text-lg">
-          Build decks, rate your recall, and let ensemble surface exactly the cards you're about to
-          forget.
+        <h2 className="text-xl text-gray-700">Language brings people <span className="italic font-semibold">together</span></h2>
+        <p className="text-muted-foreground mt-6 max-w-xl text-balance text-md">
+          Create flashcards, building vocabulary for ensemble
+          to act as your personal conversation tutor.
         </p>
         <div className="mt-8 flex gap-3">
           <Button asChild size="lg">
@@ -46,32 +47,32 @@ export default async function HomePage() {
         <div className="mt-20 grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3">
           <FeatureCard
             icon={<Zap className="h-5 w-5" />}
-            title="Fast capture"
+            title="Quick creation"
             body="Add cards in seconds."
           />
           <FeatureCard
-            icon={<RefreshCw className="h-5 w-5" />}
-            title="SM-2 scheduling"
-            body="The classic algorithm, dialed in."
+            icon={<Star className="h-5 w-5" />}
+            title="Rating"
+            body="Learn more by rating flashards."
           />
           <FeatureCard
-            icon={<Sparkles className="h-5 w-5" />}
-            title="One backend"
-            body="Web today, mobile next."
-          />
-          <FeatureCard
-            icon={<Languages className="h-5 w-5" />}
-            title="Auto translate mode"
-            body="Type in one language, get the other side filled in for you."
+            icon={<Tags className="h-5 w-5" />}
+            title="Play by tags"
+            body="Focus on what you want to practice."
           />
           <FeatureCard
             icon={<Volume2 className="h-5 w-5" />}
-            title="Click to hear translation"
+            title="Hear translation"
             body="Tap the back of any card to hear it spoken aloud."
           />
           <FeatureCard
+            icon={<Users className="h-5 w-5" />}
+            title="Collaboration"
+            body="Share decks with friends, or let ensemble combine your decks for group practice."
+          />
+          <FeatureCard
             icon={<Wand2 className="h-5 w-5" />}
-            title="Auto-generate practice text"
+            title="Let ensemble test you"
             body="Turn your deck into reading passages on the fly."
             badge="Coming soon"
           />
