@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { trpc } from '@/lib/trpc/client';
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
@@ -28,6 +29,7 @@ export function SettingsView() {
   const { data: me, isLoading } = trpc.auth.me.useQuery();
 
   const [name, setName] = useState('');
+  const [bio, setBio] = useState('');
   const [allowPublicUser, setAllowPublicUser] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -46,6 +48,10 @@ export function SettingsView() {
   useEffect(() => {
     if (me?.name != null) setName(me.name);
   }, [me?.name]);
+
+  useEffect(() => {
+    setBio(me?.bio ?? '');
+  }, [me?.bio]);
 
   useEffect(() => {
     setAllowPublicUser(me?.private === false);
@@ -70,10 +76,14 @@ export function SettingsView() {
   });
 
   const trimmed = name.trim();
+  const trimmedBio = bio.trim();
   const avatarDirty = pendingFile !== null;
   const dirty =
     trimmed.length > 0 &&
-    (trimmed !== (me?.name ?? '') || allowPublicUser !== (me?.private === false) || avatarDirty);
+    (trimmed !== (me?.name ?? '') ||
+      trimmedBio !== (me?.bio ?? '') ||
+      allowPublicUser !== (me?.private === false) ||
+      avatarDirty);
 
   // ── File picker handler ──────────────────────────────────────────────────
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -144,9 +154,10 @@ export function SettingsView() {
       }
     }
 
-    // 3. Persist name, privacy, and (optionally) the new avatar URL
+    // 3. Persist name, bio, privacy, and (optionally) the new avatar URL
     updateSettings.mutate({
       name: trimmed,
+      bio: trimmedBio || null,
       private: !allowPublicUser,
       ...(newImageUrl !== undefined ? { image: newImageUrl } : {}),
     });
@@ -261,6 +272,26 @@ export function SettingsView() {
                 />
                 {error ? <p className="text-destructive text-sm">{error}</p> : null}
                 {savedAt && !dirty ? <p className="text-muted-foreground text-sm">Saved.</p> : null}
+              </div>
+
+              {/* ── Bio ── */}
+              <div className="space-y-2">
+                <Label htmlFor="settings-bio">Bio</Label>
+                <Textarea
+                  id="settings-bio"
+                  value={bio}
+                  onChange={(e) => {
+                    setBio(e.target.value);
+                    setError(null);
+                    setSavedAt(null);
+                  }}
+                  placeholder="Tell others a little about yourself…"
+                  maxLength={300}
+                  rows={3}
+                />
+                <p className="text-muted-foreground text-xs text-right">
+                  {bio.trim().length} / 300
+                </p>
               </div>
 
               {/* ── Email (read-only) ── */}

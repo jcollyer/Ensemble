@@ -46,13 +46,30 @@ export function PublicDeckLibrary() {
                   className="w-full text-left"
                 >
                   <CardHeader className="flex flex-row items-center justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                      <CardTitle className="truncate">{user.name}</CardTitle>
-                      <div className="text-muted-foreground flex flex-wrap items-center gap-4 text-sm">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Library className="h-4 w-4" />
-                          {user.deckCount} {user.deckCount === 1 ? 'deck' : 'decks'}
-                        </span>
+                    <div className="flex min-w-0 items-center gap-3">
+                      {user.image ? (
+                        <img
+                          src={user.image}
+                          alt={user.name}
+                          className="h-10 w-10 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold">
+                          {user.name
+                            .split(' ')
+                            .slice(0, 2)
+                            .map((part) => part[0]?.toUpperCase())
+                            .join('')}
+                        </div>
+                      )}
+                      <div className="min-w-0 space-y-1">
+                        <CardTitle className="truncate">{user.name}</CardTitle>
+                        <div className="text-muted-foreground flex flex-wrap items-center gap-4 text-sm">
+                          <span className="inline-flex items-center gap-1.5">
+                            <Library className="h-4 w-4" />
+                            {user.deckCount} {user.deckCount === 1 ? 'deck' : 'decks'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <span className="text-muted-foreground inline-flex items-center gap-1 text-sm">

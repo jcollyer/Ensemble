@@ -53,6 +53,7 @@ export const categoriesRouter = router({
       select: {
         id: true,
         name: true,
+        image: true,
         _count: {
           select: {
             categories: {
@@ -76,6 +77,7 @@ export const categoriesRouter = router({
     return users.map((user) => ({
       id: user.id,
       name: user.name?.trim() || 'Unnamed user',
+      image: user.image ?? null,
       deckCount: user._count.categories,
       decks: user.categories.map((deck) => ({
         id: deck.id,

@@ -60,6 +60,7 @@ export const authRouter = router({
       select: {
         id: true,
         name: true,
+        bio: true,
         private: true,
         email: true,
         image: true,
@@ -146,6 +147,7 @@ export const authRouter = router({
     .input(
       z.object({
         name: z.string().trim().min(1, 'Name cannot be empty').max(80, 'Name is too long'),
+        bio: z.string().trim().max(300, 'Bio must be 300 characters or fewer').optional().nullable(),
         private: z.boolean(),
         /** Pass the public S3 URL after a successful avatar upload, or null to clear. */
         image: z.string().url().optional().nullable(),
@@ -157,12 +159,14 @@ export const authRouter = router({
         data: {
           name: input.name,
           private: input.private,
-          // Only touch the image column when the caller explicitly passes a value
+          // Only touch bio/image when the caller explicitly passes a value
+          ...(input.bio !== undefined ? { bio: input.bio } : {}),
           ...(input.image !== undefined ? { image: input.image } : {}),
         },
         select: {
           id: true,
           name: true,
+          bio: true,
           private: true,
           email: true,
           image: true,
