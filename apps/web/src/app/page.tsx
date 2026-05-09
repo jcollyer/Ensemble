@@ -32,11 +32,11 @@ export default async function HomePage() {
           <Sparkles className="h-3 w-3" />
           Learn on your own, or together
         </div>
-        <h1 className="font-brand text-primary max-w-3xl text-balance text-6xl font-semibold leading-tight sm:text-8xl sm:leading-[0.7]">
+        <h1 className="font-brand text-primary max-w-3xl text-balance text-6xl font-semibold leading-tight sm:text-8xl sm:leading-[0.9]">
           ensemble
         </h1>
-        <h2 className="text-xl text-gray-700">
-          Language brings people <span className="font-semibold italic">together</span>
+        <h2 className="font-accent text-xl text-gray-700">
+          LANGUAGE BRINGS PEOPLE <span className="font-semibold italic">TOGETHER</span>
         </h2>
         <p className="text-muted-foreground text-md mt-6 max-w-xl text-balance">
           Create flashcards, building vocabulary for ensemble to act as your personal conversation
