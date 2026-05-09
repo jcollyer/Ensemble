@@ -26,7 +26,7 @@ export default function MoreDecksScreen() {
         ItemSeparatorComponent={() => <View className="h-3" />}
         ListHeaderComponent={
           <View className="mb-4 gap-1">
-            <Text className="text-2xl font-bold text-slate-900">More decks</Text>
+            <Text className="text-2xl font-bold text-slate-900">Public decks</Text>
             <Text className="text-sm text-slate-500">
               Browse public decks from other users and open them in read-only mode.
             </Text>

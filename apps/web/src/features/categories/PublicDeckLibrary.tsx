@@ -21,7 +21,7 @@ export function PublicDeckLibrary() {
             Back to your decks
           </Link>
         </Button>
-        <h1 className="text-3xl font-semibold tracking-tight">More decks</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Public decks</h1>
         <p className="text-muted-foreground text-sm">
           Browse public decks from other users and open any deck in read-only practice mode.
         </p>

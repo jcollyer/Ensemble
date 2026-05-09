@@ -199,7 +199,7 @@ function MoreDecksEntry() {
               <Text className="text-primary text-lg font-bold">◎</Text>
             </View>
             <Text className="flex-1 text-lg font-bold text-slate-900" numberOfLines={1}>
-              More decks
+              Public decks
             </Text>
           </View>
           <View className="mt-3 flex-row gap-4">

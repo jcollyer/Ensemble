@@ -42,7 +42,7 @@ export const categoriesRouter = router({
     }));
   }),
 
-  /** Public users and their public decks for the "More decks" explorer. */
+  /** Public users and their public decks for the "Public decks" explorer. */
   publicLibrary: protectedProcedure.query(async ({ ctx }) => {
     const users = await ctx.prisma.user.findMany({
       where: {

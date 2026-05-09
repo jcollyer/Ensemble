@@ -154,7 +154,7 @@ export function CategoryDetail({ categoryId }: Props) {
           <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link href={isOwner ? '/app' : '/app/more'}>
               <ArrowLeft className="h-4 w-4" />
-              {isOwner ? 'All decks' : 'More decks'}
+              {isOwner ? 'All decks' : 'Public decks'}
             </Link>
           </Button>
           <div className="flex items-center gap-3">
