@@ -22,11 +22,15 @@ datasource db {
 // ----------------------------------------------------------------------------
 
 model User {
-  id            String      @id @default(cuid())
-  name          String?
-  bio           String?     @db.Text
-  private       Boolean     @default(true)
-  email         String?     @unique
+  id                 String      @id @default(cuid())
+  name               String?
+  bio                String?     @db.Text
+  private            Boolean     @default(true)
+  // Global default for the `private` flag on newly created decks.
+  // true  = new decks start private  (the factory default)
+  // false = new decks start public
+  defaultDeckPrivate Boolean     @default(true)
+  email              String?     @unique
   emailVerified DateTime?
   image         String?
   accounts      Account[]

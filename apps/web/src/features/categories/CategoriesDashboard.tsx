@@ -46,6 +46,7 @@ export function CategoriesDashboard() {
   const [cardOpen, setCardOpen] = useState(false);
   const [folderOpen, setFolderOpen] = useState(false);
   const utils = trpc.useUtils();
+  const { data: me } = trpc.auth.me.useQuery();
   const { data: categories, isLoading } = trpc.categories.list.useQuery();
   const { data: folders } = trpc.folders.list.useQuery();
   const { data: stats } = trpc.practice.stats.useQuery({});
@@ -114,7 +115,12 @@ export function CategoriesDashboard() {
             <Plus className="h-4 w-4" />
             New card
           </Button>
-          <Button onClick={() => setDeckOpen(true)}>
+          <Button
+            onClick={() => {
+              form.setValue('private', me?.defaultDeckPrivate ?? true);
+              setDeckOpen(true);
+            }}
+          >
             <Plus className="h-4 w-4" />
             New deck
           </Button>
@@ -193,7 +199,12 @@ export function CategoriesDashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <EmptyState onCreate={() => setDeckOpen(true)} />
+          <EmptyState
+          onCreate={() => {
+            form.setValue('private', me?.defaultDeckPrivate ?? true);
+            setDeckOpen(true);
+          }}
+        />
         </div>
       )}
 
@@ -208,7 +219,8 @@ export function CategoriesDashboard() {
               description: null,
               color: PALETTE[0],
               backLanguage: null,
-              private: true,
+              // Restore the user's global default so the next open is correct.
+              private: me?.defaultDeckPrivate ?? true,
             });
             setPendingFolderIds([]);
           }

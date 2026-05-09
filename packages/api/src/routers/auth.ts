@@ -62,6 +62,7 @@ export const authRouter = router({
         name: true,
         bio: true,
         private: true,
+        defaultDeckPrivate: true,
         email: true,
         image: true,
         createdAt: true,
@@ -149,6 +150,8 @@ export const authRouter = router({
         name: z.string().trim().min(1, 'Name cannot be empty').max(80, 'Name is too long'),
         bio: z.string().trim().max(300, 'Bio must be 300 characters or fewer').optional().nullable(),
         private: z.boolean(),
+        /** Whether new decks should default to private. Defaults to true when omitted. */
+        defaultDeckPrivate: z.boolean().optional(),
         /** Pass the public S3 URL after a successful avatar upload, or null to clear. */
         image: z.string().url().optional().nullable(),
       }),
@@ -159,15 +162,19 @@ export const authRouter = router({
         data: {
           name: input.name,
           private: input.private,
-          // Only touch bio/image when the caller explicitly passes a value
+          // Only touch bio/image/defaultDeckPrivate when the caller explicitly passes a value
           ...(input.bio !== undefined ? { bio: input.bio } : {}),
           ...(input.image !== undefined ? { image: input.image } : {}),
+          ...(input.defaultDeckPrivate !== undefined
+            ? { defaultDeckPrivate: input.defaultDeckPrivate }
+            : {}),
         },
         select: {
           id: true,
           name: true,
           bio: true,
           private: true,
+          defaultDeckPrivate: true,
           email: true,
           image: true,
           createdAt: true,

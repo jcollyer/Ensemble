@@ -31,6 +31,7 @@ export function SettingsView() {
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [allowPublicUser, setAllowPublicUser] = useState(false);
+  const [defaultDeckPrivate, setDefaultDeckPrivate] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
@@ -56,6 +57,10 @@ export function SettingsView() {
   useEffect(() => {
     setAllowPublicUser(me?.private === false);
   }, [me?.private]);
+
+  useEffect(() => {
+    setDefaultDeckPrivate(me?.defaultDeckPrivate ?? true);
+  }, [me?.defaultDeckPrivate]);
 
   const getUploadUrl = trpc.auth.getAvatarUploadUrl.useMutation();
 
@@ -83,6 +88,7 @@ export function SettingsView() {
     (trimmed !== (me?.name ?? '') ||
       trimmedBio !== (me?.bio ?? '') ||
       allowPublicUser !== (me?.private === false) ||
+      defaultDeckPrivate !== (me?.defaultDeckPrivate ?? true) ||
       avatarDirty);
 
   // ── File picker handler ──────────────────────────────────────────────────
@@ -154,11 +160,12 @@ export function SettingsView() {
       }
     }
 
-    // 3. Persist name, bio, privacy, and (optionally) the new avatar URL
+    // 3. Persist name, bio, privacy, default deck privacy, and (optionally) the new avatar URL
     updateSettings.mutate({
       name: trimmed,
       bio: trimmedBio || null,
       private: !allowPublicUser,
+      defaultDeckPrivate,
       ...(newImageUrl !== undefined ? { image: newImageUrl } : {}),
     });
   }
@@ -324,6 +331,28 @@ export function SettingsView() {
                   checked={allowPublicUser}
                   onCheckedChange={(checked) => {
                     setAllowPublicUser(checked);
+                    setError(null);
+                    setSavedAt(null);
+                  }}
+                />
+              </div>
+
+              {/* ── Default deck privacy toggle ── */}
+              <div className="bg-muted/30 flex items-start justify-between gap-4 rounded-md border p-4">
+                <div className="space-y-1">
+                  <Label htmlFor="settings-default-deck-private" className="cursor-pointer">
+                    New decks private by default
+                  </Label>
+                  <p className="text-muted-foreground text-sm">
+                    When on, new decks will start as private. You can change this for individual
+                    decks by clicking edit on that deck.
+                  </p>
+                </div>
+                <Switch
+                  id="settings-default-deck-private"
+                  checked={defaultDeckPrivate}
+                  onCheckedChange={(checked) => {
+                    setDefaultDeckPrivate(checked);
                     setError(null);
                     setSavedAt(null);
                   }}
