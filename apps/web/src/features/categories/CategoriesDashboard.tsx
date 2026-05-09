@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Layers, Clock, Library, FolderTree, Users, Play, FolderPlus, ListPlus, MessageSquarePlus, ArrowRight } from 'lucide-react';
+import { Plus, Layers, Clock, Library, FolderTree, Users, Play, FolderPlus, ListPlus, MessageSquarePlus, ArrowRight, ChevronDown } from 'lucide-react';
 
 import { BACK_LANGUAGES, CategoryCreateInput } from '@ensemble/types';
 import { Textarea } from '@/components/ui/textarea';
@@ -164,6 +164,28 @@ export function CategoriesDashboard() {
           tone="green"
         />
       </div>
+
+      {/* Folder sections — collapsible, full-width */}
+      {hasFolders && !isLoading && (
+        <div className="space-y-2">
+          {(folders ?? []).map((folder) => {
+            const folderDecks = (categories ?? []).filter((c) =>
+              folder.includedCategoryIds.includes(c.id),
+            );
+            return (
+              <FolderSection
+                key={folder.id}
+                folder={folder}
+                decks={folderDecks}
+                onCreateDeck={() => {
+                  form.setValue('private', me?.defaultDeckPrivate ?? true);
+                  setDeckOpen(true);
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {isLoading ? (
         <SkeletonGrid />
@@ -586,6 +608,127 @@ function SkeletonGrid() {
       {Array.from({ length: 3 }).map((_, i) => (
         <div key={i} className="bg-muted/50 h-32 animate-pulse rounded-xl border" />
       ))}
+    </div>
+  );
+}
+
+/**
+ * Collapsible full-width section for a single folder on the homepage.
+ * The header row shows the folder's colour swatch, name and deck count.
+ * Expanding reveals a 4-column deck grid; an empty folder shows a dashed
+ * "Add your first deck" prompt card instead.
+ */
+function FolderSection({
+  folder,
+  decks,
+  onCreateDeck,
+}: {
+  folder: {
+    id: string;
+    name: string;
+    color: string | null;
+    deckCount: number;
+  };
+  decks: {
+    id: string;
+    name: string;
+    color: string | null;
+    description?: string | null;
+    cardCount: number;
+    dueCount: number;
+  }[];
+  onCreateDeck: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="overflow-hidden rounded-xl border transition-shadow hover:shadow-sm">
+      {/* ── Header row ── */}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="hover:bg-muted/40 flex w-full items-center gap-3 px-5 py-4 text-left transition"
+        aria-expanded={open}
+      >
+        {/* Folder colour swatch */}
+        <div
+          aria-hidden
+          className="h-5 w-5 shrink-0 rounded-md"
+          style={{ backgroundColor: folder.color ?? '#94a3b8' }}
+        />
+
+        {/* Folder name */}
+        <span className="min-w-0 flex-1 truncate text-base font-semibold">{folder.name}</span>
+
+        {/* Deck count badge */}
+        <span className="text-muted-foreground shrink-0 text-sm">
+          {folder.deckCount} {folder.deckCount === 1 ? 'deck' : 'decks'}
+        </span>
+
+        {/* Chevron */}
+        <ChevronDown
+          className={`text-muted-foreground h-4 w-4 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {/* ── Expanded deck grid ── */}
+      {open && (
+        <div className="border-t px-5 py-5">
+          {decks.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {decks.map((d) => (
+                <Link key={d.id} href={`/app/categories/${d.id}`} className="group">
+                  <Card className="hover:border-primary/40 h-full transition hover:shadow-md">
+                    <CardHeader className="flex flex-row items-center gap-3">
+                      <div
+                        aria-hidden
+                        className="h-10 w-10 shrink-0 rounded-md"
+                        style={{ backgroundColor: d.color ?? '#94a3b8' }}
+                      />
+                      <div className="min-w-0">
+                        <CardTitle className="group-hover:text-primary truncate text-sm">
+                          {d.name}
+                        </CardTitle>
+                        {d.description ? (
+                          <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs font-normal">
+                            {d.description}
+                          </p>
+                        ) : null}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="text-muted-foreground flex items-center gap-3 text-xs">
+                      <span className="inline-flex items-center gap-1">
+                        <Layers className="h-3.5 w-3.5" />
+                        {d.cardCount} {d.cardCount === 1 ? 'card' : 'cards'}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" />
+                        {d.dueCount} due
+                      </span>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            /* Empty folder — dashed prompt card */
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <button
+                type="button"
+                onClick={onCreateDeck}
+                className="group hover:border-primary/50 hover:bg-muted/30 flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-6 text-center transition"
+              >
+                <div className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-full">
+                  <Plus className="h-4 w-4" />
+                </div>
+                <p className="text-muted-foreground group-hover:text-foreground text-sm font-medium transition">
+                  Add your first deck
+                </p>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
