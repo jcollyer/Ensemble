@@ -14,8 +14,8 @@ export default async function HomePage() {
       <header className="border-b">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="bg-primary/10 text-primary inline-flex size-10 items-center justify-center rounded-full">
-              <p className="text-primary font-brand text-4xl font-semibold leading-none">e</p>
+            <div className="bg-primary/10 inline-flex size-10 items-center justify-center rounded-full">
+              <p className="h-12 text-primary font-brand text-4xl font-semibold">e</p>
             </div>
             <span className="font-brand text-2xl font-semibold leading-none text-gray-600">
               ensemble

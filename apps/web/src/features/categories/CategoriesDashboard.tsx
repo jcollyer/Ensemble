@@ -105,7 +105,7 @@ export function CategoriesDashboard() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Willkommen, bienvenue, welcome!</h1>
+          <h1 className="text-3xl text-gray-700 font-semibold tracking-tight">Willkommen, bienvenue, welcome!</h1>
           <p className="text-muted-foreground text-sm">
             Play/practice cards by your rating of difficulty, type (nouns), or deck (level 2, week 2)
           </p>
