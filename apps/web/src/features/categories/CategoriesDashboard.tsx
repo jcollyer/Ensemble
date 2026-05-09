@@ -5,9 +5,20 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Layers, Clock, Library, FolderTree, Users, Play, FolderPlus, ListPlus, MessageSquarePlus, ArrowRight, ChevronDown } from 'lucide-react';
+import {
+  Plus,
+  Layers,
+  Clock,
+  Users,
+  Play,
+  FolderPlus,
+  ListPlus,
+  MessageSquarePlus,
+  ArrowRight,
+  ChevronDown,
+} from 'lucide-react';
 
-import { BACK_LANGUAGES, CategoryCreateInput } from '@ensemble/types';
+import { BACK_LANGUAGES, CategoryCreateInput, FolderCreateInput } from '@ensemble/types';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,11 +81,10 @@ export function CategoriesDashboard() {
   const [folderError, setFolderError] = useState(false);
 
   const createFolder = trpc.folders.create.useMutation({
-    onSuccess: (folder) => {
+    onSuccess: () => {
       utils.folders.list.invalidate();
       setFolderOpen(false);
-      // Match the spec: creating a folder takes you to its detail page.
-      router.push(`/app/folders/${folder.id}`);
+      quickFolderForm.reset();
     },
   });
 
@@ -98,24 +108,34 @@ export function CategoriesDashboard() {
     },
   });
 
+  const quickFolderForm = useForm<FolderCreateInput>({
+    resolver: zodResolver(FolderCreateInput),
+    defaultValues: {
+      name: '',
+      color: null,
+      description: null,
+    },
+  });
+
   const decks = (categories ?? []).map((c) => ({ id: c.id, name: c.name }));
-  const hasDecks = (categories?.length ?? 0) > 0;
   const hasFolders = (folders?.length ?? 0) > 0;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl text-gray-700 font-semibold tracking-tight">Willkommen, bienvenue, welcome!</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-700">
+            Willkommen, bienvenue, welcome!
+          </h1>
           <p className="text-muted-foreground text-sm">
-            Play/practice cards by your rating of difficulty, type (nouns), or deck (level 2, week 2)
+            Play/practice cards by your rating of difficulty, type (nouns), or deck (level 2, week
+            2)
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             onClick={() => {
-              setPendingFolderIds([]);
               setFolderOpen(true);
             }}
           >
@@ -123,7 +143,7 @@ export function CategoriesDashboard() {
             New folder
           </Button>
           <Button
-          variant="outline"
+            variant="outline"
             onClick={() => {
               form.setValue('private', me?.defaultDeckPrivate ?? true);
               setDeckOpen(true);
@@ -140,7 +160,6 @@ export function CategoriesDashboard() {
             <Play className="h-4 w-4" />
             Play
           </Button>
-
         </div>
       </div>
 
@@ -166,6 +185,53 @@ export function CategoriesDashboard() {
         />
       </div>
 
+      {/* Folder sections loading */}
+      {isLoading && (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="bg-muted/50 flex animate-pulse items-center gap-3 rounded-xl p-5"
+            >
+              <div className="bg-muted h-5 w-5 shrink-0 rounded-md" />
+              <div className="bg-muted h-5 w-1/4 rounded-md" />
+              <div className="bg-muted h-4 w-16 rounded-md" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* no folder section yet */}
+      {!hasFolders && !isLoading && (
+        <div className="border-muted/50 overflow-hidden rounded-xl border border-dashed p-5 transition-shadow hover:shadow-sm">
+          <form
+            onSubmit={quickFolderForm.handleSubmit((values) => {
+              createFolder.mutate({
+                name: values.name,
+                color: null,
+                description: null,
+              });
+            })}
+            className="space-y-2"
+          >
+            <Input
+              type="text"
+              placeholder="First folder name"
+              {...quickFolderForm.register('name')}
+            />
+            {quickFolderForm.formState.errors.name ? (
+              <p className="text-destructive text-sm">
+                {quickFolderForm.formState.errors.name.message}
+              </p>
+            ) : null}
+            <Button type="submit" disabled={createFolder.isPending}>
+              <FolderPlus className="h-4 w-4" />
+              {createFolder.isPending ? 'Creating...' : 'Create your first folder'}
+            </Button>
+          </form>
+        </div>
+      )}
+
       {/* Folder sections — collapsible, full-width */}
       {hasFolders && !isLoading && (
         <div className="space-y-2">
@@ -185,55 +251,6 @@ export function CategoriesDashboard() {
               />
             );
           })}
-        </div>
-      )}
-
-      {isLoading ? (
-        <SkeletonGrid />
-      ) : hasDecks ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <AllFoldersCard count={folders?.length ?? 0} />
-          <AllDecksCard />
-          {(categories ?? []).map((c) => (
-            <Link key={c.id} href={`/app/categories/${c.id}`} className="group">
-              <Card className="hover:border-primary/40 transition hover:shadow-md">
-                <CardHeader className="flex flex-row items-center gap-3">
-                  <div
-                    aria-hidden
-                    className="h-10 w-10 shrink-0 rounded-md"
-                    style={{ backgroundColor: c.color ?? '#94a3b8' }}
-                  />
-                  <div className="min-w-0">
-                    <CardTitle className="group-hover:text-primary truncate">{c.name}</CardTitle>
-                    {c.description ? (
-                      <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs font-normal">
-                        {c.description}
-                      </p>
-                    ) : null}
-                  </div>
-                </CardHeader>
-                <CardContent className="text-muted-foreground flex items-center gap-4 text-sm">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Layers className="h-4 w-4" />
-                    {c.cardCount} {c.cardCount === 1 ? 'card' : 'cards'}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock className="h-4 w-4" />
-                    {c.dueCount} due
-                  </span>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <EmptyState
-            onCreate={() => {
-              form.setValue('private', me?.defaultDeckPrivate ?? true);
-              setDeckOpen(true);
-            }}
-          />
         </div>
       )}
 
@@ -283,14 +300,19 @@ export function CategoriesDashboard() {
           >
             {/* Folder — required, shown first */}
             <div className="space-y-2">
-              <Label htmlFor="new-deck-folder">Folder <span className="text-destructive">*</span></Label>
+              <Label htmlFor="new-deck-folder">
+                Folder <span className="text-destructive">*</span>
+              </Label>
               {!hasFolders ? (
                 <p className="text-muted-foreground text-sm">
                   No folders yet —{' '}
                   <button
                     type="button"
                     className="text-primary underline"
-                    onClick={() => { setDeckOpen(false); setFolderOpen(true); }}
+                    onClick={() => {
+                      setDeckOpen(false);
+                      setFolderOpen(true);
+                    }}
                   >
                     create a folder first
                   </button>
@@ -308,9 +330,13 @@ export function CategoriesDashboard() {
                     <SelectValue placeholder="Select a folder…" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NO_FOLDER} disabled>Select a folder…</SelectItem>
+                    <SelectItem value={NO_FOLDER} disabled>
+                      Select a folder…
+                    </SelectItem>
                     {(folders ?? []).map((f) => (
-                      <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                      <SelectItem key={f.id} value={f.id}>
+                        {f.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -437,40 +463,6 @@ export function CategoriesDashboard() {
   );
 }
 
-/**
- * Pseudo-deck card that links to the All decks view at /app/all-categories.
- * Visually distinct from real decks (dashed border, library icon, bold label)
- * so it reads as a meta-entry rather than a deck named "All decks".
- */
-function AllDecksCard() {
-  const { data: stats } = trpc.practice.stats.useQuery({});
-  return (
-    <Link href="/app/all-categories" className="group">
-      <Card className="hover:border-primary/60 border-dashed transition hover:shadow-md">
-        <CardHeader className="flex flex-row items-center gap-3">
-          <div
-            aria-hidden
-            className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-md"
-          >
-            <Library className="h-5 w-5" />
-          </div>
-          <CardTitle className="group-hover:text-primary truncate font-bold">All decks</CardTitle>
-        </CardHeader>
-        <CardContent className="text-muted-foreground flex items-center gap-4 text-sm">
-          <span className="inline-flex items-center gap-1.5">
-            <Layers className="h-4 w-4" />
-            {stats?.total ?? 0} {stats?.total === 1 ? 'card' : 'cards'}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Clock className="h-4 w-4" />
-            {stats?.due ?? 0} due
-          </span>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
 function ProgressSnapshotCard({
   label,
   value,
@@ -517,38 +509,9 @@ function getPercentage(value: number, total: number) {
   return Math.round((value / total) * 100);
 }
 
-/**
- * Sister tile that sits to the left of "All decks" and links to the folders
- * list view. We keep it visually consistent with AllDecksCard (dashed border,
- * bold title) so users read both as meta-entries.
- */
-function AllFoldersCard({ count }: { count: number }) {
-  return (
-    <Link href="/app/folders" className="group">
-      <Card className="hover:border-primary/60 border-dashed transition hover:shadow-md">
-        <CardHeader className="flex flex-row items-center gap-3">
-          <div
-            aria-hidden
-            className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-md"
-          >
-            <FolderTree className="h-5 w-5" />
-          </div>
-          <CardTitle className="group-hover:text-primary truncate font-bold">All folders</CardTitle>
-        </CardHeader>
-        <CardContent className="text-muted-foreground flex items-center gap-4 text-sm">
-          <span className="inline-flex items-center gap-1.5">
-            <FolderTree className="h-4 w-4" />
-            {count} {count === 1 ? 'folder' : 'folders'}
-          </span>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
 function LearningTogetherSection() {
   return (
-    <section className="from-primary/5 to-card rounded-2xl border border-primary/20 bg-gradient-to-br p-0 overflow-hidden shadow-sm">
+    <section className="from-primary/5 to-card border-primary/20 overflow-hidden rounded-2xl border bg-gradient-to-br p-0 shadow-sm">
       {/* Header */}
       <div className="bg-primary/8 border-primary/15 flex items-center gap-3 border-b px-6 py-4">
         <div className="bg-primary/15 text-primary flex h-8 w-8 items-center justify-center rounded-lg">
@@ -563,7 +526,9 @@ function LearningTogetherSection() {
         <div className="px-6 py-4">
           <ul className="text-muted-foreground space-y-1.5 text-sm">
             <li className="flex items-center gap-2.5">
-              <span aria-hidden className="text-primary/60 shrink-0 font-bold">•</span>
+              <span aria-hidden className="text-primary/60 shrink-0 font-bold">
+                •
+              </span>
               <span>See the Ensemble pinned deck for inspiration on how to create cards</span>
             </li>
           </ul>
@@ -573,11 +538,17 @@ function LearningTogetherSection() {
         <div className="px-6 py-4">
           <ul className="text-muted-foreground space-y-1.5 text-sm">
             <li className="flex items-center gap-2.5">
-              <span aria-hidden className="text-primary/60 shrink-0 font-bold">•</span>
-              <span>Duplicate a public deck to springboard off of and edit to make it your own</span>
+              <span aria-hidden className="text-primary/60 shrink-0 font-bold">
+                •
+              </span>
+              <span>
+                Duplicate a public deck to springboard off of and edit to make it your own
+              </span>
             </li>
             <li className="flex items-center gap-2.5">
-              <span aria-hidden className="text-primary/60 shrink-0 font-bold">•</span>
+              <span aria-hidden className="text-primary/60 shrink-0 font-bold">
+                •
+              </span>
               <span>Play a public deck to practice sample sentences new to you</span>
             </li>
           </ul>
@@ -587,11 +558,17 @@ function LearningTogetherSection() {
         <div className="px-6 py-4">
           <ul className="text-muted-foreground space-y-1.5 text-sm">
             <li className="flex items-center gap-2.5">
-              <span aria-hidden className="text-primary/60 shrink-0 font-bold">•</span>
-              <span>Make your decks public or private under your profile in the upper right hand corner</span>
+              <span aria-hidden className="text-primary/60 shrink-0 font-bold">
+                •
+              </span>
+              <span>
+                Make your decks public or private under your profile in the upper right hand corner
+              </span>
             </li>
             <li className="flex items-center gap-2.5">
-              <span aria-hidden className="text-primary/60 shrink-0 font-bold">•</span>
+              <span aria-hidden className="text-primary/60 shrink-0 font-bold">
+                •
+              </span>
               <span>
                 Share permission with another user to collaborate on a deck together{' '}
                 <span className="text-muted-foreground/50 text-xs">[coming soon]</span>
@@ -612,36 +589,6 @@ function LearningTogetherSection() {
         </Link>
       </div>
     </section>
-  );
-}
-
-function EmptyState({ onCreate }: { onCreate: () => void }) {
-  return (
-    <Card className="border-dashed sm:col-span-1 lg:col-span-3">
-      <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
-        <div className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full">
-          <Layers className="h-6 w-6" />
-        </div>
-        <div className="text-lg font-semibold">No decks yet</div>
-        <p className="text-muted-foreground max-w-sm text-sm">
-          Create your first deck to start adding flashcards. Each deck has its own practice queue.
-        </p>
-        <Button onClick={onCreate}>
-          <Plus className="h-4 w-4" />
-          Create your first deck
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-function SkeletonGrid() {
-  return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="bg-muted/50 h-32 animate-pulse rounded-xl border" />
-      ))}
-    </div>
   );
 }
 
@@ -749,7 +696,7 @@ function FolderSection({
               <button
                 type="button"
                 onClick={onCreateDeck}
-                className="group hover:border-primary/50 hover:bg-muted/30 flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-6 text-center transition"
+                className="hover:border-primary/50 hover:bg-muted/30 group flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-6 text-center transition"
               >
                 <div className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-full">
                   <Plus className="h-4 w-4" />
