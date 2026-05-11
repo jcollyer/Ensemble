@@ -686,59 +686,54 @@ function FolderSection({
       {/* ── Expanded deck grid ── */}
       {open && (
         <div className="border-t px-5 py-5">
-          {decks.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {decks.map((d) => (
-                <Link key={d.id} href={`/app/categories/${d.id}`} className="group">
-                  <Card className="hover:border-primary/40 h-full transition hover:shadow-md">
-                    <CardHeader className="flex flex-row items-center gap-3">
-                      <div
-                        aria-hidden
-                        className="h-10 w-10 shrink-0 rounded-md"
-                        style={{ backgroundColor: d.color ?? '#94a3b8' }}
-                      />
-                      <div className="min-w-0">
-                        <CardTitle className="group-hover:text-primary truncate text-sm">
-                          {d.name}
-                        </CardTitle>
-                        {d.description ? (
-                          <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs font-normal">
-                            {d.description}
-                          </p>
-                        ) : null}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="text-muted-foreground flex items-center gap-3 text-xs">
-                      <span className="inline-flex items-center gap-1">
-                        <Layers className="h-3.5 w-3.5" />
-                        {d.cardCount} {d.cardCount === 1 ? 'card' : 'cards'}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        {d.dueCount} due
-                      </span>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            /* Empty folder — dashed prompt card */
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <button
-                type="button"
-                onClick={onCreateDeck}
-                className="hover:border-primary/50 hover:bg-muted/30 group flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-6 text-center transition"
-              >
-                <div className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-full">
-                  <Plus className="h-4 w-4" />
-                </div>
-                <p className="text-muted-foreground group-hover:text-foreground text-sm font-medium transition">
-                  Add your first deck
-                </p>
-              </button>
-            </div>
-          )}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {decks.map((d) => (
+              <Link key={d.id} href={`/app/categories/${d.id}`} className="group">
+                <Card className="hover:border-primary/40 h-full transition hover:shadow-md">
+                  <CardHeader className="flex flex-row items-center gap-3">
+                    <div
+                      aria-hidden
+                      className="h-10 w-10 shrink-0 rounded-md"
+                      style={{ backgroundColor: d.color ?? '#94a3b8' }}
+                    />
+                    <div className="min-w-0">
+                      <CardTitle className="group-hover:text-primary truncate text-sm">
+                        {d.name}
+                      </CardTitle>
+                      {d.description ? (
+                        <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs font-normal">
+                          {d.description}
+                        </p>
+                      ) : null}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="text-muted-foreground flex items-center gap-3 text-xs">
+                    <span className="inline-flex items-center gap-1">
+                      <Layers className="h-3.5 w-3.5" />
+                      {d.cardCount} {d.cardCount === 1 ? 'card' : 'cards'}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      {d.dueCount} due
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+            {/* Empty folder — dashed prompt card */}
+            <button
+              type="button"
+              onClick={onCreateDeck}
+              className="hover:border-primary/50 hover:bg-muted/30 group flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-6 text-center transition"
+            >
+              <div className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-full">
+                <Plus className="h-4 w-4" />
+              </div>
+              <p className="text-muted-foreground group-hover:text-foreground text-sm font-medium transition">
+                {`Add your ${decks.length === 0 ? 'first' : 'next'} deck`}
+              </p>
+            </button>
+          </div>
         </div>
       )}
     </div>
