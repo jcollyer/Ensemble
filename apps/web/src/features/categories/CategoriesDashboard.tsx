@@ -41,7 +41,6 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { trpc } from '@/lib/trpc/client';
-import { CreateCardDialog } from '@/features/cards/CreateCardDialog';
 import { FolderModal } from '@/features/folders/FolderModal';
 
 // Sentinels because the Radix Select doesn't allow an empty-string value.
@@ -54,7 +53,6 @@ const PALETTE = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899
 export function CategoriesDashboard() {
   const router = useRouter();
   const [deckOpen, setDeckOpen] = useState(false);
-  const [cardOpen, setCardOpen] = useState(false);
   const [folderOpen, setFolderOpen] = useState(false);
   const [quickFolderNameVisible, setQuickFolderNameVisible] = useState(false);
   const quickFolderInputRef = useRef<HTMLInputElement | null>(null);
@@ -160,10 +158,6 @@ export function CategoriesDashboard() {
           >
             <ListPlus className="h-4 w-4" />
             New deck
-          </Button>
-          <Button variant="outline" onClick={() => setCardOpen(true)}>
-            <MessageSquarePlus className="h-4 w-4" />
-            New card
           </Button>
           <Button onClick={() => router.push('/app/all-categories')}>
             <Play className="h-4 w-4" />
@@ -473,14 +467,6 @@ export function CategoriesDashboard() {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* New card dialog with optional deck selector. */}
-      <CreateCardDialog
-        mode="selectable"
-        decks={decks}
-        open={cardOpen}
-        onOpenChange={setCardOpen}
-      />
 
       {/* New folder dialog. Saving navigates to the folder's detail page. */}
       <FolderModal
