@@ -68,7 +68,6 @@ export function AllCardsView() {
   const { data: stats } = trpc.practice.stats.useQuery({});
   const { data: categories } = trpc.categories.list.useQuery();
 
-  const [createOpen, setCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
@@ -76,7 +75,7 @@ export function AllCardsView() {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [practiceLimit, setPracticeLimit] = useState(20);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(true);
 
   function toggleCategory(id: string) {
     setSelectedCategoryIds((prev) =>
@@ -160,7 +159,7 @@ export function AllCardsView() {
           <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link href="/app">
               <ArrowLeft className="h-4 w-4" />
-              Your decks
+              Back
             </Link>
           </Button>
           <div className="flex items-center gap-3">
@@ -170,10 +169,11 @@ export function AllCardsView() {
             >
               <Library className="h-5 w-5" />
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight">All decks</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">Play Flashcards</h1>
           </div>
           <p className="text-muted-foreground pl-12 text-sm">
-            Every card you've created, including uncategorized ones.
+            Choose none, one or multiple filter option to play a subset of your cards, or leave
+            blank to play all.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -190,11 +190,7 @@ export function AllCardsView() {
           </Button>
           <Button onClick={() => router.push(buildPracticeHref())}>
             <Play className="h-4 w-4" />
-            Practice{practiceCountLabel}
-          </Button>
-          <Button variant="outline" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" />
-            New card
+            Play{practiceCountLabel}
           </Button>
         </div>
       </div>
@@ -205,12 +201,12 @@ export function AllCardsView() {
         <Stat label="Mastered" value={stats?.mastered ?? 0} />
       </div>
 
-      {/* ── Practice filter panel ──────────────────────────────────────────── */}
+      {/* ── Play filter panel ──────────────────────────────────────────── */}
       {filterOpen && (
         <Card>
           <CardContent className="space-y-5 pt-5">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">Practice filters</span>
+              <span className="text-sm font-semibold">Play filters</span>
               <div className="flex gap-2">
                 {hasActiveFilters && (
                   <button
@@ -404,37 +400,18 @@ export function AllCardsView() {
             );
           })}
         </div>
-      ) : hasActiveFilters ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
-            <div className="text-lg font-semibold">No matching cards</div>
-            <p className="text-muted-foreground max-w-sm text-sm">
-              No cards match the current filters. Try adjusting your selection above.
-            </p>
-          </CardContent>
-        </Card>
       ) : (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
-            <div className="text-lg font-semibold">No cards yet</div>
-            <p className="text-muted-foreground max-w-sm text-sm">
-              Add your first card here, or create one inside a specific deck.
-            </p>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add a card
-            </Button>
-          </CardContent>
-        </Card>
+        hasActiveFilters && (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+              <div className="text-lg font-semibold">No matching cards</div>
+              <p className="text-muted-foreground max-w-sm text-sm">
+                No cards match the current filters. Try adjusting your selection above.
+              </p>
+            </CardContent>
+          </Card>
+        )
       )}
-
-      {/* Create card dialog with optional deck selector. Defaults to no deck. */}
-      <CreateCardDialog
-        mode="selectable"
-        decks={decks}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-      />
 
       {/* Edit card dialog. Passes the deck list so uncategorized cards get
           a "Move to deck" selector — already-categorized cards see the plain
