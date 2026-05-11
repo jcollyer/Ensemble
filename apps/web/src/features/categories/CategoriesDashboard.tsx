@@ -278,6 +278,7 @@ export function CategoriesDashboard() {
                 decks={folderDecks}
                 onCreateDeck={() => {
                   form.setValue('private', me?.defaultDeckPrivate ?? true);
+                  setPendingFolderId(folder.id);
                   setDeckOpen(true);
                 }}
               />
