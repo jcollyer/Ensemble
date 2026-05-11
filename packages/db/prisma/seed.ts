@@ -19,6 +19,10 @@ async function main() {
   });
 
   if (!existing) {
+    // Demo cards seeded with a mix of difficultyLevel values so the deck
+    // detail view's Challenging / Good / Easy tiles have something to show
+    // on a fresh database. One card is left null to demo the "unrated yet"
+    // state.
     await prisma.category.create({
       data: {
         name: 'TypeScript Basics',
@@ -29,22 +33,27 @@ async function main() {
             {
               front: 'What does `as const` do?',
               back: 'Treats a literal as a deeply readonly literal type.',
+              difficultyLevel: 'good',
             },
             {
               front: 'Difference between `interface` and `type`?',
               back: 'Interfaces are open and extendable; type aliases are closed but more flexible (unions, intersections, mapped types).',
+              difficultyLevel: 'challenging',
             },
             {
               front: 'What is `satisfies`?',
               back: 'Validates that an expression matches a type without widening or narrowing the inferred type.',
+              difficultyLevel: 'challenging',
             },
             {
               front: 'What is a discriminated union?',
               back: 'A union of object types sharing a common literal `kind` field that lets TS narrow the variant.',
+              difficultyLevel: 'easy',
             },
             {
               front: 'What does `keyof T` return?',
               back: 'A union of the literal string/number/symbol keys of `T`.',
+              // Intentionally unrated to demo the null state.
             },
           ],
         },

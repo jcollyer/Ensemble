@@ -16,7 +16,6 @@ import { Button } from '../../../../src/components/Button';
 import { Card } from '../../../../src/components/Card';
 import { ClassBadge } from '../../../../src/components/ClassBadge';
 import { LanguagePicker } from '../../../../src/components/LanguagePicker';
-import { formatRelative } from '../../../../src/lib/format';
 import { trpc } from '../../../../src/lib/trpc';
 import {
   FlashcardPreviewModal,
@@ -47,7 +46,6 @@ export default function DeckDetailScreen() {
   const remove = trpc.flashcards.delete.useMutation({
     onSuccess: () => {
       utils.flashcards.listByCategory.invalidate({ categoryId });
-      utils.practice.stats.invalidate({ categoryId });
       utils.categories.list.invalidate();
     },
     onError: (err) => Alert.alert('Could not delete card', err.message),
@@ -143,8 +141,12 @@ export default function DeckDetailScreen() {
               {isOwner ? (
                 <>
                   <Stat label="Total" value={stats?.total ?? cards.length} />
-                  <Stat label="Due now" value={stats?.due ?? 0} highlight={(stats?.due ?? 0) > 0} />
-                  <Stat label="Mastered" value={stats?.mastered ?? 0} />
+                  <Stat
+                    label="Challenging"
+                    value={stats?.difficultyBreakdown?.challenging ?? 0}
+                  />
+                  <Stat label="Good" value={stats?.difficultyBreakdown?.good ?? 0} />
+                  <Stat label="Easy" value={stats?.difficultyBreakdown?.easy ?? 0} />
                 </>
               ) : null}
             </View>
@@ -155,7 +157,7 @@ export default function DeckDetailScreen() {
                   variant="outline"
                   onPress={() => router.push(`/decks/${categoryId}/practice`)}
                 >
-                  {`Practice${isOwner && stats?.due ? ` (${stats.due})` : ''}`}
+                  {`Play${isOwner && cards.length > 0 ? ` (${cards.length})` : ''}`}
                 </Button>
               </View>
               {isOwner ? (
@@ -209,14 +211,10 @@ export default function DeckDetailScreen() {
                 ) : null}
                 <View className="mt-1 flex-row flex-wrap items-center gap-x-2 gap-y-1">
                   {item.class ? <ClassBadge value={item.class} /> : null}
-                  {isOwner ? (
-                    <>
-                      <Text className="text-xs text-slate-400">
-                        Next: {formatRelative(item.nextReview)}
-                      </Text>
-                      <Text className="text-xs text-slate-400">•</Text>
-                      <Text className="text-xs text-slate-400">{item.repetitions} reps</Text>
-                    </>
+                  {isOwner && item.difficultyLevel ? (
+                    <Text className="text-xs text-slate-400 capitalize">
+                      {item.difficultyLevel}
+                    </Text>
                   ) : null}
                 </View>
               </View>

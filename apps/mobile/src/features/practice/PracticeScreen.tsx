@@ -1,8 +1,8 @@
 import { Stack, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
-import { type BackLanguageValue } from '@ensemble/types';
+import { type BackLanguageValue, type DifficultyLevel } from '@ensemble/types';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -15,40 +15,55 @@ interface Props {
   categoryIds?: string[];
   /** Filter by word classes (e.g. ['noun', 'verb']). Empty = all classes. */
   classes?: string[];
-  /** Max cards to pull for this session. Defaults to 20. */
+  /**
+   * Legacy practice-limit param. Still accepted by the route for backwards
+   * compatibility with bookmarked URLs but no longer used — every card in
+   * scope is included in the session now.
+   */
   practiceLimit?: number;
 }
 
 /**
  * Practice flow. Matches the web PracticeSession:
- *   1. Fetch the queue once on mount.
+ *   1. Fetch every card in scope on mount.
  *   2. Walk cards locally (tap card to flip).
  *   3. After each rating, fire submitReview and advance — don't block
  *      the UI on the network.
- *   4. When the queue is done, show a summary and invalidate stats.
+ *   4. When the queue is done, show a summary and invalidate stats. "Play
+ *      again" reuses the same fetched card list (no refetch) so the user
+ *      gets a true restart from card 0.
  */
-export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit }: Props) {
+export function PracticeScreen({ categoryId, categoryIds, classes }: Props) {
   const isAllCards = !categoryId;
   const router = useRouter();
   const utils = trpc.useUtils();
-
-  // When `practiceAll` is true we ignore the SM-2 schedule and pull every
-  // card in the deck. The user opts in via "Practice anyway" on the empty
-  // state, so we only flip this on after they confirm.
-  const [practiceAll, setPracticeAll] = useState(false);
 
   const { data, isLoading } = trpc.practice.queue.useQuery(
     {
       categoryId,
       categoryIds: categoryIds?.length ? categoryIds : undefined,
       classes: classes?.length ? classes : undefined,
-      limit: practiceLimit ?? 20,
-      includeAll: practiceAll,
     },
     { refetchOnMount: 'always' },
   );
 
-  const submit = trpc.practice.submitReview.useMutation();
+  // Invalidate stats / list queries on every successful rating so the
+  // ProgressSnapshotCard tiles (both per-deck and dashboard variants)
+  // refresh in real time as the user rates cards. We invalidate
+  // `practice.stats` with no input so BOTH `{}` (dashboard aggregate) and
+  // `{ categoryId: ... }` (deck-scoped) variants are refetched. Same for
+  // categories.list, which feeds deck-tile counts on the dashboard.
+  const submit = trpc.practice.submitReview.useMutation({
+    onSuccess: () => {
+      utils.practice.stats.invalidate();
+      utils.categories.list.invalidate();
+      if (categoryId) {
+        utils.flashcards.listByCategory.invalidate({ categoryId });
+      } else {
+        utils.flashcards.listAll.invalidate();
+      }
+    },
+  });
 
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -65,19 +80,18 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
   const backTarget = isAllCards ? '/all-cards' : `/decks/${categoryId}`;
   const backLabel = isAllCards ? 'Back to all cards' : 'Back to deck';
 
-  function handleRate(quality: number) {
+  function handleRate(level: DifficultyLevel) {
     if (!current || !canRate) return;
-    submit.mutate({ cardId: current.id, confidence: quality });
+    submit.mutate({ cardId: current.id, difficultyLevel: level });
     setReviewed((n) => n + 1);
     setFlipped(false);
     setIndex((i) => i + 1);
   }
 
-  // Skip controls. These intentionally do NOT touch SM-2 state — no
-  // submitReview is fired, so confidence / easeFactor / interval / nextReview
-  // remain unchanged. We also reset the flip so the next card always lands
-  // on its front side. Pressing "next" on the last card advances past the
-  // end of the queue, which triggers the session-complete screen.
+  // Skip controls. These intentionally don't fire submitReview, so a card
+  // the user navigates past without rating keeps its previous
+  // difficultyLevel. Pressing "next" on the last card advances past the end
+  // of the queue, which triggers the session-complete screen.
   const canGoPrev = !done && index > 0;
   const canGoNext = !done && cards.length > 0;
 
@@ -91,18 +105,8 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
     setIndex((i) => Math.min(i + 1, cards.length));
   }, [cards.length]);
 
-  // Refresh counts when the session wraps up.
-  useEffect(() => {
-    if (done && canRate) {
-      utils.categories.list.invalidate();
-      utils.practice.stats.invalidate({ categoryId });
-      if (categoryId) {
-        utils.flashcards.listByCategory.invalidate({ categoryId });
-      } else {
-        utils.flashcards.listAll.invalidate();
-      }
-    }
-  }, [done, utils, categoryId]);
+  // Per-rating cache invalidation lives in submit's onSuccess above, so
+  // there's nothing to do here once the session wraps up.
 
   const progress = useMemo(() => {
     if (cards.length === 0) return 0;
@@ -126,12 +130,9 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
       <ScrollView contentContainerStyle={{ padding: 16, flexGrow: 1 }}>
         {cards.length === 0 ? (
           <EmptyQueue
-            practiceAll={isReadOnlyPublicDeck ? true : practiceAll}
-            canPracticeAnyway={!isReadOnlyPublicDeck}
             backLabel={backLabel}
             emptyTitle={isAllCards ? 'No cards to practice' : 'No cards in this deck'}
             onBack={() => router.push(backTarget as never)}
-            onPracticeAnyway={() => setPracticeAll(true)}
           />
         ) : done ? (
           <SessionSummary
@@ -140,16 +141,11 @@ export function PracticeScreen({ categoryId, categoryIds, classes, practiceLimit
             backLabel={backLabel}
             onBack={() => router.push(backTarget as never)}
             onAgain={() => {
+              // Reuse the fetched card list — Play again should restart with
+              // the same set of cards in the same order, not refetch.
               setIndex(0);
               setReviewed(0);
               setFlipped(false);
-              utils.practice.queue.invalidate({
-                categoryId,
-                categoryIds: categoryIds?.length ? categoryIds : undefined,
-                classes: classes?.length ? classes : undefined,
-                limit: practiceLimit ?? 20,
-                includeAll: practiceAll,
-              });
             }}
           />
         ) : (
@@ -208,43 +204,33 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
+/**
+ * Empty-state card for when the requested scope contains zero cards (deck
+ * has no cards yet, or filters match nothing). There's no longer a
+ * "caught up on your schedule" state — every card is always practiceable.
+ */
 function EmptyQueue({
-  practiceAll,
-  canPracticeAnyway,
   backLabel,
   emptyTitle,
   onBack,
-  onPracticeAnyway,
 }: {
-  practiceAll: boolean;
-  canPracticeAnyway: boolean;
   backLabel: string;
   emptyTitle: string;
   onBack: () => void;
-  onPracticeAnyway: () => void;
 }) {
-  const deckIsEmpty = practiceAll;
-
   return (
     <Card className="items-center gap-3 p-10">
       <View className="h-12 w-12 items-center justify-center rounded-full bg-blue-50">
         <Text className="text-2xl">✓</Text>
       </View>
-      <Text className="text-lg font-semibold text-slate-900">
-        {deckIsEmpty ? emptyTitle : 'Nothing due right now'}
-      </Text>
+      <Text className="text-lg font-semibold text-slate-900">{emptyTitle}</Text>
       <Text className="text-center text-sm text-slate-500">
-        {deckIsEmpty
-          ? "There's nothing here to practice yet. Add some cards to get started."
-          : "You're all caught up. Your schedule will surface cards as they become due — or jump back in early with Practice anyway."}
+        There&apos;s nothing here to practice yet. Add some cards to get started.
       </Text>
       <View className="mt-2 w-full gap-2">
         <Button variant="outline" onPress={onBack}>
           {backLabel}
         </Button>
-        {!deckIsEmpty && canPracticeAnyway ? (
-          <Button onPress={onPracticeAnyway}>Practice anyway</Button>
-        ) : null}
       </View>
     </Card>
   );
@@ -280,7 +266,7 @@ function SessionSummary({
           </Button>
         </View>
         <View className="flex-1">
-          <Button onPress={onAgain}>Practice again</Button>
+          <Button onPress={onAgain}>Play again</Button>
         </View>
       </View>
     </Card>

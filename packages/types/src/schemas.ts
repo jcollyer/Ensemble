@@ -188,12 +188,19 @@ export type FlashcardUpdateInput = z.infer<typeof FlashcardUpdateInput>;
 // Practice
 // ----------------------------------------------------------------------------
 
-/** SM-2 quality of recall (0 = total blackout, 5 = perfect). */
-export const ConfidenceRating = z.number().int().min(0).max(5);
-export type ConfidenceRating = z.infer<typeof ConfidenceRating>;
+/**
+ * Difficulty rating the user assigns to a card after flipping it. There is
+ * intentionally no ordering between values — these are flat labels, not a
+ * numeric scale. Persisted as a free-form string column so we can add new
+ * options later without a migration; validation is enforced here at the API
+ * edge.
+ */
+export const DIFFICULTY_LEVEL_VALUES = ['challenging', 'good', 'easy'] as const;
+export const DifficultyLevelSchema = z.enum(DIFFICULTY_LEVEL_VALUES);
+export type DifficultyLevel = z.infer<typeof DifficultyLevelSchema>;
 
 export const SubmitReviewInput = z.object({
   cardId: z.string().cuid(),
-  confidence: ConfidenceRating,
+  difficultyLevel: DifficultyLevelSchema,
 });
 export type SubmitReviewInput = z.infer<typeof SubmitReviewInput>;

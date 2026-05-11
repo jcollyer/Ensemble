@@ -14,17 +14,17 @@ import { Audio, type AVPlaybackStatus } from 'expo-av';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
-import type { BackLanguageValue } from '@ensemble/types';
+import type { BackLanguageValue, DifficultyLevel } from '@ensemble/types';
 import { Card } from '@/components/Card';
 import { ClassBadge } from '@/components/ClassBadge';
 import { trpc } from '@/lib/trpc';
 
 // ── Rating definitions ─────────────────────────────────────────────────────────
 
-export const RATINGS: { value: number; label: string; sub: string; tone: string }[] = [
-  { value: 2, label: 'Challenging', sub: 'Not yet', tone: 'border-orange-300' },
-  { value: 3, label: 'Good', sub: 'Warm', tone: 'border-blue-300' },
-  { value: 5, label: 'Easy', sub: 'Got it', tone: 'border-green-300' },
+export const RATINGS: { value: DifficultyLevel; label: string; sub: string; tone: string }[] = [
+  { value: 'challenging', label: 'Challenging', sub: 'Not yet', tone: 'border-orange-300' },
+  { value: 'good', label: 'Good', sub: 'Warm', tone: 'border-blue-300' },
+  { value: 'easy', label: 'Easy', sub: 'Got it', tone: 'border-green-300' },
 ];
 
 // ── NavButton ──────────────────────────────────────────────────────────────────
@@ -311,7 +311,7 @@ export function RatingButtons({
   onRate,
   disabled,
 }: {
-  onRate: (q: number) => void;
+  onRate: (level: DifficultyLevel) => void;
   disabled?: boolean;
 }) {
   return (

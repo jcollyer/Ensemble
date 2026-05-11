@@ -109,14 +109,6 @@ export default function DecksScreen() {
                   <Text className="text-sm text-slate-500">
                     {item.cardCount} {item.cardCount === 1 ? 'card' : 'cards'}
                   </Text>
-                  <Text className="text-sm text-slate-500">•</Text>
-                  <Text
-                    className={`text-sm ${
-                      item.dueCount > 0 ? 'text-primary font-medium' : 'text-slate-500'
-                    }`}
-                  >
-                    {item.dueCount} due
-                  </Text>
                 </View>
               </Card>
             </Pressable>
@@ -160,7 +152,6 @@ export default function DecksScreen() {
 function AllDecksEntry() {
   const { data: stats } = trpc.practice.stats.useQuery({});
   const total = stats?.total ?? 0;
-  const due = stats?.due ?? 0;
 
   return (
     <Link href="/all-cards" asChild>
@@ -177,10 +168,6 @@ function AllDecksEntry() {
           <View className="mt-3 flex-row gap-4">
             <Text className="text-sm text-slate-500">
               {total} {total === 1 ? 'card' : 'cards'}
-            </Text>
-            <Text className="text-sm text-slate-500">•</Text>
-            <Text className={`text-sm ${due > 0 ? 'text-primary font-medium' : 'text-slate-500'}`}>
-              {due} due
             </Text>
           </View>
         </Card>

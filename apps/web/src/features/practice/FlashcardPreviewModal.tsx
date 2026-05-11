@@ -22,7 +22,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import type { BackLanguageValue } from '@ensemble/types';
+import type { BackLanguageValue, DifficultyLevel } from '@ensemble/types';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/trpc/client';
@@ -53,7 +53,7 @@ interface FlashcardPreviewModalProps {
   /** Whether the user can rate cards (false for public decks). */
   canRate?: boolean;
   /** Called after each successful rating so the parent can invalidate caches. */
-  onRated?: (cardId: string, quality: number) => void;
+  onRated?: (cardId: string, level: DifficultyLevel) => void;
 }
 
 export function FlashcardPreviewModal({
@@ -116,10 +116,10 @@ export function FlashcardPreviewModal({
     return () => window.removeEventListener('keydown', handler);
   }, [open, canGoPrev, canGoNext, handlePrev, handleNext]);
 
-  function handleRate(quality: number) {
+  function handleRate(level: DifficultyLevel) {
     if (!current || !canRate) return;
-    submit.mutate({ cardId: current.id, confidence: quality });
-    onRated?.(current.id, quality);
+    submit.mutate({ cardId: current.id, difficultyLevel: level });
+    onRated?.(current.id, level);
     // After rating, advance to the next card; if on the last card just reset
     // the flip so the user can see the front again.
     if (canGoNext) {

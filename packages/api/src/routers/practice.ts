@@ -1,19 +1,19 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { reviewCard, SubmitReviewInput } from '@ensemble/types';
+import { SubmitReviewInput } from '@ensemble/types';
 
 import { protectedProcedure, router } from '../trpc';
 
 export const practiceRouter = router({
   /**
-   * Returns the next batch of cards to study in a category.
-   * Cards never reviewed (nextReview = null) come first, then overdue cards
-   * sorted by how long they've been overdue.
+   * Returns every practiceable card in the requested scope. The practice UI
+   * walks through the full list locally — there is no longer any notion of
+   * "due" cards or a scheduling algorithm gating which cards come back. The
+   * old `limit` and `includeAll` parameters are gone for the same reason.
    *
-   * When `includeAll` is true, the nextReview filter is skipped and every
-   * card in the category is eligible — this powers "Practice anyway" when
-   * the user is already caught up on their schedule.
+   * Ordering is reverse-chronological by creation time so the user's most
+   * recently added cards appear first.
    */
   queue: protectedProcedure
     .input(
@@ -23,8 +23,6 @@ export const practiceRouter = router({
         categoryIds: z.string().cuid().array().optional(),
         /** Filter by word class (e.g. 'noun', 'verb'). Empty = all classes. */
         classes: z.string().array().optional(),
-        limit: z.number().int().min(1).max(100).default(20),
-        includeAll: z.boolean().default(false),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -63,17 +61,12 @@ export const practiceRouter = router({
 
       // Build word-class filter.
       const classFilter = input.classes?.length ? { class: { in: input.classes } } : {};
-      const isReadOnlyPublicCategory = !!input.categoryId && !categoryIsOwner;
 
-      const now = new Date();
       const cards = await ctx.prisma.flashcard.findMany({
         where: {
           ...(input.categoryId ? {} : { userId: ctx.userId }),
           ...categoryFilter,
           ...classFilter,
-          ...(input.includeAll || isReadOnlyPublicCategory
-            ? {}
-            : { OR: [{ nextReview: null }, { nextReview: { lte: now } }] }),
         },
         include: {
           category: {
@@ -82,8 +75,7 @@ export const practiceRouter = router({
             },
           },
         },
-        orderBy: [{ nextReview: 'asc' }, { createdAt: 'asc' }],
-        take: input.limit,
+        orderBy: { createdAt: 'desc' },
       });
 
       return {
@@ -101,42 +93,34 @@ export const practiceRouter = router({
     }),
 
   /**
-   * Records a confidence rating for a card and runs SM-2 to schedule its
-   * next review. Returns the updated card.
+   * Persists the user's difficulty rating for a card. There is no longer any
+   * scheduling computation here — we just store the latest rating so the UI
+   * can render the per-deck breakdown (Challenging / Good / Easy tiles) and
+   * so the value survives reloads.
    */
   submitReview: protectedProcedure.input(SubmitReviewInput).mutation(async ({ ctx, input }) => {
     const card = await ctx.prisma.flashcard.findFirst({
       where: { id: input.cardId, userId: ctx.userId },
+      select: { id: true },
     });
     if (!card) throw new TRPCError({ code: 'NOT_FOUND' });
 
-    const result = reviewCard(
-      {
-        repetitions: card.repetitions,
-        easeFactor: card.easeFactor,
-        interval: card.interval,
-      },
-      input.confidence,
-    );
-
     return ctx.prisma.flashcard.update({
       where: { id: card.id },
-      data: {
-        confidence: input.confidence,
-        repetitions: result.repetitions,
-        easeFactor: result.easeFactor,
-        interval: result.interval,
-        nextReview: result.nextReview,
-      },
+      data: { difficultyLevel: input.difficultyLevel },
     });
   }),
 
   /**
-   * Lightweight stats for the dashboard / streak widgets.
+   * Lightweight stats for the deck detail view.
    *
    * When `categoryId` is supplied, stats are scoped to that deck. Otherwise
-   * we count every card the user owns — including uncategorized ones — which
-   * is what the "All decks" view needs.
+   * we count every card the user owns — including uncategorized ones —
+   * which is what the "All decks" view needs.
+   *
+   * `difficultyBreakdown` counts cards by their last-stored difficulty
+   * rating. Cards that have never been rated (difficultyLevel = null) do
+   * not appear in any of the three buckets.
    */
   stats: protectedProcedure
     .input(z.object({ categoryId: z.string().cuid().optional() }))
@@ -147,36 +131,23 @@ export const practiceRouter = router({
         userId: ctx.userId,
         ...(input.categoryId ? { categoryId: input.categoryId } : {}),
       };
-      const now = new Date();
 
-      const [total, due, mastered, challenging, good, easy] = await Promise.all([
+      const [total, challenging, good, easy] = await Promise.all([
         ctx.prisma.flashcard.count({ where }),
         ctx.prisma.flashcard.count({
-          where: {
-            ...where,
-            OR: [{ nextReview: null }, { nextReview: { lte: now } }],
-          },
-        }),
-        // "Mastered" = at least 3 successful reviews in a row.
-        ctx.prisma.flashcard.count({
-          where: { ...where, repetitions: { gte: 3 } },
+          where: { ...where, difficultyLevel: 'challenging' },
         }),
         ctx.prisma.flashcard.count({
-          where: { ...where, confidence: 2 },
+          where: { ...where, difficultyLevel: 'good' },
         }),
         ctx.prisma.flashcard.count({
-          where: { ...where, confidence: 3 },
-        }),
-        ctx.prisma.flashcard.count({
-          where: { ...where, confidence: 5 },
+          where: { ...where, difficultyLevel: 'easy' },
         }),
       ]);
 
       return {
         total,
-        due,
-        mastered,
-        confidenceBreakdown: {
+        difficultyBreakdown: {
           challenging,
           good,
           easy,

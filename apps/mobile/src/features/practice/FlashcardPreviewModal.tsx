@@ -22,7 +22,7 @@ import { Feather } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
-import type { BackLanguageValue } from '@ensemble/types';
+import type { BackLanguageValue, DifficultyLevel } from '@ensemble/types';
 import { Button } from '@/components/Button';
 import { trpc } from '@/lib/trpc';
 import { FlipCard, NavButton, RatingButtons } from './FlashcardViewer';
@@ -52,7 +52,7 @@ interface FlashcardPreviewModalProps {
   /** Whether the user can rate cards (false for public / non-owned decks). */
   canRate?: boolean;
   /** Called after each rating so the parent can invalidate caches. */
-  onRated?: (cardId: string, quality: number) => void;
+  onRated?: (cardId: string, level: DifficultyLevel) => void;
 }
 
 export function FlashcardPreviewModal({
@@ -90,10 +90,10 @@ export function FlashcardPreviewModal({
     setIndex((i) => Math.min(cards.length - 1, i + 1));
   }, [cards.length]);
 
-  function handleRate(quality: number) {
+  function handleRate(level: DifficultyLevel) {
     if (!current || !canRate) return;
-    submit.mutate({ cardId: current.id, confidence: quality });
-    onRated?.(current.id, quality);
+    submit.mutate({ cardId: current.id, difficultyLevel: level });
+    onRated?.(current.id, level);
     // After rating, advance to next card; if on last just reset the flip.
     if (canGoNext) {
       setFlipped(false);

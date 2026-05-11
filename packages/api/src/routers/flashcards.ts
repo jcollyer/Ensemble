@@ -32,13 +32,12 @@ export const flashcardsRouter = router({
 
       if (isOwner) return cards;
 
+      // Strip the viewer-specific difficulty rating for non-owners so a
+      // public deck looks the same to everyone regardless of who's looking.
+      // The legacy SM-2 columns are still on the row but unused by the UI.
       return cards.map((card) => ({
         ...card,
-        confidence: 0,
-        easeFactor: 2.5,
-        interval: 0,
-        repetitions: 0,
-        nextReview: null,
+        difficultyLevel: null,
       }));
     }),
 

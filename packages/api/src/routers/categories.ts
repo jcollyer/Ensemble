@@ -6,9 +6,8 @@ import { CategoryCreateInput, CategoryUpdateInput } from '@ensemble/types';
 import { protectedProcedure, router } from '../trpc';
 
 export const categoriesRouter = router({
-  /** All categories owned by the current user, with card + due counts. */
+  /** All categories owned by the current user, with card counts. */
   list: protectedProcedure.query(async ({ ctx }) => {
-    const now = new Date();
     const categories = await ctx.prisma.category.findMany({
       where: { userId: ctx.userId },
       orderBy: { createdAt: 'desc' },
@@ -16,17 +15,6 @@ export const categoriesRouter = router({
         _count: { select: { cards: true } },
       },
     });
-
-    // Tally how many cards in each category are due (or never reviewed).
-    const dueCounts = await ctx.prisma.flashcard.groupBy({
-      by: ['categoryId'],
-      where: {
-        category: { userId: ctx.userId },
-        OR: [{ nextReview: null }, { nextReview: { lte: now } }],
-      },
-      _count: { _all: true },
-    });
-    const dueByCategory = new Map(dueCounts.map((d) => [d.categoryId, d._count._all]));
 
     return categories.map((c) => ({
       id: c.id,
@@ -38,7 +26,6 @@ export const categoriesRouter = router({
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
       cardCount: c._count.cards,
-      dueCount: dueByCategory.get(c.id) ?? 0,
     }));
   }),
 

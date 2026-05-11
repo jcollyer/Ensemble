@@ -8,7 +8,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Plus,
   Layers,
-  Clock,
   Users,
   Play,
   FolderPlus,
@@ -60,6 +59,8 @@ export function CategoriesDashboard() {
   const { data: me } = trpc.auth.me.useQuery();
   const { data: categories, isLoading } = trpc.categories.list.useQuery();
   const { data: folders } = trpc.folders.list.useQuery();
+  // Aggregate counts across every card the user owns. Drives the four
+  // ProgressSnapshotCard tiles below the header.
   const { data: stats } = trpc.practice.stats.useQuery({});
 
   const create = trpc.categories.create.useMutation({
@@ -170,20 +171,20 @@ export function CategoriesDashboard() {
         <ProgressSnapshotCard label="Total cards" value={stats?.total ?? 0} tone="slate" />
         <ProgressSnapshotCard
           label="Challenging cards"
-          value={stats?.confidenceBreakdown.challenging ?? 0}
-          percentage={getPercentage(stats?.confidenceBreakdown.challenging ?? 0, stats?.total ?? 0)}
+          value={stats?.difficultyBreakdown.challenging ?? 0}
+          percentage={getPercentage(stats?.difficultyBreakdown.challenging ?? 0, stats?.total ?? 0)}
           tone="amber"
         />
         <ProgressSnapshotCard
           label="Good cards"
-          value={stats?.confidenceBreakdown.good ?? 0}
-          percentage={getPercentage(stats?.confidenceBreakdown.good ?? 0, stats?.total ?? 0)}
+          value={stats?.difficultyBreakdown.good ?? 0}
+          percentage={getPercentage(stats?.difficultyBreakdown.good ?? 0, stats?.total ?? 0)}
           tone="blue"
         />
         <ProgressSnapshotCard
           label="Easy cards"
-          value={stats?.confidenceBreakdown.easy ?? 0}
-          percentage={getPercentage(stats?.confidenceBreakdown.easy ?? 0, stats?.total ?? 0)}
+          value={stats?.difficultyBreakdown.easy ?? 0}
+          percentage={getPercentage(stats?.difficultyBreakdown.easy ?? 0, stats?.total ?? 0)}
           tone="green"
         />
       </div>
@@ -631,7 +632,6 @@ function FolderSection({
     color: string | null;
     description?: string | null;
     cardCount: number;
-    dueCount: number;
   }[];
   onCreateDeck: () => void;
 }) {
@@ -695,10 +695,6 @@ function FolderSection({
                     <span className="inline-flex items-center gap-1">
                       <Layers className="h-3.5 w-3.5" />
                       {d.cardCount} {d.cardCount === 1 ? 'card' : 'cards'}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      {d.dueCount} due
                     </span>
                   </CardContent>
                 </Card>

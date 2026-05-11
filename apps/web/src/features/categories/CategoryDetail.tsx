@@ -18,7 +18,7 @@ import {
   type VerbTypeValue,
 } from '@ensemble/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -39,7 +39,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { trpc } from '@/lib/trpc/client';
-import { formatRelative } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/hooks';
 import { CreateCardDialog } from '@/features/cards/CreateCardDialog';
 import { ClassSelect } from '@/features/cards/ClassSelect';
@@ -122,7 +121,10 @@ export function CategoryDetail({ categoryId }: Props) {
   const remove = trpc.flashcards.delete.useMutation({
     onSuccess: () => {
       utils.flashcards.listByCategory.invalidate({ categoryId });
-      utils.practice.stats.invalidate({ categoryId });
+      // No-arg invalidate so both `{}` (dashboard) and `{ categoryId }`
+      // (this view) variants of practice.stats refetch — otherwise the
+      // dashboard's ProgressSnapshotCards stay stale until a hard refresh.
+      utils.practice.stats.invalidate();
       utils.categories.list.invalidate();
     },
   });
@@ -177,7 +179,9 @@ export function CategoryDetail({ categoryId }: Props) {
           <Button asChild variant="outline">
             <Link href={`/app/categories/${categoryId}/practice`}>
               <Play className="h-4 w-4" />
-              Play {isOwner && stats?.due ? `(${stats.due})` : ''}
+              {/* Show the total card count as the parenthetical so the user
+                  knows how big a session they're about to start. */}
+              Play {isOwner && (cards?.length ?? 0) > 0 ? `(${cards?.length})` : ''}
             </Link>
           </Button>
           {isOwner ? (
@@ -198,27 +202,27 @@ export function CategoryDetail({ categoryId }: Props) {
           />
           <ProgressSnapshotCard
             label="Challenging cards"
-            value={stats?.confidenceBreakdown?.challenging ?? 0}
+            value={stats?.difficultyBreakdown?.challenging ?? 0}
             percentage={getPercentage(
-              stats?.confidenceBreakdown?.challenging ?? 0,
+              stats?.difficultyBreakdown?.challenging ?? 0,
               stats?.total ?? cards?.length ?? 0,
             )}
             tone="amber"
           />
           <ProgressSnapshotCard
             label="Good cards"
-            value={stats?.confidenceBreakdown?.good ?? 0}
+            value={stats?.difficultyBreakdown?.good ?? 0}
             percentage={getPercentage(
-              stats?.confidenceBreakdown?.good ?? 0,
+              stats?.difficultyBreakdown?.good ?? 0,
               stats?.total ?? cards?.length ?? 0,
             )}
             tone="blue"
           />
           <ProgressSnapshotCard
             label="Easy cards"
-            value={stats?.confidenceBreakdown?.easy ?? 0}
+            value={stats?.difficultyBreakdown?.easy ?? 0}
             percentage={getPercentage(
-              stats?.confidenceBreakdown?.easy ?? 0,
+              stats?.difficultyBreakdown?.easy ?? 0,
               stats?.total ?? cards?.length ?? 0,
             )}
             tone="green"
@@ -270,12 +274,8 @@ export function CategoryDetail({ categoryId }: Props) {
                   ) : null}
                   <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs">
                     {card.class ? <ClassBadge value={card.class} /> : null}
-                    {isOwner ? (
-                      <>
-                        <span>Next review: {formatRelative(card.nextReview)}</span>
-                        <span>·</span>
-                        <span>{card.repetitions} reps</span>
-                      </>
+                    {isOwner && card.difficultyLevel ? (
+                      <span className="capitalize">{card.difficultyLevel}</span>
                     ) : null}
                   </div>
                 </div>
@@ -465,19 +465,6 @@ function DeckAudioLanguage({
             </SelectContent>
           </Select>
         </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <Card>
-      <CardHeader className="pb-1">
-        <div className="text-muted-foreground text-xs uppercase tracking-wide">{label}</div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-semibold">{value}</div>
       </CardContent>
     </Card>
   );

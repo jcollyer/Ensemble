@@ -16,7 +16,6 @@ import { WORD_CLASS_OPTIONS } from '@ensemble/types';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { ClassBadge } from '../../src/components/ClassBadge';
-import { formatRelative } from '../../src/lib/format';
 import { trpc } from '../../src/lib/trpc';
 import {
   FlashcardPreviewModal,
@@ -56,13 +55,11 @@ export default function AllCardsScreen() {
   }
 
   const cardsQuery = trpc.flashcards.listAll.useQuery();
-  const statsQuery = trpc.practice.stats.useQuery({});
   const categoriesQuery = trpc.categories.list.useQuery();
 
   const remove = trpc.flashcards.delete.useMutation({
     onSuccess: () => {
       utils.flashcards.listAll.invalidate();
-      utils.practice.stats.invalidate({});
       utils.categories.list.invalidate();
     },
     onError: (err) => Alert.alert('Could not delete card', err.message),
@@ -143,13 +140,16 @@ export default function AllCardsScreen() {
     );
   }
 
-  const stats = statsQuery.data;
   const hasActiveFilters =
     selectedCategoryIds.length > 0 || selectedClasses.length > 0 || practiceLimit !== 20;
+  // Practice button count = filtered cards when filters active, otherwise the
+  // total card count.
   const practiceCountLabel = hasActiveFilters
-    ? ` (${Math.min(filteredCards.length, practiceLimit)})`
-    : stats?.due
-      ? ` (${stats.due})`
+    ? filteredCards.length > 0
+      ? ` (${filteredCards.length})`
+      : ''
+    : allCards.length > 0
+      ? ` (${allCards.length})`
       : '';
 
   return (
@@ -169,9 +169,7 @@ export default function AllCardsScreen() {
             </View>
 
             <View className="flex-row gap-2">
-              <Stat label="Total" value={stats?.total ?? allCards.length} />
-              <Stat label="Due now" value={stats?.due ?? 0} highlight={(stats?.due ?? 0) > 0} />
-              <Stat label="Mastered" value={stats?.mastered ?? 0} />
+              <Stat label="Total" value={allCards.length} />
             </View>
 
             {/* ── Practice filter panel ──────────────────────────────────── */}
@@ -331,12 +329,14 @@ export default function AllCardsScreen() {
                         No deck
                       </Text>
                     )}
-                    <Text className="text-xs text-slate-400">•</Text>
-                    <Text className="text-xs text-slate-400">
-                      Next: {formatRelative(item.nextReview)}
-                    </Text>
-                    <Text className="text-xs text-slate-400">•</Text>
-                    <Text className="text-xs text-slate-400">{item.repetitions} reps</Text>
+                    {item.difficultyLevel ? (
+                      <>
+                        <Text className="text-xs text-slate-400">•</Text>
+                        <Text className="text-xs text-slate-400 capitalize">
+                          {item.difficultyLevel}
+                        </Text>
+                      </>
+                    ) : null}
                   </View>
                 </View>
                 {/* Inner Pressables win over the outer tap — edit/delete still work */}
@@ -385,7 +385,6 @@ export default function AllCardsScreen() {
             refreshing={cardsQuery.isRefetching}
             onRefresh={() => {
               cardsQuery.refetch();
-              statsQuery.refetch();
               categoriesQuery.refetch();
             }}
             tintColor="#3b82f6"
@@ -402,7 +401,6 @@ export default function AllCardsScreen() {
         canRate
         onRated={() => {
           utils.flashcards.listAll.invalidate();
-          utils.practice.stats.invalidate({});
         }}
       />
     </View>

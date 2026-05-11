@@ -48,7 +48,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { trpc } from '@/lib/trpc/client';
-import { cn, formatRelative } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { CreateCardDialog } from '@/features/cards/CreateCardDialog';
 import { ClassSelect } from '@/features/cards/ClassSelect';
 import { ClassBadge } from '@/features/cards/ClassBadge';
@@ -65,7 +65,6 @@ export function AllCardsView() {
   const utils = trpc.useUtils();
 
   const { data: cards, isLoading } = trpc.flashcards.listAll.useQuery();
-  const { data: stats } = trpc.practice.stats.useQuery({});
   const { data: categories } = trpc.categories.list.useQuery();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -103,7 +102,6 @@ export function AllCardsView() {
   const remove = trpc.flashcards.delete.useMutation({
     onSuccess: () => {
       utils.flashcards.listAll.invalidate();
-      utils.practice.stats.invalidate({});
       utils.categories.list.invalidate();
     },
   });
@@ -131,10 +129,14 @@ export function AllCardsView() {
     return result;
   }, [allCards, selectedCategoryIds, selectedClasses]);
 
+  // The Play button shows the size of the upcoming session: filtered card
+  // count when filters are active, otherwise the total across all decks.
   const practiceCountLabel = hasActiveFilters
-    ? ` (${Math.min(filteredCards.length, practiceLimit)})`
-    : stats?.due
-      ? ` (${stats.due})`
+    ? filteredCards.length > 0
+      ? ` (${filteredCards.length})`
+      : ''
+    : allCards.length > 0
+      ? ` (${allCards.length})`
       : '';
 
   // Build the card array for the preview modal, including backLanguage from
@@ -195,10 +197,8 @@ export function AllCardsView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Total" value={stats?.total ?? allCards.length} />
-        <Stat label="Due now" value={stats?.due ?? 0} />
-        <Stat label="Mastered" value={stats?.mastered ?? 0} />
+      <div className="grid grid-cols-1 gap-3">
+        <Stat label="Total cards" value={allCards.length} />
       </div>
 
       {/* ── Play filter panel ──────────────────────────────────────────── */}
@@ -368,10 +368,12 @@ export function AllCardsView() {
                       ) : (
                         <span className="bg-muted rounded-sm px-1.5 py-0.5">No deck</span>
                       )}
-                      <span>·</span>
-                      <span>Next review: {formatRelative(card.nextReview)}</span>
-                      <span>·</span>
-                      <span>{card.repetitions} reps</span>
+                      {card.difficultyLevel ? (
+                        <>
+                          <span>·</span>
+                          <span className="capitalize">{card.difficultyLevel}</span>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                   {/* Stop propagation so edit/delete don't also open the preview */}
@@ -440,7 +442,6 @@ export function AllCardsView() {
         canRate
         onRated={() => {
           utils.flashcards.listAll.invalidate();
-          utils.practice.stats.invalidate({});
         }}
       />
     </div>
