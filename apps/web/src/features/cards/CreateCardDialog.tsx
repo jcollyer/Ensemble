@@ -190,10 +190,11 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
       // Invalidate the queries that could be displaying this card.
       utils.flashcards.listAll.invalidate();
       utils.categories.list.invalidate();
-      utils.practice.stats.invalidate({}); // dashboard / All view stats
+      // No-arg invalidate hits both `{}` (dashboard) and `{ categoryId }`
+      // (deck detail) variants of practice.stats in one call.
+      utils.practice.stats.invalidate();
       if (variables.categoryId) {
         utils.flashcards.listByCategory.invalidate({ categoryId: variables.categoryId });
-        utils.practice.stats.invalidate({ categoryId: variables.categoryId });
       }
       props.onOpenChange(false);
       props.onCreated?.();

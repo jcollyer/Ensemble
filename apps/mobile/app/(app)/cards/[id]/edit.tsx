@@ -186,11 +186,12 @@ export default function EditCardScreen() {
       // per-deck cache when the card actually belongs to a deck.
       if (updated.categoryId) {
         utils.flashcards.listByCategory.invalidate({ categoryId: updated.categoryId });
-        utils.practice.stats.invalidate({ categoryId: updated.categoryId });
       }
       utils.flashcards.listAll.invalidate();
       utils.flashcards.byId.invalidate({ id: cardId });
-      utils.practice.stats.invalidate({});
+      // No-arg invalidate hits both `{}` (dashboard) and `{ categoryId }`
+      // (deck detail) variants of practice.stats in one call.
+      utils.practice.stats.invalidate();
       utils.categories.list.invalidate();
       router.back();
     },

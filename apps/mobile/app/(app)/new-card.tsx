@@ -144,10 +144,11 @@ export default function NewCardScreen() {
       // a deck — listAll covers the uncategorized case.
       if (created.categoryId) {
         utils.flashcards.listByCategory.invalidate({ categoryId: created.categoryId });
-        utils.practice.stats.invalidate({ categoryId: created.categoryId });
       }
       utils.flashcards.listAll.invalidate();
-      utils.practice.stats.invalidate({});
+      // No-arg invalidate hits both `{}` (dashboard) and `{ categoryId }`
+      // (deck detail) variants of practice.stats in one call.
+      utils.practice.stats.invalidate();
       utils.categories.list.invalidate();
       setFront('');
       setBack('');

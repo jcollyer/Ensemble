@@ -294,7 +294,9 @@ export default function DeckDetailScreen() {
         canRate={isOwner}
         onRated={() => {
           utils.flashcards.listByCategory.invalidate({ categoryId });
-          utils.practice.stats.invalidate({ categoryId });
+          // No-arg invalidate so the dashboard's `practice.stats({})`
+          // also refreshes — not just this view's `{ categoryId }` query.
+          utils.practice.stats.invalidate();
         }}
       />
     </View>
