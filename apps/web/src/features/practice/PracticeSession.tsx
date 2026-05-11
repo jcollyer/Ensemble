@@ -18,12 +18,6 @@ interface Props {
   categoryIds?: string[];
   /** Filter by word classes (e.g. ['noun', 'verb']). Empty = all classes. */
   classes?: string[];
-  /**
-   * Legacy practice-limit param. Still accepted by the route for backwards
-   * compatibility with bookmarked URLs but no longer used — every card in
-   * scope is included in the session now.
-   */
-  practiceLimit?: number;
 }
 
 /**

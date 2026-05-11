@@ -73,7 +73,6 @@ export function AllCardsView() {
   // ── Filter state ──────────────────────────────────────────────────────────
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
-  const [practiceLimit, setPracticeLimit] = useState(20);
   const [filterOpen, setFilterOpen] = useState(true);
 
   function toggleCategory(id: string) {
@@ -88,15 +87,14 @@ export function AllCardsView() {
     );
   }
 
-  const hasActiveFilters =
-    selectedCategoryIds.length > 0 || selectedClasses.length > 0 || practiceLimit !== 20;
+  const hasActiveFilters = selectedCategoryIds.length > 0 || selectedClasses.length > 0;
 
   function buildPracticeHref() {
     const params = new URLSearchParams();
-    params.set('limit', String(practiceLimit));
     if (selectedCategoryIds.length > 0) params.set('categoryIds', selectedCategoryIds.join(','));
     if (selectedClasses.length > 0) params.set('classes', selectedClasses.join(','));
-    return `/app/all-categories/practice?${params.toString()}`;
+    const qs = params.toString();
+    return qs ? `/app/all-categories/practice?${qs}` : '/app/all-categories/practice';
   }
 
   const remove = trpc.flashcards.delete.useMutation({
@@ -214,7 +212,6 @@ export function AllCardsView() {
                     onClick={() => {
                       setSelectedCategoryIds([]);
                       setSelectedClasses([]);
-                      setPracticeLimit(20);
                     }}
                     className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
                   >
@@ -229,28 +226,6 @@ export function AllCardsView() {
                 >
                   <X className="h-4 w-4" />
                 </button>
-              </div>
-            </div>
-
-            {/* Card count */}
-            <div className="space-y-2">
-              <p className="text-muted-foreground text-xs">Number of cards</p>
-              <div className="flex gap-2">
-                {[10, 20, 50, 100].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setPracticeLimit(n)}
-                    className={cn(
-                      'rounded-full px-4 py-1 text-sm font-medium transition',
-                      practiceLimit === n
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/70',
-                    )}
-                  >
-                    {n}
-                  </button>
-                ))}
               </div>
             </div>
 

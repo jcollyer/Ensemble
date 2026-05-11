@@ -39,7 +39,6 @@ export default function AllCardsScreen() {
   // Empty array = "all" (no filter applied). Individual items toggled below.
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
-  const [practiceLimit, setPracticeLimit] = useState(20);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   function toggleCategory(id: string) {
@@ -122,14 +121,14 @@ export default function AllCardsScreen() {
 
   function navigateToPractice() {
     const params = new URLSearchParams();
-    params.set('limit', String(practiceLimit));
     if (selectedCategoryIds.length > 0) {
       params.set('categoryIds', selectedCategoryIds.join(','));
     }
     if (selectedClasses.length > 0) {
       params.set('classes', selectedClasses.join(','));
     }
-    router.push(`/all-cards-practice?${params.toString()}` as never);
+    const qs = params.toString();
+    router.push((qs ? `/all-cards-practice?${qs}` : '/all-cards-practice') as never);
   }
 
   if (cardsQuery.isLoading && !cardsQuery.data) {
@@ -140,8 +139,7 @@ export default function AllCardsScreen() {
     );
   }
 
-  const hasActiveFilters =
-    selectedCategoryIds.length > 0 || selectedClasses.length > 0 || practiceLimit !== 20;
+  const hasActiveFilters = selectedCategoryIds.length > 0 || selectedClasses.length > 0;
   // Practice button count = filtered cards when filters active, otherwise the
   // total card count.
   const practiceCountLabel = hasActiveFilters
@@ -181,37 +179,12 @@ export default function AllCardsScreen() {
                     onPress={() => {
                       setSelectedCategoryIds([]);
                       setSelectedClasses([]);
-                      setPracticeLimit(20);
                     }}
                     hitSlop={8}
                   >
                     <Text className="text-xs font-medium text-blue-500">Reset</Text>
                   </Pressable>
                 )}
-              </View>
-
-              {/* Card count */}
-              <View className="gap-1.5">
-                <Text className="text-xs text-slate-500">Number of cards</Text>
-                <View className="flex-row gap-1.5">
-                  {[10, 20, 50, 100].map((n) => (
-                    <Pressable
-                      key={n}
-                      onPress={() => setPracticeLimit(n)}
-                      className={`flex-1 items-center rounded-full py-1.5 ${
-                        practiceLimit === n ? 'bg-blue-500' : 'bg-slate-100'
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-semibold ${
-                          practiceLimit === n ? 'text-white' : 'text-slate-600'
-                        }`}
-                      >
-                        {n}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
               </View>
 
               {/* Categories */}

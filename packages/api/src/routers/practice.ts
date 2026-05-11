@@ -8,12 +8,9 @@ import { protectedProcedure, router } from '../trpc';
 export const practiceRouter = router({
   /**
    * Returns every practiceable card in the requested scope. The practice UI
-   * walks through the full list locally — there is no longer any notion of
-   * "due" cards or a scheduling algorithm gating which cards come back. The
-   * old `limit` and `includeAll` parameters are gone for the same reason.
-   *
-   * Ordering is reverse-chronological by creation time so the user's most
-   * recently added cards appear first.
+   * walks through the full list locally; the server doesn't paginate or
+   * filter by any scheduling concept. Ordering is reverse-chronological by
+   * creation time so the user's most recently added cards appear first.
    */
   queue: protectedProcedure
     .input(

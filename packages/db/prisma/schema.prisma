@@ -4,11 +4,6 @@
 //   - User / Account / Session / VerificationToken: NextAuth v5 adapter
 //   - Category: a deck of flashcards owned by a user
 //   - Flashcard: front/back card with a free-form difficulty rating
-//
-// Note: the legacy SM-2 fields (confidence/easeFactor/interval/repetitions/
-// nextReview) are retained on Flashcard for the first phase of the migration
-// off SM-2 but are no longer read or written by the application. They will
-// be dropped in a follow-up migration.
 
 generator client {
   provider      = "prisma-client-js"
@@ -167,16 +162,6 @@ model Flashcard {
   // 'challenging' / 'good' / 'easy', or null if the card has never been
   // rated. Validation lives at the API edge (z.enum in @ensemble/types).
   difficultyLevel String?
-
-  // ── Legacy SM-2 columns (no longer read or written by the app) ──────────
-  // Kept around for the first migration phase so we can still inspect
-  // historical data and (optionally) backfill difficultyLevel from the
-  // last `confidence` value before the columns are dropped.
-  confidence  Int       @default(0) // last rating, 0-5
-  easeFactor  Float     @default(2.5)
-  interval    Int       @default(0) // days until next review
-  repetitions Int       @default(0) // successful reviews in a row
-  nextReview  DateTime? // null = brand new, never reviewed
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
