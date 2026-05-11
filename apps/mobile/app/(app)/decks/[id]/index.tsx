@@ -344,7 +344,7 @@ function DeckAudioLanguage({
 
   return (
     <Card className="gap-2 p-4">
-      <Text className="text-sm font-medium text-slate-700">Audio language (back of card)</Text>
+      <Text className="text-sm font-medium text-slate-700">Language for translation</Text>
       <LanguagePicker
         value={backLanguage}
         disabled={update.isPending}

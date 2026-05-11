@@ -168,9 +168,7 @@ export default function NewDeckScreen() {
 
           {ttsAvailable ? (
             <View className="gap-2">
-              <Text className="text-sm font-medium text-slate-700">
-                Audio language (back of card)
-              </Text>
+              <Text className="text-sm font-medium text-slate-700">Language for translation</Text>
               <LanguagePicker value={backLanguage} onChange={setBackLanguage} />
               <Text className="text-xs text-slate-500">
                 Pick a language to enable a speaker button on the back of cards during practice.

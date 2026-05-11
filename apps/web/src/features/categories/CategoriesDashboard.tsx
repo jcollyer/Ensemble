@@ -428,7 +428,7 @@ export function CategoriesDashboard() {
             </div>
             {ttsAvailable ? (
               <div className="space-y-2">
-                <Label htmlFor="back-language">Audio language (back of card)</Label>
+                <Label htmlFor="back-language">Language for translation</Label>
                 <Select
                   // The Radix Select can't bind to `null`, so we use a
                   // sentinel for "no language" and translate at the edges.
@@ -451,9 +451,6 @@ export function CategoriesDashboard() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-muted-foreground text-xs">
-                  Pick a language to enable a speaker button on the back of cards during practice.
-                </p>
               </div>
             ) : null}
             <DialogFooter>

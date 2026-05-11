@@ -177,7 +177,7 @@ export function CategoryDetail({ categoryId }: Props) {
           <Button asChild variant="outline">
             <Link href={`/app/categories/${categoryId}/practice`}>
               <Play className="h-4 w-4" />
-              Practice {isOwner && stats?.due ? `(${stats.due})` : ''}
+              Play {isOwner && stats?.due ? `(${stats.due})` : ''}
             </Link>
           </Button>
           {isOwner ? (
@@ -190,10 +190,39 @@ export function CategoryDetail({ categoryId }: Props) {
       </div>
 
       {isOwner ? (
-        <div className="grid grid-cols-3 gap-3">
-          <Stat label="Total" value={stats?.total ?? cards?.length ?? 0} />
-          <Stat label="Due now" value={stats?.due ?? 0} />
-          <Stat label="Mastered" value={stats?.mastered ?? 0} />
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <ProgressSnapshotCard
+            label="Total cards"
+            value={stats?.total ?? cards?.length ?? 0}
+            tone="slate"
+          />
+          <ProgressSnapshotCard
+            label="Challenging cards"
+            value={stats?.confidenceBreakdown?.challenging ?? 0}
+            percentage={getPercentage(
+              stats?.confidenceBreakdown?.challenging ?? 0,
+              stats?.total ?? cards?.length ?? 0,
+            )}
+            tone="amber"
+          />
+          <ProgressSnapshotCard
+            label="Good cards"
+            value={stats?.confidenceBreakdown?.good ?? 0}
+            percentage={getPercentage(
+              stats?.confidenceBreakdown?.good ?? 0,
+              stats?.total ?? cards?.length ?? 0,
+            )}
+            tone="blue"
+          />
+          <ProgressSnapshotCard
+            label="Easy cards"
+            value={stats?.confidenceBreakdown?.easy ?? 0}
+            percentage={getPercentage(
+              stats?.confidenceBreakdown?.easy ?? 0,
+              stats?.total ?? cards?.length ?? 0,
+            )}
+            tone="green"
+          />
         </div>
       ) : null}
 
@@ -409,11 +438,8 @@ function DeckAudioLanguage({
       <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="space-y-0.5">
           <Label htmlFor="deck-audio-language" className="cursor-pointer">
-            Audio language (back of card)
+            Language for translation
           </Label>
-          <p className="text-muted-foreground text-xs">
-            Pick a language to enable a speaker button on the back of cards during practice.
-          </p>
         </div>
         <div className="min-w-[200px]">
           <Select
@@ -455,6 +481,52 @@ function Stat({ label, value }: { label: string; value: number }) {
       </CardContent>
     </Card>
   );
+}
+
+function ProgressSnapshotCard({
+  label,
+  value,
+  percentage,
+  tone,
+}: {
+  label: string;
+  value: number;
+  percentage?: number;
+  tone: 'slate' | 'amber' | 'blue' | 'green';
+}) {
+  const accentClass = {
+    slate: 'bg-slate-500/10 text-slate-700 dark:text-slate-200',
+    amber: 'bg-amber-500/10 text-amber-700 dark:text-amber-200',
+    blue: 'bg-blue-500/10 text-blue-700 dark:text-blue-200',
+    green: 'bg-green-500/10 text-green-700 dark:text-green-200',
+  }[tone];
+
+  return (
+    <Card>
+      <CardContent className="flex items-start justify-between gap-4 p-5">
+        <div className="space-y-1">
+          <p className="text-muted-foreground text-sm">{label}</p>
+          <p className="text-3xl font-semibold tracking-tight">{value}</p>
+          {percentage !== undefined ? (
+            <p className="text-muted-foreground text-sm">{percentage}% of total cards</p>
+          ) : (
+            <p className="text-muted-foreground text-sm">In this deck</p>
+          )}
+        </div>
+        <div
+          aria-hidden
+          className={`flex h-10 min-w-10 items-center justify-center rounded-full px-3 text-sm font-semibold ${accentClass}`}
+        >
+          {percentage !== undefined ? `${percentage}%` : 'All'}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function getPercentage(value: number, total: number) {
+  if (total <= 0) return 0;
+  return Math.round((value / total) * 100);
 }
 
 function EditCardDialog({
@@ -1200,7 +1272,7 @@ function EditCategoryDialog({
 
           {ttsAvailable ? (
             <div className="space-y-2">
-              <Label htmlFor="edit-deck-back-language">Audio language (back of card)</Label>
+              <Label htmlFor="edit-deck-back-language">Language for translation</Label>
               <Select
                 value={selectedBackLanguage ?? NO_LANGUAGE}
                 onValueChange={(v) =>
@@ -1223,9 +1295,6 @@ function EditCategoryDialog({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-muted-foreground text-xs">
-                Pick a language to enable a speaker button on the back of cards during practice.
-              </p>
             </div>
           ) : null}
 
