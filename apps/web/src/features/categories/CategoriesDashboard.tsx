@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -56,6 +56,8 @@ export function CategoriesDashboard() {
   const [deckOpen, setDeckOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   const [folderOpen, setFolderOpen] = useState(false);
+  const [quickFolderNameVisible, setQuickFolderNameVisible] = useState(false);
+  const quickFolderInputRef = useRef<HTMLInputElement | null>(null);
   const utils = trpc.useUtils();
   const { data: me } = trpc.auth.me.useQuery();
   const { data: categories, isLoading } = trpc.categories.list.useQuery();
@@ -116,6 +118,13 @@ export function CategoriesDashboard() {
       description: null,
     },
   });
+  const quickFolderName = quickFolderForm.watch('name')?.trim() ?? '';
+
+  useEffect(() => {
+    if (quickFolderNameVisible) {
+      quickFolderInputRef.current?.focus();
+    }
+  }, [quickFolderNameVisible]);
 
   const decks = (categories ?? []).map((c) => ({ id: c.id, name: c.name }));
   const hasFolders = (folders?.length ?? 0) > 0;
@@ -203,7 +212,7 @@ export function CategoriesDashboard() {
 
       {/* no folder section yet */}
       {!hasFolders && !isLoading && (
-        <div className="border-muted/50 overflow-hidden rounded-xl border border-dashed p-5 transition-shadow hover:shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-dashed p-5 transition-shadow hover:shadow-sm">
           <form
             onSubmit={quickFolderForm.handleSubmit((values) => {
               createFolder.mutate({
@@ -214,20 +223,43 @@ export function CategoriesDashboard() {
             })}
             className="space-y-2"
           >
-            <Input
-              type="text"
-              placeholder="First folder name"
-              {...quickFolderForm.register('name')}
-            />
-            {quickFolderForm.formState.errors.name ? (
-              <p className="text-destructive text-sm">
-                {quickFolderForm.formState.errors.name.message}
-              </p>
-            ) : null}
-            <Button type="submit" disabled={createFolder.isPending}>
-              <FolderPlus className="h-4 w-4" />
-              {createFolder.isPending ? 'Creating...' : 'Create your first folder'}
-            </Button>
+            <div className="flex gap-2">
+              <div className="space-y-2">
+                {!quickFolderNameVisible && (
+                  <button
+                    type="button"
+                    className="text-lg text-gray-700"
+                    onClick={() => setQuickFolderNameVisible(true)}
+                  >
+                    My First Folder: <span className="italic">click to change name</span>
+                  </button>
+                )}
+                {quickFolderNameVisible ? (
+                  <Input
+                    id="quick-folder-name"
+                    type="text"
+                    className="text-lg"
+                    placeholder="My first folder"
+                    {...quickFolderForm.register('name')}
+                    ref={(element) => {
+                      quickFolderForm.register('name').ref(element);
+                      quickFolderInputRef.current = element;
+                    }}
+                  />
+                ) : null}
+              </div>
+              {quickFolderForm.formState.errors.name ? (
+                <p className="text-destructive text-sm">
+                  {quickFolderForm.formState.errors.name.message}
+                </p>
+              ) : null}
+              {quickFolderName ? (
+                <Button type="submit" disabled={createFolder.isPending}>
+                  <FolderPlus className="h-4 w-4" />
+                  {createFolder.isPending ? 'Creating...' : 'Create your first folder'}
+                </Button>
+              ) : null}
+            </div>
           </form>
         </div>
       )}
