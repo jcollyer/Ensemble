@@ -131,8 +131,8 @@ export function FlipCard({
             ) : null}
           </CardContent>
         </Card>
-        <Card className="flip-card-face flip-card-back border-primary/40 bg-primary/5 relative flex items-center justify-center p-6 text-center shadow-md">
-          <CardContent className="w-full space-y-3">
+        <Card className="flip-card-face flip-card-back border-primary/40 bg-primary/5 relative flex items-stretch justify-center p-6 text-center shadow-md">
+          <CardContent className="flex h-full w-full flex-col gap-3 pb-0">
             {cardClass ? (
               <div className="flex justify-center">
                 <ClassBadge value={cardClass} size="md" />
@@ -148,6 +148,11 @@ export function FlipCard({
                 ))}
               </ul>
             ) : null}
+            {pronunciation && (
+              <p className="text-muted-foreground mt-auto text-right italic">
+                [{pronunciation}]
+              </p>
+            )}
           </CardContent>
           {/* Only render the audio button if the deck has a configured language. */}
           {backLanguage && cardId ? (
@@ -158,11 +163,6 @@ export function FlipCard({
               languageCode={backLanguage}
             />
           ) : null}
-          {pronunciation && (
-            <p className="text-muted-foreground mt-auto max-w-full self-end overflow-hidden text-ellipsis whitespace-nowrap text-right italic">
-              [{pronunciation}]
-            </p>
-          )}
         </Card>
       </div>
     </button>
