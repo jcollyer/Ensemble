@@ -163,6 +163,11 @@ model Flashcard {
   // rated. Validation lives at the API edge (z.enum in @ensemble/types).
   difficultyLevel String?
 
+  // User-defined display order within the deck. Null means the card has not
+  // been explicitly positioned yet and falls back to createdAt ordering.
+  // Written in bulk by the reorder mutation when the user drags to reorder.
+  sortOrder Int? @map("sort_order")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

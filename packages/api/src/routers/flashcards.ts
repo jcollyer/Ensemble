@@ -27,7 +27,7 @@ export const flashcardsRouter = router({
 
       const cards = await ctx.prisma.flashcard.findMany({
         where: { categoryId: input.categoryId },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ sortOrder: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
       });
 
       if (isOwner) return cards;
@@ -132,6 +132,39 @@ export const flashcardsRouter = router({
       if (!existing) throw new TRPCError({ code: 'NOT_FOUND' });
 
       await ctx.prisma.flashcard.delete({ where: { id: input.id } });
+      return { ok: true };
+    }),
+
+  /**
+   * Persist a user-defined card ordering for a deck.
+   * Accepts the full ordered list of card IDs and writes sortOrder 0, 1, 2…
+   * to each card in a single transaction. Only the deck owner may call this.
+   */
+  reorder: protectedProcedure
+    .input(
+      z.object({
+        categoryId: z.string().cuid(),
+        orderedIds: z.array(z.string().cuid()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Verify the caller owns the deck.
+      const category = await ctx.prisma.category.findFirst({
+        where: { id: input.categoryId, userId: ctx.userId },
+        select: { id: true },
+      });
+      if (!category) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      // Write the new positions in a single transaction.
+      await ctx.prisma.$transaction(
+        input.orderedIds.map((id, index) =>
+          ctx.prisma.flashcard.updateMany({
+            where: { id, categoryId: input.categoryId, userId: ctx.userId },
+            data: { sortOrder: index },
+          }),
+        ),
+      );
+
       return { ok: true };
     }),
 });

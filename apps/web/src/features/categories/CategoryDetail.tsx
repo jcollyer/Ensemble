@@ -6,10 +6,30 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   ArrowLeft,
   ChevronRight,
   FolderInput,
+  Grid2x2,
+  GripVertical,
   LayersPlus,
+  List,
   Loader2,
   Pencil,
   Play,
@@ -52,6 +72,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { trpc } from '@/lib/trpc/client';
 import { useDebouncedValue } from '@/lib/hooks';
+import { cn } from '@/lib/utils';
 import { CreateCardDialog } from '@/features/cards/CreateCardDialog';
 import { ClassSelect } from '@/features/cards/ClassSelect';
 import { ClassBadge } from '@/features/cards/ClassBadge';
@@ -109,9 +130,179 @@ function writeTranslatePrefs(scope: string, prefs: TranslatePrefs) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// SortableCard — a single draggable card row/tile in the category card list.
+// Using a separate component is required because useSortable is a React hook
+// and cannot be called inside a plain .map() callback.
+// ---------------------------------------------------------------------------
+
+interface SortableCardProps {
+  card: {
+    id: string;
+    front: string;
+    back: string;
+    frontExamples: string[];
+    backExamples: string[];
+    class?: string | null;
+    gender?: string | null;
+    verb_type?: string | null;
+    difficultyLevel?: string | null;
+  };
+  cardIdx: number;
+  isOwner: boolean;
+  cardListViewMode: 'grid' | 'list';
+  onPreview: () => void;
+  onEdit: () => void;
+  onMove: () => void;
+  onDelete: () => void;
+}
+
+function SortableCard({
+  card,
+  cardIdx: _cardIdx,
+  isOwner,
+  cardListViewMode,
+  onPreview,
+  onEdit,
+  onMove,
+  onDelete,
+}: SortableCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: card.id,
+    disabled: !isOwner,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+    zIndex: isDragging ? 1 : undefined,
+  };
+
+  const gender = card.gender ?? null;
+  const verbType = card.verb_type ?? null;
+  const difficultyLevel = card.difficultyLevel ?? null;
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card className="cursor-pointer transition-shadow hover:shadow-md" onClick={onPreview}>
+        <CardContent
+          className={cn(
+            'flex justify-between gap-3 p-4',
+            cardListViewMode === 'list' ? 'items-center' : 'flex-wrap items-start',
+          )}
+        >
+          {/* Drag handle — only visible to the owner */}
+          {isOwner ? (
+            <div
+              {...attributes}
+              {...listeners}
+              className="text-muted-foreground/50 hover:text-muted-foreground shrink-0 cursor-grab touch-none active:cursor-grabbing"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Drag to reorder"
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+          ) : null}
+          <div className={cn('min-w-0 flex-1', cardListViewMode === 'list' ? '' : 'space-y-1')}>
+            {cardListViewMode === 'list' ? (
+              <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-sm">
+                <span className="truncate font-medium">{card.front}</span>
+                <span className="text-muted-foreground shrink-0">-</span>
+                <span className="text-muted-foreground truncate">{card.back}</span>
+                {card.class ? (
+                  <>
+                    <span className="text-muted-foreground shrink-0">-</span>
+                    <span className="text-muted-foreground shrink-0 capitalize">
+                      {String(card.class).replace(/_/g, ' ')}
+                    </span>
+                  </>
+                ) : null}
+                {gender ? (
+                  <>
+                    <span className="text-muted-foreground shrink-0">-</span>
+                    <span className="text-muted-foreground shrink-0 capitalize">
+                      {gender.replace(/_/g, ' ')}
+                    </span>
+                  </>
+                ) : null}
+                {verbType ? (
+                  <>
+                    <span className="text-muted-foreground shrink-0">-</span>
+                    <span className="text-muted-foreground shrink-0 capitalize">
+                      {verbType.replace(/_/g, ' ')}
+                    </span>
+                  </>
+                ) : null}
+                {isOwner && difficultyLevel ? (
+                  <>
+                    <span className="text-muted-foreground shrink-0">-</span>
+                    <span className="text-muted-foreground shrink-0 capitalize">
+                      {difficultyLevel}
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            ) : (
+              <>
+                <div className="line-clamp-2 font-medium">{card.front}</div>
+                <div className="text-muted-foreground line-clamp-2 text-sm">{card.back}</div>
+                {card.frontExamples.length > 0 || card.backExamples.length > 0 ? (
+                  <div className="divide-border/50 mt-2 divide-y px-3 py-1">
+                    {Array.from({
+                      length: Math.max(card.frontExamples.length, card.backExamples.length),
+                    }).map((_, i) => (
+                      <div key={i} className="flex items-baseline gap-3 py-1 text-xs">
+                        <span className="flex min-w-0 items-baseline gap-1">
+                          <span className="text-foreground font-semibold">
+                            {card.frontExamples[i] ?? ''}
+                          </span>
+                        </span>
+                        <span className="flex min-w-0 items-baseline gap-1">
+                          <span className="text-muted-foreground">
+                            {card.backExamples[i] ?? ''}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs">
+                  {card.class ? <ClassBadge value={card.class} /> : null}
+                  {isOwner && difficultyLevel ? (
+                    <span className="capitalize">{difficultyLevel}</span>
+                  ) : null}
+                </div>
+              </>
+            )}
+          </div>
+          {/* Stop propagation so edit/delete don't also open the preview */}
+          {isOwner ? (
+            <div className="flex shrink-0 gap-1" onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" onClick={onEdit} aria-label="Edit">
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onMove} aria-label="Move to deck">
+                <FolderInput className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onDelete} aria-label="Delete">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
 interface Props {
   categoryId: string;
 }
+
+type CardListViewMode = 'grid' | 'list';
 
 export function CategoryDetail({ categoryId }: Props) {
   const router = useRouter();
@@ -130,6 +321,45 @@ export function CategoryDetail({ categoryId }: Props) {
   const [movingCardId, setMovingCardId] = useState<string | null>(null);
   const [editDeckOpen, setEditDeckOpen] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [cardListViewMode, setCardListViewMode] = useState<CardListViewMode>('grid');
+
+  // Local ordering state for drag-and-drop. Seeded from the server query and
+  // updated optimistically on drag so the UI doesn't flash before the mutation
+  // settles. NonNullable<typeof cards> so the array is always defined (never
+  // undefined), matching the [] initial value.
+  const [orderedCards, setOrderedCards] = useState<NonNullable<typeof cards>>([]);
+
+  // Keep orderedCards in sync whenever the server data changes (e.g. after a
+  // card is added, deleted, or the query refetches).
+  useEffect(() => {
+    setOrderedCards(cards ?? []);
+  }, [cards]);
+
+  const reorder = trpc.flashcards.reorder.useMutation({
+    onError: () => {
+      // Roll back to the last server-confirmed order on failure.
+      setOrderedCards(cards ?? []);
+    },
+  });
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setOrderedCards((prev) => {
+      if (!prev) return prev;
+      const oldIndex = prev.findIndex((c) => c.id === active.id);
+      const newIndex = prev.findIndex((c) => c.id === over.id);
+      const next = arrayMove(prev, oldIndex, newIndex);
+      reorder.mutate({ categoryId, orderedIds: next.map((c: { id: string }) => c.id) });
+      return next;
+    });
+  }
 
   const remove = trpc.flashcards.delete.useMutation({
     onSuccess: () => {
@@ -151,7 +381,8 @@ export function CategoryDetail({ categoryId }: Props) {
 
   // Build the ordered card array for the preview modal. backLanguage comes
   // from the deck-level category (same for every card in this view).
-  const previewCards: PreviewCard[] = (cards ?? []).map((card) => ({
+  // Use orderedCards so the modal respects the user's drag-and-drop order.
+  const previewCards: PreviewCard[] = (orderedCards ?? []).map((card) => ({
     id: card.id,
     front: card.front,
     back: card.back,
@@ -253,79 +484,64 @@ export function CategoryDetail({ categoryId }: Props) {
             <div key={i} className="bg-muted/50 h-20 animate-pulse rounded-xl border" />
           ))}
         </div>
-      ) : cards && cards.length > 0 ? (
+      ) : orderedCards && orderedCards.length > 0 ? (
         <div className="space-y-3">
-          {cards.map((card, cardIdx) => (
-            <Card
-              key={card.id}
-              className="cursor-pointer transition-shadow hover:shadow-md"
-              onClick={() => setPreviewIndex(cardIdx)}
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={cn(
+                cardListViewMode === 'grid' && 'bg-accent text-accent-foreground border-primary',
+              )}
+              aria-pressed={cardListViewMode === 'grid'}
+              aria-label="Grid view"
+              onClick={() => setCardListViewMode('grid')}
             >
-              <CardContent className="flex flex-wrap items-start justify-between gap-3 p-4">
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="line-clamp-2 font-medium">{card.front}</div>
-                  <div className="text-muted-foreground line-clamp-2 text-sm">{card.back}</div>
-                  {card.frontExamples.length > 0 || card.backExamples.length > 0 ? (
-                    <div className="divide-border/50 mt-2 divide-y px-3 py-1">
-                      {Array.from({
-                        length: Math.max(card.frontExamples.length, card.backExamples.length),
-                      }).map((_, i) => (
-                        <div key={i} className="flex items-baseline gap-3 py-1 text-xs">
-                          <span className="flex min-w-0 items-baseline gap-1">
-                            <span className="text-foreground font-semibold">
-                              {card.frontExamples[i] ?? ''}
-                            </span>
-                          </span>
-                          <span className="flex min-w-0 items-baseline gap-1">
-                            <span className="text-muted-foreground">
-                              {card.backExamples[i] ?? ''}
-                            </span>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                  <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs">
-                    {card.class ? <ClassBadge value={card.class} /> : null}
-                    {isOwner && card.difficultyLevel ? (
-                      <span className="capitalize">{card.difficultyLevel}</span>
-                    ) : null}
-                  </div>
-                </div>
-                {/* Stop propagation so edit/delete don't also open the preview */}
-                {isOwner ? (
-                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setEditingId(card.id)}
-                      aria-label="Edit"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setMovingCardId(card.id)}
-                      aria-label="Move to deck"
-                    >
-                      <FolderInput className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        if (confirm('Delete this card?')) remove.mutate({ id: card.id });
-                      }}
-                      aria-label="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          ))}
+              <Grid2x2 className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className={cn(
+                cardListViewMode === 'list' && 'bg-accent text-accent-foreground border-primary',
+              )}
+              aria-pressed={cardListViewMode === 'list'}
+              aria-label="List view"
+              onClick={() => setCardListViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+          <DndContext
+            sensors={dndSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={orderedCards.map((c) => c.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-3">
+                {orderedCards.map((card, cardIdx) => (
+                  <SortableCard
+                    key={card.id}
+                    card={card}
+                    cardIdx={cardIdx}
+                    isOwner={isOwner}
+                    cardListViewMode={cardListViewMode}
+                    onPreview={() => setPreviewIndex(cardIdx)}
+                    onEdit={() => setEditingId(card.id)}
+                    onMove={() => setMovingCardId(card.id)}
+                    onDelete={() => {
+                      if (confirm('Delete this card?')) remove.mutate({ id: card.id });
+                    }}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         </div>
       ) : (
         <Card className="border-dashed">
