@@ -39,6 +39,7 @@ export default function AllCardsScreen() {
   // Empty array = "all" (no filter applied). Individual items toggled below.
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   function toggleCategory(id: string) {
@@ -49,6 +50,12 @@ export default function AllCardsScreen() {
 
   function toggleClass(value: string) {
     setSelectedClasses((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
+    );
+  }
+
+  function toggleRating(value: string) {
+    setSelectedRatings((prev) =>
       prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
     );
   }
@@ -87,8 +94,15 @@ export default function AllCardsScreen() {
     if (selectedClasses.length > 0) {
       result = result.filter((c) => c.class && selectedClasses.includes(c.class));
     }
+    if (selectedRatings.length > 0) {
+      result = result.filter((c) => {
+        const level = (c as { difficultyLevel?: string | null }).difficultyLevel ?? null;
+        if (selectedRatings.includes('no_rating') && level === null) return true;
+        return level !== null && selectedRatings.includes(level);
+      });
+    }
     return result;
-  }, [allCards, selectedCategoryIds, selectedClasses]);
+  }, [allCards, selectedCategoryIds, selectedClasses, selectedRatings]);
 
   // Build the ordered card array for the preview modal.
   const previewCards: PreviewCard[] = useMemo(
@@ -127,6 +141,9 @@ export default function AllCardsScreen() {
     if (selectedClasses.length > 0) {
       params.set('classes', selectedClasses.join(','));
     }
+    if (selectedRatings.length > 0) {
+      params.set('difficultyLevels', selectedRatings.join(','));
+    }
     const qs = params.toString();
     router.push((qs ? `/all-cards-practice?${qs}` : '/all-cards-practice') as never);
   }
@@ -139,7 +156,8 @@ export default function AllCardsScreen() {
     );
   }
 
-  const hasActiveFilters = selectedCategoryIds.length > 0 || selectedClasses.length > 0;
+  const hasActiveFilters =
+    selectedCategoryIds.length > 0 || selectedClasses.length > 0 || selectedRatings.length > 0;
   // Practice button count = filtered cards when filters active, otherwise the
   // total card count.
   const practiceCountLabel = hasActiveFilters
@@ -179,6 +197,7 @@ export default function AllCardsScreen() {
                     onPress={() => {
                       setSelectedCategoryIds([]);
                       setSelectedClasses([]);
+                      setSelectedRatings([]);
                     }}
                     hitSlop={8}
                   >
@@ -242,6 +261,40 @@ export default function AllCardsScreen() {
                           }`}
                         >
                           {cls.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Rating */}
+              <View className="gap-1.5">
+                <Text className="text-xs text-slate-500">Rating</Text>
+                <View className="flex-row flex-wrap gap-1.5">
+                  {(
+                    [
+                      { value: 'easy', label: 'Easy' },
+                      { value: 'good', label: 'Good' },
+                      { value: 'challenging', label: 'Challenging' },
+                      { value: 'no_rating', label: 'No rating' },
+                    ] as const
+                  ).map((opt) => {
+                    const selected = selectedRatings.includes(opt.value);
+                    return (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => toggleRating(opt.value)}
+                        className={`rounded-full px-3 py-1.5 ${
+                          selected ? 'bg-blue-500' : 'bg-slate-100'
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-medium ${
+                            selected ? 'text-white' : 'text-slate-600'
+                          }`}
+                        >
+                          {opt.label}
                         </Text>
                       </Pressable>
                     );
