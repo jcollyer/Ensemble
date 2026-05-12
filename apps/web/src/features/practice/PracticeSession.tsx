@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CheckCircle2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Pencil, RotateCcw } from 'lucide-react';
 
 import type { BackLanguageValue, DifficultyLevel } from '@ensemble/types';
 
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { trpc } from '@/lib/trpc/client';
+import { EditCardDialog } from '@/features/cards/EditCardDialog';
 import { FlipCard, NavButton, RatingButtons } from './FlashcardViewer';
 
 interface Props {
@@ -45,6 +46,9 @@ export function PracticeSession({ categoryId, categoryIds, classes }: Props) {
     },
     { refetchOnMount: 'always' },
   );
+  const { data: categories } = trpc.categories.list.useQuery(undefined, {
+    enabled: !categoryId,
+  });
 
   // Invalidate stats / list queries on every successful rating so the
   // ProgressSnapshotCard tiles (both per-deck and dashboard variants)
@@ -67,12 +71,20 @@ export function PracticeSession({ categoryId, categoryIds, classes }: Props) {
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const cards = data?.cards ?? [];
   const isReadOnlyPublicDeck = Boolean(categoryId && data?.category && !data.category.isOwner);
   const canRate = !isReadOnlyPublicDeck;
   const current = cards[index];
   const done = !isLoading && cards.length > 0 && index >= cards.length;
+  const canEdit = Boolean(current && !isReadOnlyPublicDeck);
+  const decks = useMemo(() => {
+    if (categoryId && data?.category) {
+      return [{ id: data.category.id, name: data.category.name }];
+    }
+    return (categories ?? []).map((category) => ({ id: category.id, name: category.name }));
+  }, [categoryId, categories, data?.category]);
 
   // Skip controls. These intentionally don't fire submitReview, so a card the
   // user navigates past without rating keeps its previous difficultyLevel.
@@ -162,8 +174,16 @@ export function PracticeSession({ categoryId, categoryIds, classes }: Props) {
       ) : (
         <>
           <Progress value={progress} />
-          <div className="text-muted-foreground text-center text-xs">
-            {Math.min(index + 1, cards.length)} of {cards.length}
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <div className="text-muted-foreground text-center">
+              {Math.min(index + 1, cards.length)} of {cards.length}
+            </div>
+            {canEdit ? (
+              <Button variant="outline" size="sm" onClick={() => setEditingId(current.id)}>
+                <Pencil className="h-4 w-4" />
+                Edit card
+              </Button>
+            ) : null}
           </div>
 
           <div className="flex items-stretch gap-2 sm:gap-3">
@@ -211,6 +231,22 @@ export function PracticeSession({ categoryId, categoryIds, classes }: Props) {
           )}
         </>
       )}
+
+      {editingId ? (
+        <EditCardDialog
+          cardId={editingId}
+          decks={decks}
+          onClose={() => setEditingId(null)}
+          onSaved={() => {
+            void utils.practice.queue.invalidate();
+            void utils.flashcards.listAll.invalidate();
+            if (categoryId) {
+              void utils.flashcards.listByCategory.invalidate({ categoryId });
+            }
+            setEditingId(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
