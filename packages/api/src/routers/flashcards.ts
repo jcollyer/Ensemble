@@ -27,7 +27,7 @@ export const flashcardsRouter = router({
 
       const cards = await ctx.prisma.flashcard.findMany({
         where: { categoryId: input.categoryId },
-        orderBy: [{ sortOrder: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
+        orderBy: [{ sortOrder: { sort: 'asc', nulls: 'first' } }, { createdAt: 'desc' }],
       });
 
       if (isOwner) return cards;
