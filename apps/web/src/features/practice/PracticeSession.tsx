@@ -107,6 +107,15 @@ export function PracticeSession({ categoryId, categoryIds, classes }: Props) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!current || done) return;
+      const target = e.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+          target.closest('[contenteditable="true"]'))
+      ) {
+        return;
+      }
       if (e.code === 'Space') {
         e.preventDefault();
         setFlipped((f) => !f);
