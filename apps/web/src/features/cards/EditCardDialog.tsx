@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -29,13 +29,56 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { useDebouncedValue } from '@/lib/hooks';
 import { trpc } from '@/lib/trpc/client';
 import { ClassSelect } from '@/features/cards/ClassSelect';
+
+const TRANSLATE_TARGETS = [
+  { value: 'fr', label: 'French' },
+  { value: 'es', label: 'Spanish' },
+  { value: 'de', label: 'German' },
+] as const;
+type TranslateTargetValue = (typeof TRANSLATE_TARGETS)[number]['value'];
 
 const KEEP_UNCATEGORIZED = '__none__';
 const NO_GENDER = '__no_gender__';
 const NO_VERB_TYPE = '__no_verb_type__';
+
+interface TranslatePrefs {
+  v: 1;
+  enabled: boolean;
+  target: TranslateTargetValue;
+}
+
+function readTranslatePrefs(scope: string): TranslatePrefs | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(`ensemble:translate:${scope}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<TranslatePrefs>;
+    if (
+      parsed.v === 1 &&
+      typeof parsed.enabled === 'boolean' &&
+      TRANSLATE_TARGETS.some((target) => target.value === parsed.target)
+    ) {
+      return parsed as TranslatePrefs;
+    }
+  } catch {
+    // Ignore corrupt entries — the user just gets defaults.
+  }
+  return null;
+}
+
+function writeTranslatePrefs(scope: string, prefs: TranslatePrefs) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(`ensemble:translate:${scope}`, JSON.stringify(prefs));
+  } catch {
+    // localStorage can throw in private mode / quota — non-fatal.
+  }
+}
 
 function readDictionaryTarget(categoryId: string | null): 'en' | 'fr' | 'es' | 'de' {
   if (typeof window === 'undefined') return 'en';
@@ -66,6 +109,10 @@ export function EditCardDialog({
 }) {
   const utils = trpc.useUtils();
   const { data: card } = trpc.flashcards.byId.useQuery({ id: cardId });
+  const { data: availability } = trpc.translate.isAvailable.useQuery(undefined, {
+    staleTime: Infinity,
+  });
+  const translateAvailable = !!availability?.available;
   const update = trpc.flashcards.update.useMutation({
     onSuccess: (updatedCard) => {
       utils.flashcards.byId.setData({ id: updatedCard.id }, updatedCard);
@@ -73,6 +120,7 @@ export function EditCardDialog({
       onSaved();
     },
   });
+  const translate = trpc.translate.translate.useMutation();
 
   const [assignDeck, setAssignDeck] = useState<string>(KEEP_UNCATEGORIZED);
   const [frontExamples, setFrontExamples] = useState<string[]>([]);
@@ -81,6 +129,27 @@ export function EditCardDialog({
   const [gender, setGender] = useState<GenderValue | null>(null);
   const [verbType, setVerbType] = useState<VerbTypeValue | null>(null);
   const [pronunciation, setPronunciation] = useState('');
+  const [translateOn, setTranslateOn] = useState(false);
+  const [target, setTarget] = useState<TranslateTargetValue>('fr');
+  const lastTranslatedRef = useRef<{ text: string; target: string } | null>(null);
+  const lastTranslatedExamplesRef = useRef(new Map<number, { text: string; target: string }>());
+
+  const translateScope = card?.categoryId ?? '__dashboard__';
+
+  useEffect(() => {
+    const stored = readTranslatePrefs(translateScope);
+    if (stored) {
+      setTranslateOn(stored.enabled);
+      setTarget(stored.target);
+    } else {
+      setTranslateOn(false);
+      setTarget('fr');
+    }
+  }, [translateScope]);
+
+  useEffect(() => {
+    writeTranslatePrefs(translateScope, { v: 1, enabled: translateOn, target });
+  }, [translateScope, translateOn, target]);
 
   useEffect(() => {
     if (card) {
@@ -118,10 +187,80 @@ export function EditCardDialog({
   const lookupPronunciation = trpc.dictionary.getPronunciation.useMutation();
   const lookupCategory = trpc.dictionary.getCategory.useMutation();
 
+  const front = useWatch({ control: form.control, name: 'front' }) ?? '';
+  const debouncedFront = useDebouncedValue(front.trim(), 500);
+
+  useEffect(() => {
+    if (!translateOn || !translateAvailable) return;
+
+    if (!debouncedFront) {
+      form.setValue('back', '');
+      lastTranslatedRef.current = null;
+      return;
+    }
+
+    const last = lastTranslatedRef.current;
+    if (last && last.text === debouncedFront && last.target === target) return;
+
+    const request = { text: debouncedFront, target };
+    lastTranslatedRef.current = request;
+
+    translate.mutate(
+      { text: debouncedFront, target },
+      {
+        onSuccess: ({ translation }) => {
+          if (lastTranslatedRef.current !== request) return;
+          form.setValue('back', translation, { shouldDirty: true, shouldValidate: true });
+        },
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedFront, target, translateOn, translateAvailable]);
+
+  const debouncedFrontExamples = useDebouncedValue(frontExamples, 500);
+
+  useEffect(() => {
+    if (!translateOn || !translateAvailable) return;
+
+    debouncedFrontExamples.forEach((text, index) => {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        setBackExamples((prev) => {
+          const next = [...prev];
+          next[index] = '';
+          return next;
+        });
+        lastTranslatedExamplesRef.current.delete(index);
+        return;
+      }
+
+      const last = lastTranslatedExamplesRef.current.get(index);
+      if (last && last.text === trimmed && last.target === target) return;
+
+      const request = { text: trimmed, target };
+      lastTranslatedExamplesRef.current.set(index, request);
+
+      translate.mutate(
+        { text: trimmed, target },
+        {
+          onSuccess: ({ translation }) => {
+            if (lastTranslatedExamplesRef.current.get(index) !== request) return;
+            setBackExamples((prev) => {
+              const next = [...prev];
+              next[index] = translation;
+              return next;
+            });
+          },
+        },
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedFrontExamples, target, translateOn, translateAvailable]);
+
   const back = useWatch({ control: form.control, name: 'back' }) ?? '';
   const trimmedBack = back.trim();
   const canLookup = trimmedBack.length > 0;
-  const dictionaryTarget = readDictionaryTarget(card?.categoryId ?? null);
+  const dictionaryTarget = translateOn ? target : readDictionaryTarget(card?.categoryId ?? null);
 
   function describeMiss(kind: 'no_value' | 'not_in_dictionary' | 'multiple_words') {
     if (kind === 'multiple_words') return 'Cannot access multiple words';
@@ -209,6 +348,46 @@ export function EditCardDialog({
           })}
           className="space-y-3"
         >
+          {translateAvailable ? (
+            <div className="bg-muted/30 space-y-3 rounded-md border p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="edit-translate-toggle" className="cursor-pointer">
+                    Translation card
+                  </Label>
+                  <p className="text-muted-foreground text-xs">
+                    Auto-translate the front into the chosen language.
+                  </p>
+                </div>
+                <Switch
+                  id="edit-translate-toggle"
+                  checked={translateOn}
+                  onCheckedChange={setTranslateOn}
+                />
+              </div>
+              {translateOn ? (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-translate-target">Target language</Label>
+                  <Select
+                    value={target}
+                    onValueChange={(value) => setTarget(value as TranslateTargetValue)}
+                  >
+                    <SelectTrigger id="edit-translate-target">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TRANSLATE_TARGETS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="space-y-2">
             <Label htmlFor="front">Front</Label>
             <Textarea id="front" rows={2} {...form.register('front')} />
@@ -234,6 +413,7 @@ export function EditCardDialog({
                       onClick={() => {
                         setFrontExamples((prev) => prev.filter((_, j) => j !== i));
                         setBackExamples((prev) => prev.filter((_, j) => j !== i));
+                        lastTranslatedExamplesRef.current.clear();
                       }}
                       aria-label="Remove example"
                     >
