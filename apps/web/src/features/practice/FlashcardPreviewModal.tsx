@@ -135,18 +135,18 @@ export function FlashcardPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl gap-0 p-6">
+      <DialogContent className="max-w-3xl h-[55vh] gap-0 p-6">
         {/* Visually hidden title for screen readers */}
         <DialogTitle className="sr-only">Flashcard preview</DialogTitle>
 
-        <div className="space-y-4">
+        <div className="flex flex-col space-y-4">
           {/* Counter */}
           <div className="text-muted-foreground text-center text-xs">
             {index + 1} of {cards.length}
           </div>
 
           {/* Card + navigation */}
-          <div className="flex items-stretch gap-2 sm:gap-3">
+          <div className="flex-1 flex items-stretch gap-2 sm:gap-3">
             <NavButton direction="prev" onClick={handlePrev} disabled={!canGoPrev} />
             <div className="min-w-0 flex-1">
               <FlipCard

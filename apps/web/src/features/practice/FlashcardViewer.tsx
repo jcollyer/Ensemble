@@ -106,7 +106,7 @@ export function FlipCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'flip-card block min-h-72 w-full select-text outline-none',
+        'h-full flip-card block min-h-72 w-full select-text outline-none',
         flipped && 'is-flipped',
       )}
       aria-label={flipped ? 'Hide answer' : 'Flip'}
