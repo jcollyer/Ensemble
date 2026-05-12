@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Plus,
   Layers,
+  Library,
   Users,
   Play,
   FolderPlus,
@@ -15,9 +16,10 @@ import {
   MessageSquarePlus,
   ArrowRight,
   ChevronDown,
+  X,
 } from 'lucide-react';
 
-import { BACK_LANGUAGES, CategoryCreateInput, FolderCreateInput } from '@ensemble/types';
+import { BACK_LANGUAGES, CategoryCreateInput, FolderCreateInput, WORD_CLASS_OPTIONS } from '@ensemble/types';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,6 +42,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { trpc } from '@/lib/trpc/client';
+import { cn } from '@/lib/utils';
 import { FolderModal } from '@/features/folders/FolderModal';
 
 // Sentinels because the Radix Select doesn't allow an empty-string value.
@@ -53,6 +56,46 @@ export function CategoriesDashboard() {
   const router = useRouter();
   const [deckOpen, setDeckOpen] = useState(false);
   const [folderOpen, setFolderOpen] = useState(false);
+  const [playOpen, setPlayOpen] = useState(false);
+
+  // ── Play modal filter state ───────────────────────────────────────────────
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
+
+  function togglePlayCategory(id: string) {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+  function togglePlayClass(value: string) {
+    setSelectedClasses((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
+    );
+  }
+  function togglePlayRating(value: string) {
+    setSelectedRatings((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
+    );
+  }
+
+  const hasPlayFilters =
+    selectedCategoryIds.length > 0 || selectedClasses.length > 0 || selectedRatings.length > 0;
+
+  function resetPlayFilters() {
+    setSelectedCategoryIds([]);
+    setSelectedClasses([]);
+    setSelectedRatings([]);
+  }
+
+  function buildPracticeHref() {
+    const params = new URLSearchParams();
+    if (selectedCategoryIds.length > 0) params.set('categoryIds', selectedCategoryIds.join(','));
+    if (selectedClasses.length > 0) params.set('classes', selectedClasses.join(','));
+    if (selectedRatings.length > 0) params.set('difficultyLevels', selectedRatings.join(','));
+    const qs = params.toString();
+    return qs ? `/app/all-categories/practice?${qs}` : '/app/all-categories/practice';
+  }
   const [quickFolderNameVisible, setQuickFolderNameVisible] = useState(false);
   const quickFolderInputRef = useRef<HTMLInputElement | null>(null);
   const utils = trpc.useUtils();
@@ -62,6 +105,29 @@ export function CategoriesDashboard() {
   // Aggregate counts across every card the user owns. Drives the four
   // ProgressSnapshotCard tiles below the header.
   const { data: stats } = trpc.practice.stats.useQuery({});
+  // All cards — used in the Play modal to compute the filtered count.
+  const { data: allCards } = trpc.flashcards.listAll.useQuery();
+
+  const playFilteredCount = useMemo(() => {
+    const cards = allCards ?? [];
+    if (!hasPlayFilters) return cards.length;
+    let result = cards;
+    if (selectedCategoryIds.length > 0) {
+      result = result.filter((c) => c.categoryId && selectedCategoryIds.includes(c.categoryId));
+    }
+    if (selectedClasses.length > 0) {
+      result = result.filter((c) => c.class && selectedClasses.includes(c.class));
+    }
+    if (selectedRatings.length > 0) {
+      result = result.filter((c) => {
+        const level = (c as { difficultyLevel?: string | null }).difficultyLevel ?? null;
+        if (selectedRatings.includes('no_rating') && level === null) return true;
+        return level !== null && selectedRatings.includes(level);
+      });
+    }
+    return result.length;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCards, selectedCategoryIds, selectedClasses, selectedRatings, hasPlayFilters]);
 
   const create = trpc.categories.create.useMutation({
     onSuccess: () => {
@@ -156,7 +222,7 @@ export function CategoriesDashboard() {
             <ListPlus className="h-4 w-4" />
             New deck
           </Button>
-          <Button onClick={() => router.push('/app/all-categories')}>
+          <Button onClick={() => setPlayOpen(true)}>
             <Play className="h-4 w-4" />
             Play
           </Button>
@@ -279,6 +345,151 @@ export function CategoriesDashboard() {
       )}
 
       <LearningTogetherSection />
+
+      {/* ── Play Flashcards modal ─────────────────────────────────────────── */}
+      <Dialog
+        open={playOpen}
+        onOpenChange={(o) => {
+          setPlayOpen(o);
+          if (!o) resetPlayFilters();
+        }}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div
+                aria-hidden
+                className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-md"
+              >
+                <Library className="h-5 w-5" />
+              </div>
+              <DialogTitle className="text-xl">Play Flashcards</DialogTitle>
+            </div>
+            <DialogDescription className="pt-1">
+              Choose none, one or multiple filter option to play a subset of your cards, or leave
+              blank to play all.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* ── Filter body ── */}
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">Play filters</span>
+              {hasPlayFilters && (
+                <button
+                  type="button"
+                  onClick={resetPlayFilters}
+                  className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            {/* Categories */}
+            {(categories?.length ?? 0) > 0 && (
+              <div className="space-y-2">
+                <p className="text-muted-foreground text-xs">Categories</p>
+                <div className="flex flex-wrap gap-2">
+                  {categories!.map((cat) => {
+                    const selected = selectedCategoryIds.includes(cat.id);
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => togglePlayCategory(cat.id)}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition',
+                          selected
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: cat.color ?? '#94a3b8' }}
+                        />
+                        {cat.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Word class */}
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-xs">Word class</p>
+              <div className="flex flex-wrap gap-2">
+                {WORD_CLASS_OPTIONS.map((cls) => {
+                  const selected = selectedClasses.includes(cls.value);
+                  return (
+                    <button
+                      key={cls.value}
+                      type="button"
+                      onClick={() => togglePlayClass(cls.value)}
+                      className={cn(
+                        'rounded-full px-3 py-1 text-sm font-medium transition',
+                        selected
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                      )}
+                    >
+                      {cls.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Rating */}
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-xs">Rating</p>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { value: 'easy', label: 'Easy' },
+                    { value: 'good', label: 'Good' },
+                    { value: 'challenging', label: 'Challenging' },
+                    { value: 'no_rating', label: 'No rating' },
+                  ] as const
+                ).map((opt) => {
+                  const selected = selectedRatings.includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => togglePlayRating(opt.value)}
+                      className={cn(
+                        'rounded-full px-3 py-1 text-sm font-medium transition',
+                        selected
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setPlayOpen(false);
+                resetPlayFilters();
+                router.push(buildPracticeHref());
+              }}
+            >
+              <Play className="h-4 w-4" />
+              Play{playFilteredCount > 0 ? ` (${playFilteredCount})` : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={deckOpen}

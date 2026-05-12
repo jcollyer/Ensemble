@@ -29,6 +29,7 @@ import {
   Grid2x2,
   GripVertical,
   LayersPlus,
+  Library,
   List,
   Loader2,
   Pencil,
@@ -48,6 +49,7 @@ import {
   type GenderValue,
   VERB_TYPE_OPTIONS,
   type VerbTypeValue,
+  WORD_CLASS_OPTIONS,
 } from '@ensemble/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -323,6 +325,56 @@ export function CategoryDetail({ categoryId }: Props) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [cardListViewMode, setCardListViewMode] = useState<CardListViewMode>('grid');
 
+  // ── Play modal filter state ───────────────────────────────────────────────
+  const [playOpen, setPlayOpen] = useState(false);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
+
+  function togglePlayClass(value: string) {
+    setSelectedClasses((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
+    );
+  }
+  function togglePlayRating(value: string) {
+    setSelectedRatings((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
+    );
+  }
+  const hasPlayFilters = selectedClasses.length > 0 || selectedRatings.length > 0;
+
+  function resetPlayFilters() {
+    setSelectedClasses([]);
+    setSelectedRatings([]);
+  }
+
+  function buildPracticeHref() {
+    const params = new URLSearchParams();
+    if (selectedClasses.length > 0) params.set('classes', selectedClasses.join(','));
+    if (selectedRatings.length > 0) params.set('difficultyLevels', selectedRatings.join(','));
+    const qs = params.toString();
+    return qs
+      ? `/app/categories/${categoryId}/practice?${qs}`
+      : `/app/categories/${categoryId}/practice`;
+  }
+
+  const playFilteredCount = useMemo(() => {
+    const allCards = cards ?? [];
+    if (!hasPlayFilters) return allCards.length;
+    let result = allCards;
+    if (selectedClasses.length > 0) {
+      result = result.filter((c) => c.class && selectedClasses.includes(c.class));
+    }
+    if (selectedRatings.length > 0) {
+      result = result.filter((c) => {
+        const level = (c as { difficultyLevel?: string | null }).difficultyLevel ?? null;
+        if (selectedRatings.includes('no_rating') && level === null) return true;
+        return level !== null && selectedRatings.includes(level);
+      });
+    }
+    return result.length;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards, selectedClasses, selectedRatings, hasPlayFilters]);
+
   // Local ordering state for drag-and-drop. Seeded from the server query and
   // updated optimistically on drag so the UI doesn't flash before the mutation
   // settles. NonNullable<typeof cards> so the array is always defined (never
@@ -426,13 +478,9 @@ export function CategoryDetail({ categoryId }: Props) {
               New card
             </Button>
           ) : null}
-          <Button asChild>
-            <Link href={`/app/categories/${categoryId}/practice`}>
-              <Play className="h-4 w-4" />
-              {/* Show the total card count as the parenthetical so the user
-                  knows how big a session they're about to start. */}
-              Play {isOwner && (cards?.length ?? 0) > 0 ? `(${cards?.length})` : ''}
-            </Link>
+          <Button onClick={() => setPlayOpen(true)}>
+            <Play className="h-4 w-4" />
+            Play {isOwner && (cards?.length ?? 0) > 0 ? `(${cards?.length})` : ''}
           </Button>
         </div>
       </div>
@@ -582,6 +630,119 @@ export function CategoryDetail({ categoryId }: Props) {
           </Button>
         </div>
       ) : null}
+
+      {/* Play Flashcards modal */}
+      <Dialog
+        open={playOpen}
+        onOpenChange={(o) => {
+          setPlayOpen(o);
+          if (!o) resetPlayFilters();
+        }}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div
+                aria-hidden
+                className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-md"
+              >
+                <Library className="h-5 w-5" />
+              </div>
+              <DialogTitle className="text-xl">Play Flashcards</DialogTitle>
+            </div>
+            <DialogDescription className="pt-1">
+              Choose none, one or multiple filter option to play a subset of your cards, or leave
+              blank to play all.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* ── Filter body ── */}
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">Play filters</span>
+              {hasPlayFilters && (
+                <button
+                  type="button"
+                  onClick={resetPlayFilters}
+                  className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            {/* Word class */}
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-xs">Word class</p>
+              <div className="flex flex-wrap gap-2">
+                {WORD_CLASS_OPTIONS.map((cls) => {
+                  const selected = selectedClasses.includes(cls.value);
+                  return (
+                    <button
+                      key={cls.value}
+                      type="button"
+                      onClick={() => togglePlayClass(cls.value)}
+                      className={cn(
+                        'rounded-full px-3 py-1 text-sm font-medium transition',
+                        selected
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                      )}
+                    >
+                      {cls.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Rating */}
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-xs">Rating</p>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { value: 'easy', label: 'Easy' },
+                    { value: 'good', label: 'Good' },
+                    { value: 'challenging', label: 'Challenging' },
+                    { value: 'no_rating', label: 'No rating' },
+                  ] as const
+                ).map((opt) => {
+                  const selected = selectedRatings.includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => togglePlayRating(opt.value)}
+                      className={cn(
+                        'rounded-full px-3 py-1 text-sm font-medium transition',
+                        selected
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setPlayOpen(false);
+                resetPlayFilters();
+                router.push(buildPracticeHref());
+              }}
+            >
+              <Play className="h-4 w-4" />
+              Play{playFilteredCount > 0 ? ` (${playFilteredCount})` : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create card dialog (deck is fixed to this category). */}
       {isOwner ? (
