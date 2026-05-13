@@ -126,7 +126,7 @@ export function CategoriesDashboard() {
       });
     }
     return result.length;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allCards, selectedCategoryIds, selectedClasses, selectedRatings, hasPlayFilters]);
 
   const create = trpc.categories.create.useMutation({
@@ -196,7 +196,7 @@ export function CategoriesDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-gray-700">
             Willkommen, bienvenue, welcome!
@@ -345,6 +345,8 @@ export function CategoriesDashboard() {
           })}
         </div>
       )}
+
+      <GettingStartedSection />
 
       <LearningTogetherSection />
 
@@ -733,6 +735,105 @@ function ProgressSnapshotCard({
 function getPercentage(value: number, total: number) {
   if (total <= 0) return 0;
   return Math.round((value / total) * 100);
+}
+
+const GETTING_STARTED_KEY = 'flipflow_getting_started_dismissed';
+
+function GettingStartedSection() {
+  const [visible, setVisible] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem(GETTING_STARTED_KEY);
+    setVisible(dismissed !== 'true');
+  }, []);
+
+  function dismiss() {
+    localStorage.setItem(GETTING_STARTED_KEY, 'true');
+    setVisible(false);
+  }
+
+  if (!visible) return null;
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white shadow-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 border-b border-blue-200 bg-blue-100/60 px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15 text-blue-600">
+            <MessageSquarePlus className="h-4 w-4" />
+          </div>
+          <h2 className="text-base font-semibold tracking-tight uppercase text-blue-900">
+            How to Get Started
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="Dismiss getting started section"
+          className="rounded-md p-1 text-blue-400 transition hover:bg-blue-200/60 hover:text-blue-700"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="space-y-4 px-6 py-5 text-sm text-gray-700">
+        <p>
+          <strong>Step 1: Create your first folder to house your decks.</strong>{' '}
+          (ie Level 1, or Nouns) You can move decks and cards anytime, so don&apos;t overthink it.
+          Which instinctively feels right to you: Do you want to create a deck each week of class?
+          Or add new cards to existing decks each week of class? Your feelings may change as you
+          start to create and use the cards, so just get started.
+        </p>
+        <p>
+          <strong>Step 2: Create your first deck to house your cards.</strong>{' '}
+          (ie Week 1, or Nouns) Cards can move decks any time so start creating, and how you
+          personally learn best will become clearer.
+        </p>
+        <p>
+          <strong>Step 3: Create your first flashcards.</strong>{' '}
+          OR see the Learning together / Apprendre ensemble box at the bottom of the page to
+          duplicate a public deck and make it your own.
+        </p>
+        <p>
+          <strong>Step 4: Play (practice) your deck,</strong>{' '}
+          rating each card&apos;s difficulty for you right now.
+        </p>
+        <ul className="space-y-1 pl-1">
+          <li className="flex items-start gap-2">
+            <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
+            <span>Continue playing each deck to increase memorization.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
+            <span>
+              Challenge yourself as your decks grow, playing from a larger number of cards across
+              all decks.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
+            <span>
+              Decide your goals as you go such as celebrating when your first deck gets to 25%
+              rated easy or 100%, or when 100 cards across all decks are rated easy.
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-blue-200 bg-blue-50/60 px-6 py-4">
+        <button
+          type="button"
+          onClick={dismiss}
+          className="group inline-flex items-center gap-2 text-sm font-semibold text-blue-700 transition hover:text-blue-900"
+        >
+          Ready to get started? Close this box and let&apos;s begin (English) / Commençons&nbsp;! (French)
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+        </button>
+      </div>
+    </section>
+  );
 }
 
 function LearningTogetherSection() {
