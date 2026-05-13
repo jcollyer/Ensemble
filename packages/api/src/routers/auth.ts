@@ -197,4 +197,24 @@ export const authRouter = router({
         },
       }),
     ),
+
+  /**
+   * Lightweight mutation to update just the user's preferred default
+   * `backLanguage` for new/edited decks. Called from the deck create/edit
+   * modals so the most recently chosen language becomes the default the
+   * next time either modal is opened.
+   *
+   * Kept separate from `updateSettings` because that endpoint requires the
+   * full profile payload (name, private, etc.) which the deck modals don't
+   * have at hand.
+   */
+  setDefaultLanguage: protectedProcedure
+    .input(z.object({ defaultLanguage: z.string().min(1) }))
+    .mutation(({ ctx, input }) =>
+      ctx.prisma.user.update({
+        where: { id: ctx.userId },
+        data: { defaultLanguage: input.defaultLanguage },
+        select: { id: true, defaultLanguage: true },
+      }),
+    ),
 });

@@ -164,6 +164,17 @@ export function CategoriesDashboard() {
   });
   const [pendingFolderId, setPendingFolderId] = useState<string | null>(null);
   const [folderError, setFolderError] = useState(false);
+  // Validation error for the now-required "Language for translation" field.
+  // Shown when the user submits while the dropdown is still on "No audio".
+  const [languageError, setLanguageError] = useState(false);
+
+  // Persists the chosen language to the user's profile so it becomes the
+  // default selection the next time the create/edit deck modal opens.
+  const setDefaultLanguage = trpc.auth.setDefaultLanguage.useMutation({
+    onSuccess: () => {
+      utils.auth.me.invalidate();
+    },
+  });
 
   const createFolder = trpc.folders.create.useMutation({
     onSuccess: () => {
@@ -535,6 +546,7 @@ export function CategoriesDashboard() {
             });
             setPendingFolderId(null);
             setFolderError(false);
+            setLanguageError(false);
           }
         }}
       >
@@ -550,12 +562,25 @@ export function CategoriesDashboard() {
                 return;
               }
               setFolderError(false);
+              // "Language for translation" is required when the TTS feature
+              // is available — otherwise the user can't create a deck at all
+              // since the picker is hidden.
+              if (ttsAvailable && !values.backLanguage) {
+                setLanguageError(true);
+                return;
+              }
+              setLanguageError(false);
               create.mutate(values, {
                 onSuccess: (deck) => {
                   setDeckFolders.mutate(
                     { categoryId: deck.id, folderIds: [pendingFolderId] },
                     { onSettled: () => setPendingFolderId(null) },
                   );
+                  // Remember the chosen language as the user's new default so
+                  // it's preselected the next time a deck modal opens.
+                  if (values.backLanguage && values.backLanguage !== me?.defaultLanguage) {
+                    setDefaultLanguage.mutate({ defaultLanguage: values.backLanguage });
+                  }
                 },
               });
             })}
@@ -664,16 +689,20 @@ export function CategoriesDashboard() {
             </div>
             {ttsAvailable ? (
               <div className="space-y-2">
-                <Label htmlFor="back-language">Language for translation</Label>
+                <Label htmlFor="back-language">
+                  Language for translation <span className="text-destructive">*</span>
+                </Label>
                 <Select
                   // The Radix Select can't bind to `null`, so we use a
                   // sentinel for "no language" and translate at the edges.
                   value={form.watch('backLanguage') ?? NO_LANGUAGE}
-                  onValueChange={(v) =>
-                    form.setValue('backLanguage', v === NO_LANGUAGE ? null : (v as never), {
-                      shouldDirty: true,
-                    })
-                  }
+                  onValueChange={(v) => {
+                    const next = v === NO_LANGUAGE ? null : (v as never);
+                    form.setValue('backLanguage', next, { shouldDirty: true });
+                    // Clear the validation error as soon as the user picks a
+                    // real language so the error disappears immediately.
+                    if (next) setLanguageError(false);
+                  }}
                 >
                   <SelectTrigger id="back-language">
                     <SelectValue />
@@ -687,6 +716,11 @@ export function CategoriesDashboard() {
                     ))}
                   </SelectContent>
                 </Select>
+                {languageError ? (
+                  <p className="text-destructive text-sm">
+                    Language for translation cannot be blank.
+                  </p>
+                ) : null}
               </div>
             ) : null}
             <DialogFooter>
@@ -862,7 +896,7 @@ function GettingStartedSection() {
           aria-expanded={expanded}
           className="group inline-flex items-center gap-2 text-sm font-semibold text-blue-700 transition hover:text-blue-900"
         >
-          Ready to get started? Close this box and let&apos;s begin (English) / Commençons&nbsp;! (French)
+          Ready to get started? Close this box and let&apos;s begin (<em>English</em>) / Commençons&nbsp;! (<em>French</em>)
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
         </button>
       </div>

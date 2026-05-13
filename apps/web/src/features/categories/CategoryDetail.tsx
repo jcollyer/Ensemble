@@ -522,10 +522,6 @@ export function CategoryDetail({ categoryId }: Props) {
         </div>
       ) : null}
 
-      {isOwner ? (
-        <DeckAudioLanguage categoryId={categoryId} backLanguage={category?.backLanguage ?? null} />
-      ) : null}
-
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -813,74 +809,6 @@ export function CategoryDetail({ categoryId }: Props) {
         }}
       />
     </div>
-  );
-}
-
-/**
- * Inline editor for the deck's back-of-card audio language. Hidden entirely
- * if the server can't reach Google Cloud TTS (no API key) so the user
- * doesn't see a setting that wouldn't do anything. Saves on every change —
- * it's a single dropdown so there's nothing to "submit".
- */
-function DeckAudioLanguage({
-  categoryId,
-  backLanguage,
-}: {
-  categoryId: string;
-  backLanguage: BackLanguageValue | string | null;
-}) {
-  const utils = trpc.useUtils();
-
-  const { data: ttsAvailability } = trpc.tts.isAvailable.useQuery(undefined, {
-    staleTime: Infinity,
-  });
-  const ttsAvailable = !!ttsAvailability?.available;
-
-  const update = trpc.categories.update.useMutation({
-    onSuccess: () => {
-      utils.categories.byId.invalidate({ id: categoryId });
-      utils.categories.list.invalidate();
-    },
-  });
-
-  if (!ttsAvailable) return null;
-
-  const current = (backLanguage ?? NO_LANGUAGE) as string;
-
-  return (
-    <Card>
-      <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-        <div className="space-y-0.5">
-          <Label htmlFor="deck-audio-language" className="cursor-pointer">
-            Language for translation
-          </Label>
-        </div>
-        <div className="min-w-[200px]">
-          <Select
-            value={current}
-            disabled={update.isPending}
-            onValueChange={(v) => {
-              const next = v === NO_LANGUAGE ? null : (v as BackLanguageValue);
-              // No-op if the value didn't actually change.
-              if ((next ?? null) === (backLanguage ?? null)) return;
-              update.mutate({ id: categoryId, backLanguage: next });
-            }}
-          >
-            <SelectTrigger id="deck-audio-language">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_LANGUAGE}>No audio</SelectItem>
-              {BACK_LANGUAGES.map((lang) => (
-                <SelectItem key={lang.value} value={lang.value}>
-                  {lang.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -1757,6 +1685,17 @@ function EditCategoryDialog({
   const { data: folderIdsForDeck } = trpc.folders.forDeck.useQuery({ categoryId: category.id });
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [folderError, setFolderError] = useState(false);
+  // Validation error for the now-required "Language for translation" field.
+  const [languageError, setLanguageError] = useState(false);
+
+  // Persists the chosen language as the user's new default so it becomes
+  // the preselected value the next time the create/edit deck modal opens.
+  const { data: me } = trpc.auth.me.useQuery();
+  const setDefaultLanguage = trpc.auth.setDefaultLanguage.useMutation({
+    onSuccess: () => {
+      utils.auth.me.invalidate();
+    },
+  });
 
   // Hydrate selection once the server returns the deck's current folder
   // membership; take the first folder if the deck is in multiple.
@@ -1818,6 +1757,19 @@ function EditCategoryDialog({
       return;
     }
     setFolderError(false);
+    // "Language for translation" is required when the TTS feature is
+    // available — otherwise the picker is hidden and there's nothing to
+    // validate.
+    if (ttsAvailable && !values.backLanguage) {
+      setLanguageError(true);
+      return;
+    }
+    setLanguageError(false);
+    // Remember the chosen language as the user's new default so it's
+    // preselected the next time a deck modal opens.
+    if (values.backLanguage && values.backLanguage !== me?.defaultLanguage) {
+      setDefaultLanguage.mutate({ defaultLanguage: values.backLanguage });
+    }
     update.mutate(values);
   }
 
@@ -1928,16 +1880,18 @@ function EditCategoryDialog({
 
           {ttsAvailable ? (
             <div className="space-y-2">
-              <Label htmlFor="edit-deck-back-language">Language for translation</Label>
+              <Label htmlFor="edit-deck-back-language">
+                Language for translation <span className="text-destructive">*</span>
+              </Label>
               <Select
                 value={selectedBackLanguage ?? NO_LANGUAGE}
-                onValueChange={(v) =>
-                  form.setValue(
-                    'backLanguage',
-                    v === NO_LANGUAGE ? null : (v as BackLanguageValue),
-                    { shouldDirty: true },
-                  )
-                }
+                onValueChange={(v) => {
+                  const next = v === NO_LANGUAGE ? null : (v as BackLanguageValue);
+                  form.setValue('backLanguage', next, { shouldDirty: true });
+                  // Clear the validation error as soon as a real language
+                  // is picked so the error message disappears immediately.
+                  if (next) setLanguageError(false);
+                }}
               >
                 <SelectTrigger id="edit-deck-back-language">
                   <SelectValue />
@@ -1951,6 +1905,11 @@ function EditCategoryDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {languageError ? (
+                <p className="text-destructive text-sm">
+                  Language for translation cannot be blank.
+                </p>
+              ) : null}
             </div>
           ) : null}
 

@@ -344,8 +344,8 @@ export function SettingsView() {
                 {savedAt && !dirty ? <p className="text-muted-foreground text-sm">Saved.</p> : null}
               </div>
 
-              {/* ── Bio ── */}
-              <div className="space-y-2">
+              {/* ── Bio (hide for now until we show it in the app somewhere)── */}
+              {/* <div className="space-y-2">
                 <Label htmlFor="settings-bio">Bio</Label>
                 <Textarea
                   id="settings-bio"
@@ -362,7 +362,7 @@ export function SettingsView() {
                 <p className="text-muted-foreground text-right text-xs">
                   {bio.trim().length} / 300
                 </p>
-              </div>
+              </div> */}
 
               {/* ── Email (read-only) ── */}
               <div className="space-y-2">
@@ -379,8 +379,8 @@ export function SettingsView() {
                 </p>
               </div>
 
-              {/* ── Default language ── */}
-              <div className="bg-muted/30 space-y-3 rounded-md border p-4">
+              {/* ── Default language - hiding: defaultLanguage gets set in create/edit modal for now ── */}
+              {/* <div className="bg-muted/30 space-y-3 rounded-md border p-4">
                 <div className="space-y-1">
                   <Label htmlFor="settings-default-language">Default language</Label>
                   <p className="text-muted-foreground text-sm">
@@ -408,7 +408,7 @@ export function SettingsView() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
 
               {/* ── Public profile toggle ── */}
               <div className="bg-muted/30 flex items-start justify-between gap-4 rounded-md border p-4">
