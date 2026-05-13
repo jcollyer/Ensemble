@@ -741,6 +741,7 @@ const GETTING_STARTED_KEY = 'flipflow_getting_started_dismissed';
 
 function GettingStartedSection() {
   const [visible, setVisible] = useState<boolean | null>(null);
+  const [expanded, setExpanded] = useState(true);
 
   useEffect(() => {
     const dismissed = localStorage.getItem(GETTING_STARTED_KEY);
@@ -776,56 +777,65 @@ function GettingStartedSection() {
         </button>
       </div>
 
-      {/* Body */}
-      <div className="space-y-4 px-6 py-5 text-sm text-gray-700">
-        <p>
-          <strong>Step 1: Create your first folder to house your decks.</strong>{' '}
-          (ie Level 1, or Nouns) You can move decks and cards anytime, so don&apos;t overthink it.
-          Which instinctively feels right to you: Do you want to create a deck each week of class?
-          Or add new cards to existing decks each week of class? Your feelings may change as you
-          start to create and use the cards, so just get started.
-        </p>
-        <p>
-          <strong>Step 2: Create your first deck to house your cards.</strong>{' '}
-          (ie Week 1, or Nouns) Cards can move decks any time so start creating, and how you
-          personally learn best will become clearer.
-        </p>
-        <p>
-          <strong>Step 3: Create your first flashcards.</strong>{' '}
-          OR see the Learning together / Apprendre ensemble box at the bottom of the page to
-          duplicate a public deck and make it your own.
-        </p>
-        <p>
-          <strong>Step 4: Play (practice) your deck,</strong>{' '}
-          rating each card&apos;s difficulty for you right now.
-        </p>
-        <ul className="space-y-1 pl-1">
-          <li className="flex items-start gap-2">
-            <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
-            <span>Continue playing each deck to increase memorization.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
-            <span>
-              Challenge yourself as your decks grow, playing from a larger number of cards across
-              all decks.
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
-            <span>
-              Decide your goals as you go such as celebrating when your first deck gets to 25%
-              rated easy or 100%, or when 100 cards across all decks are rated easy.
-            </span>
-          </li>
-        </ul>
-      </div>
+      {expanded ? (
+        <div className="space-y-4 px-6 py-5 text-sm text-gray-700">
+          <p>
+            <strong>Step 1: Create your first folder.</strong>{' '}
+            <em>
+              (ie Level 1, or Nouns) This will hold your decks of cards, which you can reorganize
+              anytime. Do you want to create a deck each week of class, or add new cards to
+              existing decks each week of class? Your vision may change as you go, just get
+              started.
+            </em>
+          </p>
+          <p>
+            <strong>Step 2: Create your first deck.</strong>{' '}
+            <em>
+              (ie Week 1, or Nouns) Reminder, cards and decks can move around anytime so simply
+              begin.
+            </em>
+          </p>
+          <p>
+            <strong>Step 3: Create your first flashcards.</strong>{' '}
+            Or see the Learning together / Apprendre ensemble box at the bottom of the page to
+            duplicate a public deck and make it your own.
+          </p>
+          <p>
+            <strong>Step 4: Play (practice) your deck.</strong>
+          </p>
+          <ul className="space-y-1 pl-1">
+            <li className="flex items-start gap-2">
+              <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
+              <span>Rate each card&apos;s difficulty for you right now.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
+              <span>Continue playing a deck to increase memorization.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
+              <span>
+                Challenge yourself as your decks grow, playing from a larger number of cards
+                across all decks.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
+              <span>
+                Decide your goals as you go such as celebrating when you&apos;ve rated as Easy 25%
+                of your first deck or 100 cards across all decks.
+              </span>
+            </li>
+          </ul>
+        </div>
+      ) : null}
 
       {/* Footer */}
       <div className="border-t border-blue-200 bg-blue-50/60 px-6 py-4">
         <button
           type="button"
-          onClick={dismiss}
+          onClick={() => setExpanded((current) => !current)}
+          aria-expanded={expanded}
           className="group inline-flex items-center gap-2 text-sm font-semibold text-blue-700 transition hover:text-blue-900"
         >
           Ready to get started? Close this box and let&apos;s begin (English) / Commençons&nbsp;! (French)
