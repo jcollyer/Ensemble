@@ -434,19 +434,19 @@ export function SettingsView() {
               {/* ── Default deck privacy toggle ── */}
               <div className="bg-muted/30 flex items-start justify-between gap-4 rounded-md border p-4">
                 <div className="space-y-1">
-                  <Label htmlFor="settings-default-deck-private" className="cursor-pointer">
-                    New decks private by default
+                  <Label htmlFor="settings-default-deck-public" className="cursor-pointer">
+                    New decks public by default
                   </Label>
                   <p className="text-muted-foreground text-sm">
-                    When on, new decks will start as private. You can change this for individual
+                    When on, new decks will start as public. You can change this for individual
                     decks by clicking edit on that deck.
                   </p>
                 </div>
                 <Switch
-                  id="settings-default-deck-private"
-                  checked={defaultDeckPrivate}
+                  id="settings-default-deck-public"
+                  checked={!defaultDeckPrivate}
                   onCheckedChange={(checked) => {
-                    setDefaultDeckPrivate(checked);
+                    setDefaultDeckPrivate(!checked);
                     setError(null);
                     setSavedAt(null);
                   }}
