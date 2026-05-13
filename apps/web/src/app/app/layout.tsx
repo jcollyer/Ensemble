@@ -82,7 +82,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <footer className="mt-16 border-t bg-gray-50">
         <div className="container mx-auto max-w-2xl py-10 text-center">
           <p className="text-sm leading-relaxed text-gray-600">
-            Bonjour! We’re Jeremy and Hilary, an American couple learning French ahead of a move to France. We wanted software more specific than we found, so we’re building it for ourselves and happy to share. We will email periodically to highlight new features as we add them. Notes of bugs and suggestions are welcome!
+            Bonjour! We’re Jeremy and Hilary, an American couple learning French ahead of a move to
+            France. We wanted software more specific than we found, so we’re building it for
+            ourselves and happy to share. We will email periodically to highlight new features as we
+            add them. Notes of bugs and suggestions are welcome!
           </p>
           <a
             href="mailto:ensemblelanguage@gmail.com"

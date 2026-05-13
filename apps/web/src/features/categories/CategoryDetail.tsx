@@ -372,7 +372,7 @@ export function CategoryDetail({ categoryId }: Props) {
       });
     }
     return result.length;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cards, selectedClasses, selectedRatings, hasPlayFilters]);
 
   // Local ordering state for drag-and-drop. Seeded from the server query and
@@ -1110,8 +1110,12 @@ function EditCardDialog({
             // instead of a silent 400 from the server's Zod check.
             const badFront = new Set<number>();
             const badBack = new Set<number>();
-            frontExamples.forEach((v, i) => { if (!v.trim()) badFront.add(i); });
-            backExamples.forEach((v, i) => { if (!v.trim()) badBack.add(i); });
+            frontExamples.forEach((v, i) => {
+              if (!v.trim()) badFront.add(i);
+            });
+            backExamples.forEach((v, i) => {
+              if (!v.trim()) badBack.add(i);
+            });
             if (badFront.size > 0 || badBack.size > 0) {
               setInvalidFrontIndices(badFront);
               setInvalidBackIndices(badBack);
@@ -1182,7 +1186,11 @@ function EditCardDialog({
                       <Input
                         placeholder="Example…"
                         value={val}
-                        className={invalidFrontIndices.has(i) ? 'border-destructive focus-visible:ring-destructive' : ''}
+                        className={
+                          invalidFrontIndices.has(i)
+                            ? 'border-destructive focus-visible:ring-destructive'
+                            : ''
+                        }
                         aria-invalid={invalidFrontIndices.has(i)}
                         onChange={(e) => {
                           setFrontExamples((prev) => {
@@ -1258,7 +1266,11 @@ function EditCardDialog({
                     <Input
                       placeholder="Example…"
                       value={val}
-                      className={invalidBackIndices.has(i) ? 'border-destructive focus-visible:ring-destructive' : ''}
+                      className={
+                        invalidBackIndices.has(i)
+                          ? 'border-destructive focus-visible:ring-destructive'
+                          : ''
+                      }
                       aria-invalid={invalidBackIndices.has(i)}
                       onChange={(e) => {
                         setBackExamples((prev) => {
@@ -1430,9 +1442,7 @@ function EditCardDialog({
             </div>
           ) : null}
 
-          {update.error ? (
-            <p className="text-destructive text-sm">{update.error.message}</p>
-          ) : null}
+          {update.error ? <p className="text-destructive text-sm">{update.error.message}</p> : null}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>

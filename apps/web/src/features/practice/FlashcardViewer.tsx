@@ -106,7 +106,7 @@ export function FlipCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'h-full flip-card block min-h-72 w-full select-text outline-none',
+        'flip-card block h-full min-h-72 w-full select-text outline-none',
         flipped && 'is-flipped',
       )}
       aria-label={flipped ? 'Hide answer' : 'Flip'}
@@ -149,9 +149,7 @@ export function FlipCard({
               </ul>
             ) : null}
             {pronunciation && (
-              <p className="text-muted-foreground mt-auto text-right italic">
-                [{pronunciation}]
-              </p>
+              <p className="text-muted-foreground mt-auto text-right italic">[{pronunciation}]</p>
             )}
           </CardContent>
           {/* Only render the audio button if the deck has a configured language. */}

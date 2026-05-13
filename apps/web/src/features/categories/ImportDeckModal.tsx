@@ -177,9 +177,7 @@ export function ImportDeckModal({ deck, open, onOpenChange }: Props) {
                         isSelected ? 'border-primary' : 'border-muted-foreground/40'
                       }`}
                     >
-                      {isSelected ? (
-                        <span className="bg-primary h-2 w-2 rounded-full" />
-                      ) : null}
+                      {isSelected ? <span className="bg-primary h-2 w-2 rounded-full" /> : null}
                     </span>
                     <span
                       aria-hidden

@@ -37,7 +37,12 @@ import {
   X,
 } from 'lucide-react';
 
-import { BACK_LANGUAGES, CategoryCreateInput, FolderCreateInput, WORD_CLASS_OPTIONS } from '@ensemble/types';
+import {
+  BACK_LANGUAGES,
+  CategoryCreateInput,
+  FolderCreateInput,
+  WORD_CLASS_OPTIONS,
+} from '@ensemble/types';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -821,7 +826,7 @@ function GettingStartedSection() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15 text-blue-600">
             <MessageSquarePlus className="h-4 w-4" />
           </div>
-          <h2 className="text-base font-semibold tracking-tight uppercase text-blue-900">
+          <h2 className="text-base font-semibold uppercase tracking-tight text-blue-900">
             How to Get Started
           </h2>
         </div>
@@ -841,9 +846,8 @@ function GettingStartedSection() {
             <strong>Step 1: Create your first folder.</strong>{' '}
             <em>
               (ie Level 1, or Nouns) This will hold your decks of cards, which you can reorganize
-              anytime. Do you want to create a deck each week of class, or add new cards to
-              existing decks each week of class? Your vision may change as you go, just get
-              started.
+              anytime. Do you want to create a deck each week of class, or add new cards to existing
+              decks each week of class? Your vision may change as you go, just get started.
             </em>
           </p>
           <p>
@@ -854,31 +858,39 @@ function GettingStartedSection() {
             </em>
           </p>
           <p>
-            <strong>Step 3: Create your first flashcards.</strong>{' '}
-            Or see the Learning together / Apprendre ensemble box at the bottom of the page to
-            duplicate a public deck and make it your own.
+            <strong>Step 3: Create your first flashcards.</strong> Or see the Learning together /
+            Apprendre ensemble box at the bottom of the page to duplicate a public deck and make it
+            your own.
           </p>
           <p>
             <strong>Step 4: Play (practice) your deck.</strong>
           </p>
           <ul className="space-y-1 pl-1">
             <li className="flex items-start gap-2">
-              <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
+              <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">
+                •
+              </span>
               <span>Rate each card&apos;s difficulty for you right now.</span>
             </li>
             <li className="flex items-start gap-2">
-              <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
+              <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">
+                •
+              </span>
               <span>Continue playing a deck to increase memorization.</span>
             </li>
             <li className="flex items-start gap-2">
-              <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
+              <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">
+                •
+              </span>
               <span>
-                Challenge yourself as your decks grow, playing from a larger number of cards
-                across all decks.
+                Challenge yourself as your decks grow, playing from a larger number of cards across
+                all decks.
               </span>
             </li>
             <li className="flex items-start gap-2">
-              <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">•</span>
+              <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">
+                •
+              </span>
               <span>
                 Decide your goals as you go such as celebrating when you&apos;ve rated as Easy 25%
                 of your first deck or 100 cards across all decks.
@@ -896,7 +908,8 @@ function GettingStartedSection() {
           aria-expanded={expanded}
           className="group inline-flex items-center gap-2 text-sm font-semibold text-blue-700 transition hover:text-blue-900"
         >
-          Ready to get started? Close this box and let&apos;s begin (<em>English</em>) / Commençons&nbsp;! (<em>French</em>)
+          Ready to get started? Close this box and let&apos;s begin (<em>English</em>) /
+          Commençons&nbsp;! (<em>French</em>)
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
         </button>
       </div>
@@ -912,7 +925,9 @@ function LearningTogetherSection() {
         <div className="bg-primary/15 text-primary flex h-8 w-8 items-center justify-center rounded-lg">
           <Users className="h-4 w-4" />
         </div>
-        <h2 className="text-base font-semibold tracking-tight">Learning together (English) / Apprendre ensemble (French)</h2>
+        <h2 className="text-base font-semibold tracking-tight">
+          Learning together (English) / Apprendre ensemble (French)
+        </h2>
       </div>
 
       {/* Stacked sections separated by borders */}
@@ -1040,7 +1055,7 @@ function SortableDeckCard({ deck }: { deck: FolderDeck }) {
             e.stopPropagation();
           }}
           aria-label={`Drag ${deck.name} to reorder`}
-          className="text-muted-foreground/50 hover:text-muted-foreground absolute top-2 right-2 z-10 cursor-grab touch-none rounded p-1 opacity-0 transition group-hover/card:opacity-100 active:cursor-grabbing"
+          className="text-muted-foreground/50 hover:text-muted-foreground absolute right-2 top-2 z-10 cursor-grab touch-none rounded p-1 opacity-0 transition active:cursor-grabbing group-hover/card:opacity-100"
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -1207,10 +1222,7 @@ function FolderSection({
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <SortableContext
-                items={orderedDecks.map((d) => d.id)}
-                strategy={rectSortingStrategy}
-              >
+              <SortableContext items={orderedDecks.map((d) => d.id)} strategy={rectSortingStrategy}>
                 {orderedDecks.map((d) => (
                   <SortableDeckCard key={d.id} deck={d} />
                 ))}

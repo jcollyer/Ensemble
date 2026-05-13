@@ -85,9 +85,7 @@ export const foldersRouter = router({
       },
       select: { folderId: true, orderedCategoryIds: true },
     });
-    const orderByFolderId = new Map(
-      savedOrders.map((o) => [o.folderId, o.orderedCategoryIds]),
-    );
+    const orderByFolderId = new Map(savedOrders.map((o) => [o.folderId, o.orderedCategoryIds]));
 
     return folders.map((f) => {
       const ordered = resolveOrderedDeckIds(

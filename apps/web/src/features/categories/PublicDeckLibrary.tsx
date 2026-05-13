@@ -39,8 +39,8 @@ export function PublicDeckLibrary() {
         </Button>
         <h1 className="text-3xl font-semibold tracking-tight">Public decks</h1>
         <p className="text-muted-foreground text-sm">
-          Browse public decks from other users. Play a deck in read-only mode or import a copy
-          into one of your folders.
+          Browse public decks from other users. Play a deck in read-only mode or import a copy into
+          one of your folders.
         </p>
       </div>
 
@@ -154,9 +154,7 @@ export function PublicDeckLibrary() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() =>
-                                  setImportTarget({ id: deck.id, name: deck.name })
-                                }
+                                onClick={() => setImportTarget({ id: deck.id, name: deck.name })}
                               >
                                 <Download className="h-4 w-4" />
                                 Import

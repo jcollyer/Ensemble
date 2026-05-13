@@ -219,7 +219,8 @@ export function SettingsView() {
   }
 
   // ── Displayed avatar src: prefer the local preview, fall back to server ──
-  const displayedAvatar = pendingAvatarMode === 'initials' ? null : (avatarPreview ?? me?.image ?? null);
+  const displayedAvatar =
+    pendingAvatarMode === 'initials' ? null : (avatarPreview ?? me?.image ?? null);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -305,7 +306,12 @@ export function SettingsView() {
                       variant="ghost"
                       size="sm"
                       onClick={handleUseInitials}
-                      disabled={isUploading || (pendingAvatarMode === 'initials' ? !me?.image && !pendingFile : !displayedAvatar)}
+                      disabled={
+                        isUploading ||
+                        (pendingAvatarMode === 'initials'
+                          ? !me?.image && !pendingFile
+                          : !displayedAvatar)
+                      }
                     >
                       Use initials
                     </Button>
