@@ -7,7 +7,7 @@ import {
   BadgeCheck,
   ChevronDown,
   ChevronUp,
-  Download,
+  Folders,
   Layers,
   Library,
   Play,
@@ -21,7 +21,8 @@ import { ImportDeckModal } from '@/features/categories/ImportDeckModal';
 
 export function PublicDeckLibrary() {
   const { data: users, isLoading } = trpc.categories.publicLibrary.useQuery();
-  const [openUserId, setOpenUserId] = useState<string | null>(null);
+  const [openUserId, setOpenUserId] = useState<string | null | undefined>(undefined);
+  const activeUserId = openUserId ?? users?.find((user) => user.isAdmin)?.id ?? null;
 
   // The deck the user is currently trying to import (drives the modal). We
   // track the source deck rather than just an id so the modal can show the
@@ -53,7 +54,7 @@ export function PublicDeckLibrary() {
       ) : users && users.length > 0 ? (
         <div className="space-y-3">
           {users.map((user) => {
-            const isOpen = openUserId === user.id;
+            const isOpen = activeUserId === user.id;
 
             return (
               <Card
@@ -62,7 +63,9 @@ export function PublicDeckLibrary() {
               >
                 <button
                   type="button"
-                  onClick={() => setOpenUserId((current) => (current === user.id ? null : user.id))}
+                  onClick={() =>
+                    setOpenUserId((current) => (activeUserId === user.id ? null : user.id))
+                  }
                   className="w-full text-left"
                 >
                   <CardHeader className="flex flex-row items-center justify-between gap-3">
@@ -156,8 +159,8 @@ export function PublicDeckLibrary() {
                                 variant="outline"
                                 onClick={() => setImportTarget({ id: deck.id, name: deck.name })}
                               >
-                                <Download className="h-4 w-4" />
-                                Import
+                                <Folders className="h-4 w-4" />
+                                Duplicate Deck
                               </Button>
                             </div>
                           </div>
