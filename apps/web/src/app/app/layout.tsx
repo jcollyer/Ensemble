@@ -42,8 +42,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 gap-2 px-2">
-                <span className="bg-primary/15 text-primary flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold">
-                  {initials}
+                <span className="bg-primary/15 text-primary relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full text-xs font-semibold">
+                  {session.user.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={session.user.image}
+                      alt={session.user.name ?? session.user.email ?? 'User avatar'}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : null}
+                  <span aria-hidden={!!session.user.image}>{initials}</span>
                 </span>
                 <span className="hidden text-sm sm:inline">
                   {session.user.name ?? session.user.email}
