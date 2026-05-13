@@ -42,6 +42,7 @@ model User {
   categories    Category[]
   flashcards    Flashcard[]
   folders       Folder[]
+  folderDeckOrders FolderDeckOrder[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -126,13 +127,43 @@ model Folder {
   color               String?
   // Postgres text[] holding the ids of Categories included in this folder.
   // Defaults to an empty array so we never have to null-check at the edges.
+  // This is the canonical membership set; per-viewer display ordering is
+  // stored separately in FolderDeckOrder so multiple viewers can have their
+  // own arrangement of the same folder without stomping on each other.
   includedCategoryIds String[] @default([]) @map("included_category_ids")
   userId              String
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deckOrders          FolderDeckOrder[]
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
   @@index([userId])
+}
+
+// Per-viewer ordering of the decks inside a folder. The Folder's
+// `includedCategoryIds` defines _which_ decks belong to the folder; this row
+// defines _what order they're shown in_ for one specific viewer. Folders
+// aren't shared yet, so today the only viewer is the owner — but storing the
+// order per (user, folder) means future shared folders can give each viewer
+// their own arrangement.
+//
+// `orderedCategoryIds` may drift from the folder's membership over time
+// (e.g. a new deck is added, or one is removed). Reads reconcile by:
+//   1. Dropping ids that are no longer in includedCategoryIds.
+//   2. Appending any includedCategoryIds that aren't in this list yet.
+// This means newly added decks land at the end of the user's saved order.
+model FolderDeckOrder {
+  id                 String   @id @default(cuid())
+  userId             String
+  folderId           String
+  orderedCategoryIds String[] @default([]) @map("ordered_category_ids")
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder             Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([userId, folderId])
+  @@index([folderId])
 }
 
 model Flashcard {

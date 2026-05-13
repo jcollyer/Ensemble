@@ -6,12 +6,30 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   Plus,
   Layers,
   Library,
   Users,
   Play,
   FolderPlus,
+  GripVertical,
   ListPlus,
   MessageSquarePlus,
   ArrowRight,
@@ -326,11 +344,15 @@ export function CategoriesDashboard() {
       {hasFolders && !isLoading && (
         <div className="space-y-2">
           {(folders ?? []).map((folder) => {
-            const folderDecks = (categories ?? [])
-              .filter((c) => folder.includedCategoryIds.includes(c.id))
-              .sort(
-                (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-              );
+            // Build folderDecks in the order the API returned in
+            // `includedCategoryIds`. The folders.list query already applies
+            // this viewer's saved drag-and-drop order (via FolderDeckOrder),
+            // so we walk that array — not the categories list, which is
+            // sorted by createdAt — to honor the user's arrangement.
+            const categoriesById = new Map((categories ?? []).map((c) => [c.id, c]));
+            const folderDecks = folder.includedCategoryIds
+              .map((id) => categoriesById.get(id))
+              .filter((c): c is NonNullable<typeof c> => Boolean(c));
             return (
               <FolderSection
                 key={folder.id}
@@ -937,11 +959,93 @@ function LearningTogetherSection() {
 // sessions.
 const FOLDER_OPEN_KEY_PREFIX = 'ensemble_folder_open_';
 
+// Shape of a single deck within a folder section. Hoisted so the
+// SortableDeckCard child can share the same type without redefining it.
+type FolderDeck = {
+  id: string;
+  name: string;
+  color: string | null;
+  description?: string | null;
+  cardCount: number;
+};
+
+/**
+ * One draggable deck tile in the folder's expanded grid. The card is wrapped
+ * in a Link so a normal click still navigates to the deck — the drag handle
+ * (GripVertical) on the left is the only element wired to dnd-kit's
+ * pointer/keyboard listeners. That separation is important: if the whole
+ * card were the drag handle, click-to-navigate and drag-to-reorder would
+ * race against each other.
+ */
+function SortableDeckCard({ deck }: { deck: FolderDeck }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: deck.id,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+    // Lift the dragged item above siblings so it isn't clipped by the
+    // grid's overflow / hover borders during the gesture.
+    zIndex: isDragging ? 1 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card className="hover:border-primary/40 group/card relative h-full transition hover:shadow-md">
+        {/* Drag handle — absolute-positioned in the top-right corner so it
+            doesn't shift the card layout. Stops click events so it never
+            triggers the parent Link's navigation. */}
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          aria-label={`Drag ${deck.name} to reorder`}
+          className="text-muted-foreground/50 hover:text-muted-foreground absolute top-2 right-2 z-10 cursor-grab touch-none rounded p-1 opacity-0 transition group-hover/card:opacity-100 active:cursor-grabbing"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <Link href={`/app/categories/${deck.id}`} className="group block">
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div
+              aria-hidden
+              className="h-10 w-10 shrink-0 rounded-md"
+              style={{ backgroundColor: deck.color ?? '#94a3b8' }}
+            />
+            <div className="min-w-0">
+              <CardTitle className="group-hover:text-primary truncate text-sm">
+                {deck.name}
+              </CardTitle>
+              {deck.description ? (
+                <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs font-normal">
+                  {deck.description}
+                </p>
+              ) : null}
+            </div>
+          </CardHeader>
+          <CardContent className="text-muted-foreground flex items-center gap-3 text-xs">
+            <span className="inline-flex items-center gap-1">
+              <Layers className="h-3.5 w-3.5" />
+              {deck.cardCount} {deck.cardCount === 1 ? 'card' : 'cards'}
+            </span>
+          </CardContent>
+        </Link>
+      </Card>
+    </div>
+  );
+}
+
 /**
  * Collapsible full-width section for a single folder on the homepage.
  * The header row shows the folder's colour swatch, name and deck count.
- * Expanding reveals a 4-column deck grid; an empty folder shows a dashed
- * "Add your first deck" prompt card instead.
+ * Expanding reveals a 4-column deck grid where decks can be reordered by
+ * dragging the handle in the top-right of each tile. The new order is
+ * persisted per-viewer via the folders.reorderDecks tRPC mutation.
  *
  * The open/collapsed state is persisted to localStorage per folder so it
  * survives page reloads and new sessions.
@@ -957,13 +1061,7 @@ function FolderSection({
     color: string | null;
     deckCount: number;
   };
-  decks: {
-    id: string;
-    name: string;
-    color: string | null;
-    description?: string | null;
-    cardCount: number;
-  }[];
+  decks: FolderDeck[];
   onCreateDeck: () => void;
 }) {
   // Lazy initializer reads the previously persisted state on mount. This is
@@ -991,6 +1089,50 @@ function FolderSection({
       // persist is non-fatal — the UI keeps working in-memory.
     }
   }, [open, folder.id]);
+
+  // Local mirror of the deck order for optimistic drag-and-drop. Seeded
+  // from the server-provided `decks` prop and re-synced whenever the
+  // server data changes (new deck added, folder edit, etc.).
+  const [orderedDecks, setOrderedDecks] = useState<FolderDeck[]>(decks);
+  useEffect(() => {
+    setOrderedDecks(decks);
+  }, [decks]);
+
+  const utils = trpc.useUtils();
+  const reorder = trpc.folders.reorderDecks.useMutation({
+    // Don't refetch on success — that would clobber the local order with the
+    // server's (now-identical) order and cause a no-op re-render. The next
+    // organic refetch will reconcile any drift.
+    onError: () => {
+      // Roll back to the last server-confirmed order on failure.
+      setOrderedDecks(decks);
+      utils.folders.list.invalidate();
+    },
+  });
+
+  const sensors = useSensors(
+    // The 5px activation distance lets a plain click on the drag handle
+    // pass through without starting a drag, which keeps the handle
+    // feeling like a normal button when the user just taps it.
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setOrderedDecks((prev) => {
+      const oldIndex = prev.findIndex((d) => d.id === active.id);
+      const newIndex = prev.findIndex((d) => d.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      const next = arrayMove(prev, oldIndex, newIndex);
+      reorder.mutate({
+        folderId: folder.id,
+        orderedCategoryIds: next.map((d) => d.id),
+      });
+      return next;
+    });
+  }
 
   return (
     <div className="overflow-hidden rounded-xl border transition-shadow hover:shadow-sm">
@@ -1026,36 +1168,22 @@ function FolderSection({
       {open && (
         <div className="border-t px-5 py-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {decks.map((d) => (
-              <Link key={d.id} href={`/app/categories/${d.id}`} className="group">
-                <Card className="hover:border-primary/40 h-full transition hover:shadow-md">
-                  <CardHeader className="flex flex-row items-center gap-3">
-                    <div
-                      aria-hidden
-                      className="h-10 w-10 shrink-0 rounded-md"
-                      style={{ backgroundColor: d.color ?? '#94a3b8' }}
-                    />
-                    <div className="min-w-0">
-                      <CardTitle className="group-hover:text-primary truncate text-sm">
-                        {d.name}
-                      </CardTitle>
-                      {d.description ? (
-                        <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs font-normal">
-                          {d.description}
-                        </p>
-                      ) : null}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="text-muted-foreground flex items-center gap-3 text-xs">
-                    <span className="inline-flex items-center gap-1">
-                      <Layers className="h-3.5 w-3.5" />
-                      {d.cardCount} {d.cardCount === 1 ? 'card' : 'cards'}
-                    </span>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-            {/* Empty folder — dashed prompt card */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={orderedDecks.map((d) => d.id)}
+                strategy={rectSortingStrategy}
+              >
+                {orderedDecks.map((d) => (
+                  <SortableDeckCard key={d.id} deck={d} />
+                ))}
+              </SortableContext>
+            </DndContext>
+            {/* "Add deck" tile is intentionally outside the SortableContext
+                so it isn't draggable and always stays at the end. */}
             <button
               type="button"
               onClick={onCreateDeck}
@@ -1065,7 +1193,7 @@ function FolderSection({
                 <Plus className="h-4 w-4" />
               </div>
               <p className="text-muted-foreground group-hover:text-foreground text-sm font-medium transition">
-                {`Add your ${decks.length === 0 ? 'first' : 'next'} deck`}
+                {`Add your ${orderedDecks.length === 0 ? 'first' : 'next'} deck`}
               </p>
             </button>
           </div>

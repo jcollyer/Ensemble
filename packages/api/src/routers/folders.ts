@@ -10,7 +10,51 @@ import { protectedProcedure, router } from '../trpc';
  * the folder itself as a `String[]` of category ids — we don't model it as a
  * relation. That means a deck can be in many folders at once, and deleting a
  * deck just leaves a dangling id which we filter out at read time.
+ *
+ * Folder _membership_ (which decks are in the folder) lives on the Folder
+ * row. The _display order_ of those decks for a given viewer lives in
+ * FolderDeckOrder, keyed on (userId, folderId). This separation means that
+ * when folders become shareable each viewer can have their own arrangement
+ * without overwriting the others'.
  */
+
+/**
+ * Combine the canonical membership set with the viewer's saved drag-and-drop
+ * order. Returns the ids in the order the viewer should see them.
+ *
+ *  - `validIds` is the set of category ids that still exist and belong to the
+ *    deck owner. Anything in `membership` outside `validIds` is dropped
+ *    (cleans up dangling ids from deleted decks).
+ *  - Any membership id missing from the saved order is appended to the end so
+ *    newly added decks always show up, just not at the front.
+ *  - Any id in the saved order that's no longer in membership is dropped.
+ */
+function resolveOrderedDeckIds(
+  membership: string[],
+  savedOrder: string[] | null,
+  validIds: Set<string>,
+): string[] {
+  const membershipSet = new Set(membership.filter((id) => validIds.has(id)));
+  const seen = new Set<string>();
+  const out: string[] = [];
+  if (savedOrder) {
+    for (const id of savedOrder) {
+      if (membershipSet.has(id) && !seen.has(id)) {
+        out.push(id);
+        seen.add(id);
+      }
+    }
+  }
+  // Append any membership ids the saved order didn't cover (new additions).
+  for (const id of membership) {
+    if (membershipSet.has(id) && !seen.has(id)) {
+      out.push(id);
+      seen.add(id);
+    }
+  }
+  return out;
+}
+
 export const foldersRouter = router({
   /** All folders owned by the current user. */
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -31,16 +75,37 @@ export const foldersRouter = router({
       ).map((c) => c.id),
     );
 
-    return folders.map((f) => ({
-      id: f.id,
-      name: f.name,
-      color: f.color,
-      description: f.description,
-      includedCategoryIds: f.includedCategoryIds.filter((id) => validIds.has(id)),
-      deckCount: f.includedCategoryIds.filter((id) => validIds.has(id)).length,
-      createdAt: f.createdAt,
-      updatedAt: f.updatedAt,
-    }));
+    // Pull the current viewer's saved orderings in one round-trip and index
+    // them by folderId. Folders without a saved order fall back to the
+    // membership-array order from the Folder row.
+    const savedOrders = await ctx.prisma.folderDeckOrder.findMany({
+      where: {
+        userId: ctx.userId,
+        folderId: { in: folders.map((f) => f.id) },
+      },
+      select: { folderId: true, orderedCategoryIds: true },
+    });
+    const orderByFolderId = new Map(
+      savedOrders.map((o) => [o.folderId, o.orderedCategoryIds]),
+    );
+
+    return folders.map((f) => {
+      const ordered = resolveOrderedDeckIds(
+        f.includedCategoryIds,
+        orderByFolderId.get(f.id) ?? null,
+        validIds,
+      );
+      return {
+        id: f.id,
+        name: f.name,
+        color: f.color,
+        description: f.description,
+        includedCategoryIds: ordered,
+        deckCount: ordered.length,
+        createdAt: f.createdAt,
+        updatedAt: f.updatedAt,
+      };
+    });
   }),
 
   /** Single folder (with ownership check) plus the included decks inlined. */
@@ -61,9 +126,23 @@ export const foldersRouter = router({
         include: { _count: { select: { cards: true } } },
       });
 
-      const includedSet = new Set(folder.includedCategoryIds);
-      const includedDecks = categories
-        .filter((c) => includedSet.has(c.id))
+      // Apply the viewer's saved drag-and-drop order, if any.
+      const savedOrder = await ctx.prisma.folderDeckOrder.findUnique({
+        where: { userId_folderId: { userId: ctx.userId, folderId: folder.id } },
+        select: { orderedCategoryIds: true },
+      });
+
+      const validIds = new Set(categories.map((c) => c.id));
+      const orderedIds = resolveOrderedDeckIds(
+        folder.includedCategoryIds,
+        savedOrder?.orderedCategoryIds ?? null,
+        validIds,
+      );
+
+      const byId = new Map(categories.map((c) => [c.id, c]));
+      const includedDecks = orderedIds
+        .map((id) => byId.get(id))
+        .filter((c): c is NonNullable<typeof c> => Boolean(c))
         .map((c) => ({
           id: c.id,
           name: c.name,
@@ -71,15 +150,12 @@ export const foldersRouter = router({
           cardCount: c._count.cards,
         }));
 
-      const filteredIncludedIds = includedDecks.map((d) => d.id);
-
       return {
         id: folder.id,
         name: folder.name,
         color: folder.color,
         description: folder.description,
-        // Filter out ids whose deck has since been deleted.
-        includedCategoryIds: filteredIncludedIds,
+        includedCategoryIds: orderedIds,
         includedDecks,
         createdAt: folder.createdAt,
         updatedAt: folder.updatedAt,
@@ -241,6 +317,74 @@ export const foldersRouter = router({
           })
           .filter((p): p is NonNullable<typeof p> => p !== null),
       );
+
+      return { ok: true };
+    }),
+
+  /**
+   * Persist the current viewer's drag-and-drop order for the decks inside a
+   * folder. The order is stored per-(user, folder) in FolderDeckOrder so
+   * different viewers of a (future) shared folder can each have their own
+   * arrangement.
+   *
+   * `orderedCategoryIds` must be exactly the current membership set — same
+   * ids, no extras, no missing. That keeps the client honest and avoids the
+   * mutation being used to sneakily add/remove decks.
+   */
+  reorderDecks: protectedProcedure
+    .input(
+      z.object({
+        folderId: z.string().cuid(),
+        orderedCategoryIds: z.array(z.string().cuid()).max(500),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const folder = await ctx.prisma.folder.findFirst({
+        where: { id: input.folderId, userId: ctx.userId },
+        select: { id: true, includedCategoryIds: true },
+      });
+      if (!folder) throw new TRPCError({ code: 'NOT_FOUND', message: 'Folder not found' });
+
+      // Validate the incoming order against current membership (after
+      // dropping any dangling ids whose Category no longer exists).
+      const validIds = new Set(
+        (
+          await ctx.prisma.category.findMany({
+            where: { userId: ctx.userId, id: { in: folder.includedCategoryIds } },
+            select: { id: true },
+          })
+        ).map((c) => c.id),
+      );
+      const currentMembership = folder.includedCategoryIds.filter((id) => validIds.has(id));
+
+      const incoming = input.orderedCategoryIds;
+      const incomingSet = new Set(incoming);
+      if (incoming.length !== incomingSet.size) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Duplicate ids in order' });
+      }
+      if (incoming.length !== currentMembership.length) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Order must match folder membership exactly',
+        });
+      }
+      for (const id of incoming) {
+        if (!validIds.has(id)) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Unknown deck id in order' });
+        }
+      }
+
+      await ctx.prisma.folderDeckOrder.upsert({
+        where: { userId_folderId: { userId: ctx.userId, folderId: folder.id } },
+        create: {
+          userId: ctx.userId,
+          folderId: folder.id,
+          orderedCategoryIds: incoming,
+        },
+        update: {
+          orderedCategoryIds: incoming,
+        },
+      });
 
       return { ok: true };
     }),
