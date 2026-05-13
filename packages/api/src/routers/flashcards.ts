@@ -6,7 +6,7 @@ import { FlashcardCreateInput, FlashcardUpdateInput } from '@ensemble/types';
 import { protectedProcedure, router } from '../trpc';
 
 export const flashcardsRouter = router({
-  /** All cards in a category, newest first. */
+  /** All cards in a category, oldest first. */
   listByCategory: protectedProcedure
     .input(z.object({ categoryId: z.string().cuid() }))
     .query(async ({ ctx, input }) => {
@@ -27,7 +27,7 @@ export const flashcardsRouter = router({
 
       const cards = await ctx.prisma.flashcard.findMany({
         where: { categoryId: input.categoryId },
-        orderBy: [{ sortOrder: { sort: 'asc', nulls: 'first' } }, { createdAt: 'desc' }],
+        orderBy: [{ sortOrder: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }],
       });
 
       if (isOwner) return cards;
