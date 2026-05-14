@@ -51,7 +51,7 @@ export default function DecksScreen() {
   if (isLoading && !data) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color="#5584bb" />
       </View>
     );
   }
@@ -126,7 +126,7 @@ export default function DecksScreen() {
           </Card>
         }
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor="#3b82f6" />
+          <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor="#5584bb" />
         }
       />
 

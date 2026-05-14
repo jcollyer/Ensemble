@@ -157,7 +157,7 @@ export default function AllCardsScreen() {
   if (cardsQuery.isLoading && !cardsQuery.data) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color="#5584bb" />
       </View>
     );
   }
@@ -431,7 +431,7 @@ export default function AllCardsScreen() {
               cardsQuery.refetch();
               categoriesQuery.refetch();
             }}
-            tintColor="#3b82f6"
+            tintColor="#5584bb"
           />
         }
       />

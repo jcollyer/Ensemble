@@ -7,7 +7,7 @@ module.exports = {
       colors: {
         // Match the web app's palette so the two clients feel like one product.
         primary: {
-          DEFAULT: '#3b82f6',
+          DEFAULT: '#5584bb',
           foreground: '#ffffff',
         },
         muted: '#f1f5f9',

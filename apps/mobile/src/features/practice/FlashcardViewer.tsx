@@ -299,9 +299,9 @@ export function AudioButton({
         style={{ opacity: loading ? 0.6 : 1 }}
       >
         {loading ? (
-          <ActivityIndicator size="small" color="#3b82f6" />
+          <ActivityIndicator size="small" color="#5584bb" />
         ) : (
-          <Feather name="volume-2" size={18} color="#3b82f6" />
+          <Feather name="volume-2" size={18} color="#5584bb" />
         )}
       </Pressable>
       {error ? (

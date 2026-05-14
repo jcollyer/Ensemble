@@ -374,7 +374,7 @@ export default function EditCardScreen() {
   if (isLoading || !card) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color="#5584bb" />
       </View>
     );
   }

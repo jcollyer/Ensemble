@@ -149,7 +149,7 @@ export function PracticeScreen({
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color="#5584bb" />
       </View>
     );
   }

@@ -9,7 +9,7 @@ import { WordClassSchema } from './wordClass';
 
 export const CategoryColorSchema = z
   .string()
-  .regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a 6-digit hex value like #3b82f6')
+  .regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a 6-digit hex value like #5584bb')
   .nullish();
 
 /**
@@ -65,7 +65,7 @@ export type CategoryUpdateInput = z.infer<typeof CategoryUpdateInput>;
  */
 export const FolderColorSchema = z
   .string()
-  .regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a 6-digit hex value like #3b82f6')
+  .regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a 6-digit hex value like #5584bb')
   .nullish();
 
 export const FolderDescriptionSchema = z.string().trim().max(2000).nullish();

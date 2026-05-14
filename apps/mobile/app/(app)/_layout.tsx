@@ -13,7 +13,7 @@ export default function AppLayout() {
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color="#5584bb" />
       </View>
     );
   }
@@ -24,7 +24,7 @@ export default function AppLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: '#ffffff' },
         headerTitleStyle: { color: '#0f172a', fontWeight: '600' },
-        headerTintColor: '#3b82f6',
+        headerTintColor: '#5584bb',
         headerShadowVisible: true,
         contentStyle: { backgroundColor: '#f8fafc' },
       }}

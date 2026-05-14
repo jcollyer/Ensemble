@@ -22,7 +22,7 @@ async function main() {
     await prisma.category.create({
       data: {
         name: 'TypeScript Basics',
-        color: '#3b82f6',
+        color: '#5584bb',
         userId: user.id,
         cards: {
           create: [
