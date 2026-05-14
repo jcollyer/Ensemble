@@ -3,11 +3,19 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Camera, Download, Globe, Loader2 } from 'lucide-react';
+import { ArrowLeft, Camera, Download, Globe, Loader2, Trash2 } from 'lucide-react';
 
 import { BACK_LANGUAGES } from '@ensemble/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -20,6 +28,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { trpc } from '@/lib/trpc/client';
+
+import { signOutAfterAccountDelete } from './actions';
 
 // Sentinel because Radix Select doesn't allow an empty-string value.
 const NO_LANGUAGE = '__none__';
@@ -73,6 +83,12 @@ export function SettingsView() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  // ── Delete-account modal state ───────────────────────────────────────────
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Sync inputs from the server. Only overwrite when the server value changes
   // so a slow refetch doesn't clobber mid-edit text.
   useEffect(() => {
@@ -92,6 +108,20 @@ export function SettingsView() {
   }, [me?.defaultDeckPrivate]);
 
   const getUploadUrl = trpc.auth.getAvatarUploadUrl.useMutation();
+
+  const deleteAccount = trpc.auth.deleteAccount.useMutation({
+    onSuccess: async () => {
+      // The Session row is already gone (cascaded). Clear the cookie and
+      // hand the browser off to the marketing page. We don't reset the
+      // local "isDeleting" flag — the page is about to navigate away and
+      // we want the button to stay disabled until it does.
+      await signOutAfterAccountDelete();
+    },
+    onError: (err) => {
+      setDeleteError(err.message);
+      setIsDeleting(false);
+    },
+  });
 
   const updateSettings = trpc.auth.updateSettings.useMutation({
     onSuccess: () => {
@@ -522,6 +552,141 @@ export function SettingsView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Danger Zone ───────────────────────────────────────────────────── */}
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <CardTitle className="text-destructive">Delete account</CardTitle>
+          <CardDescription>
+            This action is permanent and cannot be undone. All of your folders, decks, and cards
+            will be permanently removed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="border-destructive/30 bg-destructive/5 flex flex-col items-start justify-between gap-3 rounded-md border p-4 sm:flex-row sm:items-center">
+            <div className="space-y-1">
+              <p className="text-sm font-medium leading-none">Permanently delete this account</p>
+              <p className="text-muted-foreground text-sm">
+                You&apos;ll be signed out immediately and won&apos;t be able to recover your data.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                setDeleteConfirm('');
+                setDeleteError(null);
+                setIsDeleting(false);
+                setDeleteOpen(true);
+              }}
+              disabled={!me?.email}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete account
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Delete-account confirmation modal ────────────────────────────── */}
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          // Don't allow dismissing the modal while the mutation is in flight
+          // — otherwise the user could close the dialog mid-delete and end up
+          // staring at a stale settings page that's about to become invalid.
+          if (isDeleting) return;
+          setDeleteOpen(open);
+          if (!open) {
+            setDeleteConfirm('');
+            setDeleteError(null);
+          }
+        }}
+      >
+        <DialogContent
+          onEscapeKeyDown={(e) => {
+            if (isDeleting) e.preventDefault();
+          }}
+          onPointerDownOutside={(e) => {
+            if (isDeleting) e.preventDefault();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete your account?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete your account and all of your folders, decks, and cards.
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!me?.email) return;
+              if (deleteConfirm.trim().toLowerCase() !== me.email.toLowerCase()) {
+                setDeleteError("The email you typed doesn't match.");
+                return;
+              }
+              setDeleteError(null);
+              setIsDeleting(true);
+              deleteAccount.mutate({ confirmEmail: deleteConfirm.trim() });
+            }}
+            className="space-y-3"
+          >
+            <Label htmlFor="delete-confirm-email" className="text-sm">
+              To confirm, type{' '}
+              <span className="text-foreground font-mono font-semibold">{me?.email ?? ''}</span>{' '}
+              below:
+            </Label>
+            <Input
+              id="delete-confirm-email"
+              value={deleteConfirm}
+              onChange={(e) => {
+                setDeleteConfirm(e.target.value);
+                setDeleteError(null);
+              }}
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              disabled={isDeleting}
+              placeholder={me?.email ?? ''}
+            />
+            {deleteError ? <p className="text-destructive text-sm">{deleteError}</p> : null}
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDeleteOpen(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={
+                  isDeleting ||
+                  !me?.email ||
+                  deleteConfirm.trim().toLowerCase() !== (me?.email ?? '').toLowerCase()
+                }
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting…
+                  </>
+                ) : (
+                  'Delete account'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

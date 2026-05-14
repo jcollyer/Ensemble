@@ -217,4 +217,59 @@ export const authRouter = router({
         select: { id: true, defaultLanguage: true },
       }),
     ),
+
+  /**
+   * Permanently delete the signed-in user and all of their data.
+   *
+   * The schema declares `onDelete: Cascade` on every User relation
+   * (Account, Session, Category, Folder, FolderDeckOrder, Flashcard), so
+   * a single `user.delete` atomically removes the entire ownership graph
+   * — including all sessions, which invalidates any other devices the
+   * user is signed in on.
+   *
+   * Safety: the caller must pass `confirmEmail` matching the user's
+   * current email exactly (case-insensitive). This is the only protection
+   * against accidental deletion at the API layer; the UI also gates the
+   * action behind a typed-confirmation modal.
+   *
+   * The session cookie on the client is not cleared by this mutation —
+   * the caller is responsible for triggering NextAuth signOut afterwards
+   * so the now-invalid cookie is removed from the browser.
+   */
+  deleteAccount: protectedProcedure
+    .input(z.object({ confirmEmail: z.string().trim().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.userId },
+        select: { id: true, email: true },
+      });
+
+      if (!user) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' });
+      }
+
+      // Require the typed confirmation to match the user's email. We
+      // compare case-insensitively to avoid tripping on capitalization
+      // differences between what's in the DB and what the user typed.
+      const typed = input.confirmEmail.toLowerCase();
+      const expected = (user.email ?? '').toLowerCase();
+
+      if (!expected || typed !== expected) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: "The email you typed doesn't match the account email.",
+        });
+      }
+
+      // Single delete cascades to Account / Session / Category / Folder /
+      // FolderDeckOrder / Flashcard via FK constraints.
+      await ctx.prisma.user.delete({ where: { id: user.id } });
+
+      // Surface a basic server-side breadcrumb. Logs can be useful if a
+      // user ever asks "what happened to my account?" — we don't store
+      // any PII beyond the id.
+      console.log(`[auth] account deleted: userId=${user.id}`);
+
+      return { success: true as const };
+    }),
 });

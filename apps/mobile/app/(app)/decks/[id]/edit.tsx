@@ -181,7 +181,7 @@ export default function EditDeckScreen() {
 
           <TextField
             label="Name"
-            placeholder="e.g. Spanish verbs"
+            placeholder="e.g. French verbs"
             value={name}
             onChangeText={setName}
             error={nameError}

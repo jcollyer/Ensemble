@@ -1805,7 +1805,7 @@ function EditCategoryDialog({
             <Label htmlFor="edit-deck-name">Name</Label>
             <Input
               id="edit-deck-name"
-              placeholder="e.g. Spanish verbs"
+              placeholder="e.g. French verbs"
               {...form.register('name')}
             />
             {form.formState.errors.name ? (

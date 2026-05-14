@@ -586,7 +586,7 @@ export function CategoriesDashboard() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" placeholder="e.g. Spanish verbs" {...form.register('name')} />
+              <Input id="name" placeholder="e.g. French verbs" {...form.register('name')} />
               {form.formState.errors.name ? (
                 <p className="text-destructive text-sm">{form.formState.errors.name.message}</p>
               ) : null}
