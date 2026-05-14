@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { type BackLanguageValue } from '@ensemble/types';
+import { type BackLanguageValue, genderLabel } from '@ensemble/types';
 
 import { Button } from '../../../../src/components/Button';
 import { Card } from '../../../../src/components/Card';
@@ -110,6 +110,7 @@ export default function DeckDetailScreen() {
     frontExamples: card.frontExamples ?? [],
     backExamples: card.backExamples ?? [],
     class: card.class ?? null,
+    gender: (card as { gender?: string | null }).gender ?? null,
     pronunciation: (card as { pronunciation?: string | null }).pronunciation ?? null,
     backLanguage: (category?.backLanguage ?? null) as BackLanguageValue | null,
   }));
@@ -224,6 +225,11 @@ export default function DeckDetailScreen() {
                 ) : null}
                 <View className="mt-1 flex-row flex-wrap items-center gap-x-2 gap-y-1">
                   {item.class ? <ClassBadge value={item.class} /> : null}
+                  {(item as { gender?: string | null }).gender ? (
+                    <Text className="text-xs text-slate-400">
+                      {genderLabel((item as { gender?: string | null }).gender)}
+                    </Text>
+                  ) : null}
                   {isOwner && item.difficultyLevel ? (
                     <Text className="text-xs capitalize text-slate-400">
                       {item.difficultyLevel}

@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 
-import { WORD_CLASS_OPTIONS } from '@ensemble/types';
+import { WORD_CLASS_OPTIONS, genderLabel } from '@ensemble/types';
 
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
@@ -116,6 +116,7 @@ export default function AllCardsScreen() {
         frontExamples: card.frontExamples ?? [],
         backExamples: card.backExamples ?? [],
         class: card.class ?? null,
+        gender: (card as { gender?: string | null }).gender ?? null,
         pronunciation: (card as { pronunciation?: string | null }).pronunciation ?? null,
         backLanguage: (card.categoryId
           ? (decksById.get(card.categoryId)?.backLanguage ?? null)
@@ -354,6 +355,11 @@ export default function AllCardsScreen() {
                   ) : null}
                   <View className="mt-1 flex-row flex-wrap items-center gap-x-2 gap-y-1">
                     {item.class ? <ClassBadge value={item.class} /> : null}
+                    {(item as { gender?: string | null }).gender ? (
+                      <Text className="text-xs text-slate-400">
+                        {genderLabel((item as { gender?: string | null }).gender)}
+                      </Text>
+                    ) : null}
                     {deck ? (
                       <View className="flex-row items-center gap-1.5">
                         <View

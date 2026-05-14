@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import type { BackLanguageValue, DifficultyLevel } from '@ensemble/types';
+import { genderLabel } from '@ensemble/types';
 import { Card } from '@/components/Card';
 import { ClassBadge } from '@/components/ClassBadge';
 import { trpc } from '@/lib/trpc';
@@ -69,6 +70,7 @@ export function FlipCard({
   frontExamples,
   backExamples,
   cardClass,
+  gender,
   pronunciation,
   flipped,
   onPress,
@@ -80,6 +82,7 @@ export function FlipCard({
   frontExamples: string[];
   backExamples: string[];
   cardClass: string | null;
+  gender?: string | null;
   pronunciation: string | null;
   flipped: boolean;
   onPress: () => void;
@@ -141,6 +144,13 @@ export function FlipCard({
               examples={backExamples}
               languageCode={backLanguage}
             />
+          </View>
+        ) : null}
+
+        {/* Gender indicator — bottom-left of the back face. */}
+        {flipped && gender ? (
+          <View className="absolute bottom-3 left-3 z-10">
+            <Text className="text-xs italic text-slate-500">{genderLabel(gender)}</Text>
           </View>
         ) : null}
       </Card>
