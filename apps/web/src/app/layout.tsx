@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Analytics } from '@vercel/analytics/next';
 import { Bodoni_Moda, Cormorant_Garamond, Inter } from 'next/font/google';
 import '@/styles/globals.css';
 
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="bg-background min-h-dvh font-sans">
         <TRPCProvider>{children}</TRPCProvider>
+        <Analytics />
       </body>
     </html>
   );
