@@ -19,6 +19,7 @@ import { trpc } from '../../src/lib/trpc';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { FolderModal } from '../../src/components/FolderModal';
+import { PracticeFiltersModal } from '../../src/components/PracticeFiltersModal';
 import { Stat } from '../../src/components/Stat';
 
 // ---------------------------------------------------------------------------
@@ -76,6 +77,7 @@ export default function DecksScreen() {
 
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [practiceFiltersOpen, setPracticeFiltersOpen] = useState(false);
 
   // Derive initials from the user's name (or fall back to email).
   const userInitials = (() => {
@@ -338,7 +340,7 @@ export default function DecksScreen() {
             <Text className="font-semibold text-slate-900">New Deck</Text>
           </View>
         </Button>
-        <Button size="lg" onPress={() => router.push('/all-cards')}>
+        <Button size="lg" onPress={() => setPracticeFiltersOpen(true)}>
           <View className="flex-row items-center gap-2">
             <Play size={18} color="#ffffff" fill="#ffffff" />
             <Text className="font-semibold text-white">Play</Text>
@@ -353,6 +355,12 @@ export default function DecksScreen() {
         mode={{ kind: 'create' }}
         onSubmit={(values) => createFolder.mutate(values)}
         isPending={createFolder.isPending}
+      />
+
+      {/* Practice filters modal — opened from the Play button */}
+      <PracticeFiltersModal
+        visible={practiceFiltersOpen}
+        onClose={() => setPracticeFiltersOpen(false)}
       />
     </View>
   );

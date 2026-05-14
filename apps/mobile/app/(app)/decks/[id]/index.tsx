@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Play } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,15 +18,12 @@ import { Card } from '../../../../src/components/Card';
 import { ClassBadge } from '../../../../src/components/ClassBadge';
 import { Stat } from '../../../../src/components/Stat';
 import { LanguagePicker } from '../../../../src/components/LanguagePicker';
+import { PracticeFiltersModal } from '../../../../src/components/PracticeFiltersModal';
 import { trpc } from '../../../../src/lib/trpc';
 import {
   FlashcardPreviewModal,
   type PreviewCard,
 } from '../../../../src/features/practice/FlashcardPreviewModal';
-import {
-  PlayModeToggle,
-  type PlayMode,
-} from '../../../../src/features/practice/PlayModeToggle';
 
 /**
  * Deck detail. Shows the deck's cards, stats, and the entry points
@@ -47,7 +45,7 @@ export default function DeckDetailScreen() {
   );
 
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-  const [playMode, setPlayMode] = useState<PlayMode>('in_order');
+  const [practiceFiltersOpen, setPracticeFiltersOpen] = useState(false);
 
   const remove = trpc.flashcards.delete.useMutation({
     onSuccess: () => {
@@ -155,32 +153,26 @@ export default function DeckDetailScreen() {
               ) : null}
             </View>
 
-            <View className="gap-2">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Play order
-                </Text>
-                <PlayModeToggle value={playMode} onChange={setPlayMode} />
-              </View>
-              <View className="flex-row gap-2">
+            <View className="flex-row gap-2">
+              {isOwner ? (
                 <View className="flex-1">
                   <Button
                     variant="outline"
-                    onPress={() => {
-                      const qs = playMode === 'shuffle' ? '?shuffle=1' : '';
-                      router.push(`/decks/${categoryId}/practice${qs}` as never);
-                    }}
+                    onPress={() => router.push(`/new-card?categoryId=${categoryId}`)}
                   >
-                    {`Play${isOwner && cards.length > 0 ? ` (${cards.length})` : ''}`}
+                    + New card
                   </Button>
                 </View>
-                {isOwner ? (
-                  <View className="flex-1">
-                    <Button onPress={() => router.push(`/new-card?categoryId=${categoryId}`)}>
-                      + New card
-                    </Button>
+              ) : null}
+              <View className="flex-1">
+                <Button onPress={() => setPracticeFiltersOpen(true)}>
+                  <View className="flex-row items-center justify-center gap-2">
+                    <Play size={15} color="#ffffff" fill="#ffffff" />
+                    <Text className="font-semibold text-white">
+                      {`Play${isOwner && cards.length > 0 ? ` (${cards.length})` : ''}`}
+                    </Text>
                   </View>
-                ) : null}
+                </Button>
               </View>
             </View>
 
@@ -318,6 +310,13 @@ export default function DeckDetailScreen() {
           // also refreshes — not just this view's `{ categoryId }` query.
           utils.practice.stats.invalidate();
         }}
+      />
+
+      {/* Practice filters modal — opened from the Play button */}
+      <PracticeFiltersModal
+        visible={practiceFiltersOpen}
+        onClose={() => setPracticeFiltersOpen(false)}
+        categoryId={categoryId}
       />
     </View>
   );
