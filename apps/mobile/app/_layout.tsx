@@ -1,6 +1,11 @@
 import 'react-native-gesture-handler';
 import '../global.css';
 
+import {
+  BodoniModa_400Regular,
+  BodoniModa_700Bold,
+} from '@expo-google-fonts/bodoni-moda';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -20,6 +25,16 @@ import { TRPCProvider } from '../src/lib/TRPCProvider';
  * group so it's reachable even when signed out.
  */
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    BodoniModa_400Regular,
+    BodoniModa_700Bold,
+  });
+
+  // Wait for brand font before rendering so there's no font-swap flash on the
+  // welcome screen. In practice this resolves in a single frame after the
+  // bundle is parsed; native splash is still visible at that point.
+  if (!fontsLoaded) return null;
+
   return (
     <SafeAreaProvider>
       <AuthProvider>

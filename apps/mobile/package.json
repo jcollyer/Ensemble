@@ -20,6 +20,7 @@
     "@trpc/client": "^11.0.0-rc.660",
     "@trpc/react-query": "^11.0.0-rc.660",
     "@trpc/server": "^11.0.0-rc.660",
+    "@expo-google-fonts/bodoni-moda": "^0.3.0",
     "expo": "~54.0.34",
     "expo-av": "~16.0.0",
     "expo-constants": "~18.0.13",
