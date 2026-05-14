@@ -140,10 +140,15 @@ export function PublicDeckLibrary() {
                                 >
                                   {deck.name}
                                 </Link>
-                                <div className="text-muted-foreground inline-flex items-center gap-1.5 text-sm">
+                                <div className="text-muted-foreground mt-1 inline-flex items-center gap-1.5 text-sm">
                                   <Layers className="h-3.5 w-3.5" />
                                   {deck.cardCount} {deck.cardCount === 1 ? 'card' : 'cards'}
                                 </div>
+                                     {deck.description ? (
+                                  <p className="text-muted-foreground mt-0.5 line-clamp-2 text-sm">
+                                    {deck.description}
+                                  </p>
+                                ) : null}
                               </div>
                             </div>
                             <div className="flex flex-shrink-0 items-center gap-2">

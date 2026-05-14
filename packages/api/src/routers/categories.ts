@@ -56,6 +56,7 @@ export const categoriesRouter = router({
           select: {
             id: true,
             name: true,
+            description: true,
             color: true,
             _count: { select: { cards: true } },
           },
@@ -72,6 +73,7 @@ export const categoriesRouter = router({
       decks: user.categories.map((deck) => ({
         id: deck.id,
         name: deck.name,
+        description: deck.description,
         color: deck.color,
         cardCount: deck._count.cards,
       })),
