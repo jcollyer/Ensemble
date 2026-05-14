@@ -21,6 +21,10 @@ import {
   FlashcardPreviewModal,
   type PreviewCard,
 } from '../../../../src/features/practice/FlashcardPreviewModal';
+import {
+  PlayModeToggle,
+  type PlayMode,
+} from '../../../../src/features/practice/PlayModeToggle';
 
 /**
  * Deck detail. Shows the deck's cards, stats, and the entry points
@@ -42,6 +46,7 @@ export default function DeckDetailScreen() {
   );
 
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [playMode, setPlayMode] = useState<PlayMode>('in_order');
 
   const remove = trpc.flashcards.delete.useMutation({
     onSuccess: () => {
@@ -148,22 +153,33 @@ export default function DeckDetailScreen() {
               ) : null}
             </View>
 
-            <View className="flex-row gap-2">
-              <View className="flex-1">
-                <Button
-                  variant="outline"
-                  onPress={() => router.push(`/decks/${categoryId}/practice`)}
-                >
-                  {`Play${isOwner && cards.length > 0 ? ` (${cards.length})` : ''}`}
-                </Button>
+            <View className="gap-2">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Play order
+                </Text>
+                <PlayModeToggle value={playMode} onChange={setPlayMode} />
               </View>
-              {isOwner ? (
+              <View className="flex-row gap-2">
                 <View className="flex-1">
-                  <Button onPress={() => router.push(`/new-card?categoryId=${categoryId}`)}>
-                    + New card
+                  <Button
+                    variant="outline"
+                    onPress={() => {
+                      const qs = playMode === 'shuffle' ? '?shuffle=1' : '';
+                      router.push(`/decks/${categoryId}/practice${qs}` as never);
+                    }}
+                  >
+                    {`Play${isOwner && cards.length > 0 ? ` (${cards.length})` : ''}`}
                   </Button>
                 </View>
-              ) : null}
+                {isOwner ? (
+                  <View className="flex-1">
+                    <Button onPress={() => router.push(`/new-card?categoryId=${categoryId}`)}>
+                      + New card
+                    </Button>
+                  </View>
+                ) : null}
+              </View>
             </View>
 
             {isOwner ? (

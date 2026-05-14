@@ -86,7 +86,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <main className="container flex-1 py-8">{children}</main>
+      <main className="container flex-1 py-6">{children}</main>
 
       <footer className="mt-16 border-t bg-gray-50">
         <div className="container mx-auto max-w-2xl py-10 text-center">

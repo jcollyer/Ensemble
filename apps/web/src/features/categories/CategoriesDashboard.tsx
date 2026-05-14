@@ -234,13 +234,7 @@ export function CategoriesDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-700">
-            Willkommen, bienvenue, welcome!
-          </h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <div className="flex justify-end gap-2">
           <Button
             variant="outline"
             onClick={() => {
@@ -265,7 +259,6 @@ export function CategoriesDashboard() {
             <Play className="h-4 w-4" />
             Play
           </Button>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">

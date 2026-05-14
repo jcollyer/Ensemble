@@ -21,6 +21,7 @@ import {
   FlashcardPreviewModal,
   type PreviewCard,
 } from '../../src/features/practice/FlashcardPreviewModal';
+import { PlayModeToggle, type PlayMode } from '../../src/features/practice/PlayModeToggle';
 
 /**
  * Aggregate "All decks" screen. Lists every card the user owns — across all
@@ -41,6 +42,7 @@ export default function AllCardsScreen() {
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [playMode, setPlayMode] = useState<PlayMode>('in_order');
 
   function toggleCategory(id: string) {
     setSelectedCategoryIds((prev) =>
@@ -143,6 +145,9 @@ export default function AllCardsScreen() {
     }
     if (selectedRatings.length > 0) {
       params.set('difficultyLevels', selectedRatings.join(','));
+    }
+    if (playMode === 'shuffle') {
+      params.set('shuffle', '1');
     }
     const qs = params.toString();
     router.push((qs ? `/all-cards-practice?${qs}` : '/all-cards-practice') as never);
@@ -300,6 +305,13 @@ export default function AllCardsScreen() {
                     );
                   })}
                 </View>
+              </View>
+
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Play order
+                </Text>
+                <PlayModeToggle value={playMode} onChange={setPlayMode} />
               </View>
 
               <Button onPress={navigateToPractice}>{`Practice${practiceCountLabel}`}</Button>

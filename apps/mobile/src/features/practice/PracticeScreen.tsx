@@ -79,9 +79,12 @@ export function PracticeScreen({
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(0);
+  // Incremented every time the user presses "Play again" so we can re-shuffle
+  // when shuffle mode is active. Stays at 0 for in-order play.
+  const [shuffleEpoch, setShuffleEpoch] = useState(0);
 
   const rawCards = data?.cards ?? [];
-  const cards = useMemo(() => {
+  const filteredCards = useMemo(() => {
     if (!difficultyLevels?.length) return rawCards;
     return rawCards.filter((c) => {
       const level = (c as { difficultyLevel?: string | null }).difficultyLevel ?? null;
@@ -89,6 +92,17 @@ export function PracticeScreen({
       return level !== null && difficultyLevels.includes(level);
     });
   }, [rawCards, difficultyLevels]);
+
+  // Apply shuffle on top of the filtered list. Keyed by a signature derived
+  // from the card ids so the order stays stable across re-renders and across
+  // rating submissions — it only re-derives when the underlying card set
+  // changes or the user presses "Play again" (which bumps shuffleEpoch).
+  const cardsKey = filteredCards.map((c) => c.id).join('|');
+  const cards = useMemo(() => {
+    if (!shuffle) return filteredCards;
+    return shuffleArray(filteredCards);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardsKey, shuffle, shuffleEpoch]);
   const isReadOnlyPublicDeck = Boolean(categoryId && data?.category && !data.category.isOwner);
   const canRate = !isReadOnlyPublicDeck;
   const current = cards[index];
@@ -160,11 +174,13 @@ export function PracticeScreen({
             backLabel={backLabel}
             onBack={() => router.push(backTarget as never)}
             onAgain={() => {
-              // Reuse the fetched card list — Play again should restart with
-              // the same set of cards in the same order, not refetch.
+              // Reuse the fetched card list — Play again should restart from
+              // card 0 with the same set of cards. In shuffle mode we bump
+              // shuffleEpoch so the order is re-randomized.
               setIndex(0);
               setReviewed(0);
               setFlipped(false);
+              if (shuffle) setShuffleEpoch((n) => n + 1);
             }}
           />
         ) : (
