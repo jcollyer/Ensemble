@@ -9,8 +9,18 @@ export const practiceRouter = router({
   /**
    * Returns every practiceable card in the requested scope. The practice UI
    * walks through the full list locally; the server doesn't paginate or
-   * filter by any scheduling concept. Ordering is reverse-chronological by
-   * creation time so the user's most recently added cards appear first.
+   * filter by any scheduling concept.
+   *
+   * Ordering mirrors the on-screen list the user just came from so in-order
+   * practice walks cards in the visual top-to-bottom order they expect:
+   *   - Deck practice (categoryId set): `sortOrder asc, createdAt asc`, same
+   *     as `flashcards.listByCategory`. Honors the user's drag-and-drop
+   *     reordering and falls back to "oldest first" for unsorted cards.
+   *   - All-cards / multi-deck practice: `createdAt desc`, same as
+   *     `flashcards.listAll` — newest first.
+   *
+   * The client applies its own shuffle on top of this ordering for
+   * "Shuffle" mode, so the server is only responsible for the in-order case.
    */
   queue: protectedProcedure
     .input(
@@ -72,7 +82,13 @@ export const practiceRouter = router({
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        // Deck practice matches the deck-detail list ordering so in-order
+        // play walks cards top→bottom from what the user sees on screen.
+        // All-cards / multi-deck practice keeps newest-first to match
+        // `flashcards.listAll`, which feeds the All-cards view.
+        orderBy: input.categoryId
+          ? [{ sortOrder: { sort: 'asc', nulls: 'last' } }, { createdAt: 'asc' }]
+          : { createdAt: 'desc' },
       });
 
       return {
