@@ -1,5 +1,5 @@
 import { Link, useRouter } from 'expo-router';
-import { ChevronDown, ChevronRight, ChevronUp, GalleryHorizontalEnd, Layers } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, ChevronUp, FolderPlus, GalleryHorizontalEnd, Layers, Play, Plus } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -184,16 +184,25 @@ export default function DecksScreen() {
         )}
       </ScrollView>
 
-      {/* Floating action buttons — stacked, thumb-friendly order */}
+      {/* Floating action buttons */}
       <View className="absolute bottom-6 left-4 right-4 gap-2">
-        <Button size="lg" variant="outline" onPress={() => router.push('/new-card')}>
-          + New card
-        </Button>
         <Button size="lg" variant="outline" onPress={() => setCreateFolderOpen(true)}>
-          + New Folder
+          <View className="flex-row items-center gap-2">
+            <FolderPlus size={18} color="#0f172a" />
+            <Text className="font-semibold text-slate-900">New Folder</Text>
+          </View>
         </Button>
-        <Button size="lg" onPress={() => router.push('/new-deck')}>
-          + New deck
+        <Button size="lg" variant="outline" onPress={() => router.push('/new-deck')}>
+          <View className="flex-row items-center gap-2">
+            <Plus size={18} color="#0f172a" />
+            <Text className="font-semibold text-slate-900">New Deck</Text>
+          </View>
+        </Button>
+        <Button size="lg" onPress={() => router.push('/all-cards')}>
+          <View className="flex-row items-center gap-2">
+            <Play size={18} color="#ffffff" fill="#ffffff" />
+            <Text className="font-semibold text-white">Play</Text>
+          </View>
         </Button>
       </View>
 
