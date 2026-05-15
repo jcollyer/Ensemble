@@ -153,7 +153,7 @@ export default function DecksScreen() {
   return (
     <View className="flex-1 bg-slate-50">
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 220 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 240 }}
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor="#5584bb" />
         }
@@ -327,7 +327,16 @@ export default function DecksScreen() {
       </ScrollView>
 
       {/* Floating action buttons */}
-      <View className="absolute bottom-6 left-4 right-4 gap-2">
+      <View
+        className="absolute bottom-0 left-0 right-0 gap-2 bg-slate-50 px-4 pb-8 pt-3"
+        style={{
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 8,
+        }}
+      >
         <Button size="lg" variant="outline" onPress={() => setCreateFolderOpen(true)}>
           <View className="flex-row items-center gap-2">
             <FolderPlus size={18} color="#0f172a" />
