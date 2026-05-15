@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Play } from 'lucide-react-native';
+import { Grid2x2, List, Play } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -45,6 +45,7 @@ export default function DeckDetailScreen() {
 
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [practiceFiltersOpen, setPracticeFiltersOpen] = useState(false);
+  const [cardViewMode, setCardViewMode] = useState<'grid' | 'list'>('grid');
 
   const remove = trpc.flashcards.delete.useMutation({
     onSuccess: () => {
@@ -175,53 +176,138 @@ export default function DeckDetailScreen() {
               </View>
             </View>
 
+            {/* Grid / List view toggle — only shown when there are cards */}
+            {cards.length > 0 ? (
+              <View style={{ alignItems: 'flex-end' }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    backgroundColor: '#f1f5f9',
+                    borderRadius: 8,
+                    padding: 3,
+                  }}
+                >
+                  <Pressable
+                    onPress={() => setCardViewMode('grid')}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 6,
+                      backgroundColor: cardViewMode === 'grid' ? '#ffffff' : 'transparent',
+                      shadowColor: cardViewMode === 'grid' ? '#000' : 'transparent',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: cardViewMode === 'grid' ? 0.1 : 0,
+                      shadowRadius: 2,
+                      elevation: cardViewMode === 'grid' ? 2 : 0,
+                    }}
+                  >
+                    <Grid2x2 size={15} color={cardViewMode === 'grid' ? '#5584bb' : '#94a3b8'} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setCardViewMode('list')}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 6,
+                      backgroundColor: cardViewMode === 'list' ? '#ffffff' : 'transparent',
+                      shadowColor: cardViewMode === 'list' ? '#000' : 'transparent',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: cardViewMode === 'list' ? 0.1 : 0,
+                      shadowRadius: 2,
+                      elevation: cardViewMode === 'list' ? 2 : 0,
+                    }}
+                  >
+                    <List size={15} color={cardViewMode === 'list' ? '#5584bb' : '#94a3b8'} />
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
           </View>
         }
         renderItem={({ item, index: itemIndex }) => (
           <Pressable onPress={() => setPreviewIndex(itemIndex)} className="active:opacity-80">
-            <Card className="flex-row items-start gap-3 p-4">
+            <Card className={`gap-3 p-4 ${cardViewMode === 'list' ? 'flex-row items-center' : 'flex-row items-start'}`}>
               <View className="flex-1 gap-1">
-                <Text className="font-semibold text-slate-900" numberOfLines={2}>
-                  {item.front}
-                </Text>
-                <Text className="text-sm text-slate-500" numberOfLines={2}>
-                  {item.back}
-                </Text>
-                {item.frontExamples?.length > 0 || item.backExamples?.length > 0 ? (
-                  <View className="mt-1.5 gap-1 border-t border-slate-100 pt-1.5">
-                    {Array.from({
-                      length: Math.max(
-                        item.frontExamples?.length ?? 0,
-                        item.backExamples?.length ?? 0,
-                      ),
-                    }).map((_, i) => (
-                      <View key={i} className="flex-row gap-2">
-                        <Text
-                          className="flex-1 text-xs font-semibold text-slate-800"
-                          numberOfLines={2}
-                        >
-                          {item.frontExamples?.[i] ?? ''}
+                {cardViewMode === 'list' ? (
+                  /* ── List mode: condensed single-line row ── */
+                  <View className="flex-row flex-wrap items-center gap-1">
+                    <Text className="font-semibold text-slate-900" numberOfLines={1}>
+                      {item.front}
+                    </Text>
+                    <Text className="text-slate-400"> – </Text>
+                    <Text className="flex-shrink text-sm text-slate-500" numberOfLines={1}>
+                      {item.back}
+                    </Text>
+                    {item.class ? (
+                      <>
+                        <Text className="text-slate-300"> · </Text>
+                        <ClassBadge value={item.class} />
+                      </>
+                    ) : null}
+                    {(item as { gender?: string | null }).gender ? (
+                      <>
+                        <Text className="text-slate-300"> · </Text>
+                        <Text className="text-xs text-slate-400">
+                          {genderLabel((item as { gender?: string | null }).gender)}
                         </Text>
-                        <Text className="flex-1 text-xs text-slate-400" numberOfLines={2}>
-                          {item.backExamples?.[i] ?? ''}
+                      </>
+                    ) : null}
+                    {isOwner && item.difficultyLevel ? (
+                      <>
+                        <Text className="text-slate-300"> · </Text>
+                        <Text className="text-xs capitalize text-slate-400">
+                          {item.difficultyLevel}
                         </Text>
-                      </View>
-                    ))}
+                      </>
+                    ) : null}
                   </View>
-                ) : null}
-                <View className="mt-1 flex-row flex-wrap items-center gap-x-2 gap-y-1">
-                  {item.class ? <ClassBadge value={item.class} /> : null}
-                  {(item as { gender?: string | null }).gender ? (
-                    <Text className="text-xs text-slate-400">
-                      {genderLabel((item as { gender?: string | null }).gender)}
+                ) : (
+                  /* ── Grid mode: full card body ── */
+                  <>
+                    <Text className="font-semibold text-slate-900" numberOfLines={2}>
+                      {item.front}
                     </Text>
-                  ) : null}
-                  {isOwner && item.difficultyLevel ? (
-                    <Text className="text-xs capitalize text-slate-400">
-                      {item.difficultyLevel}
+                    <Text className="text-sm text-slate-500" numberOfLines={2}>
+                      {item.back}
                     </Text>
-                  ) : null}
-                </View>
+                    {item.frontExamples?.length > 0 || item.backExamples?.length > 0 ? (
+                      <View className="mt-1.5 gap-1 border-t border-slate-100 pt-1.5">
+                        {Array.from({
+                          length: Math.max(
+                            item.frontExamples?.length ?? 0,
+                            item.backExamples?.length ?? 0,
+                          ),
+                        }).map((_, i) => (
+                          <View key={i} className="flex-row gap-2">
+                            <Text
+                              className="flex-1 text-xs font-semibold text-slate-800"
+                              numberOfLines={2}
+                            >
+                              {item.frontExamples?.[i] ?? ''}
+                            </Text>
+                            <Text className="flex-1 text-xs text-slate-400" numberOfLines={2}>
+                              {item.backExamples?.[i] ?? ''}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+                    <View className="mt-1 flex-row flex-wrap items-center gap-x-2 gap-y-1">
+                      {item.class ? <ClassBadge value={item.class} /> : null}
+                      {(item as { gender?: string | null }).gender ? (
+                        <Text className="text-xs text-slate-400">
+                          {genderLabel((item as { gender?: string | null }).gender)}
+                        </Text>
+                      ) : null}
+                      {isOwner && item.difficultyLevel ? (
+                        <Text className="text-xs capitalize text-slate-400">
+                          {item.difficultyLevel}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </>
+                )}
               </View>
               {/* Inner Pressables win over the outer tap — edit/delete still work */}
               {isOwner ? (
