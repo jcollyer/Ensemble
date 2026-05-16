@@ -1,5 +1,5 @@
 import { Link, useRouter } from 'expo-router';
-import { ChevronDown, ChevronRight, ChevronUp, FolderPlus, GalleryHorizontalEnd, Layers, LogOut, Play, Plus, Settings } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, ChevronUp, FolderPlus, GalleryHorizontalEnd, Layers, LogOut, Play, Plus, Settings, Users } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,6 +19,7 @@ import { trpc } from '../../src/lib/trpc';
 import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { FolderModal } from '../../src/components/FolderModal';
+import { GroupModal } from '../../src/components/GroupModal';
 import { PracticeFiltersModal } from '../../src/components/PracticeFiltersModal';
 import { Stat } from '../../src/components/Stat';
 
@@ -43,6 +44,25 @@ type FolderItem = {
   description: string | null;
   includedCategoryIds: string[];
   deckCount: number;
+};
+
+type GroupDeckItem = {
+  id: string;
+  name: string;
+  color: string | null;
+  description: string | null;
+  cardCount: number;
+  isYours: boolean;
+};
+
+type GroupItem = {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  isOwner: boolean;
+  deckCount: number;
+  includedDecks: GroupDeckItem[];
 };
 
 // ---------------------------------------------------------------------------
@@ -72,11 +92,14 @@ export default function DecksScreen() {
   // Still needed so FolderDrawer can resolve deck names/descriptions/cardCounts.
   const { data: categories, isLoading, refetch, isRefetching } = trpc.categories.list.useQuery();
   const { data: folders, refetch: refetchFolders } = trpc.folders.list.useQuery();
+  const { data: groups, refetch: refetchGroups } = trpc.groups.list.useQuery();
   // Global stats across all decks — same query AllDecksEntry used.
   const { data: stats, refetch: refetchStats } = trpc.practice.stats.useQuery({});
 
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
+  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(new Set());
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [practiceFiltersOpen, setPracticeFiltersOpen] = useState(false);
 
   // Derive initials from the user's name (or fall back to email).
@@ -93,6 +116,7 @@ export default function DecksScreen() {
   );
 
   const hasFolders = (folders?.length ?? 0) > 0;
+  const hasGroups = (groups?.length ?? 0) > 0;
 
   // --- Mutations -----------------------------------------------------------
 
@@ -104,19 +128,39 @@ export default function DecksScreen() {
     onError: (err) => Alert.alert('Could not create folder', err.message),
   });
 
+  const createGroup = trpc.groups.create.useMutation({
+    onSuccess: async () => {
+      await utils.groups.list.invalidate();
+      setCreateGroupOpen(false);
+      router.push('/groups');
+    },
+    onError: (err) => Alert.alert('Could not create group', err.message),
+  });
+
   // --- Callbacks -----------------------------------------------------------
 
   const onRefresh = useCallback(() => {
     utils.categories.list.invalidate();
     utils.folders.list.invalidate();
+    utils.groups.list.invalidate();
     utils.practice.stats.invalidate();
     refetch();
     refetchFolders();
+    refetchGroups();
     refetchStats();
-  }, [utils, refetch, refetchFolders]);
+  }, [utils, refetch, refetchFolders, refetchGroups, refetchStats]);
 
   function toggleFolder(id: string) {
     setExpandedFolderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleGroup(id: string) {
+    setExpandedGroupIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -296,34 +340,72 @@ export default function DecksScreen() {
           <MoreDecksEntry />
         </View>
 
-        {/* Folders section */}
-        {hasFolders ? (
-          <View className="gap-2">
-            <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Folders
-            </Text>
-            {(folders ?? []).map((folder) => (
-              <FolderDrawer
-                key={folder.id}
-                folder={folder}
-                expanded={expandedFolderIds.has(folder.id)}
-                onToggle={() => toggleFolder(folder.id)}
-                categoryById={categoryById}
-              />
-            ))}
-          </View>
-        ) : (
-          /* Empty state — shown when the user has no folders yet */
-          <Card className="items-center gap-3 border-dashed p-10">
-            <Text className="text-lg font-semibold text-slate-900">No folders yet</Text>
-            <Text className="text-center text-sm text-slate-500">
-              Create a folder to start organizing your decks.
-            </Text>
-            <View className="mt-2 w-full">
-              <Button onPress={() => setCreateFolderOpen(true)}>Create your first folder</Button>
+        <View className="gap-6">
+          {/* Folders section */}
+          {hasFolders ? (
+            <View className="gap-2">
+              <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Folders
+              </Text>
+              {(folders ?? []).map((folder) => (
+                <FolderDrawer
+                  key={folder.id}
+                  folder={folder}
+                  expanded={expandedFolderIds.has(folder.id)}
+                  onToggle={() => toggleFolder(folder.id)}
+                  categoryById={categoryById}
+                />
+              ))}
             </View>
-          </Card>
-        )}
+          ) : (
+            <Card className="items-center gap-3 border-dashed p-10">
+              <Text className="text-lg font-semibold text-slate-900">No folders yet</Text>
+              <Text className="text-center text-sm text-slate-500">
+                Create a folder to start organizing your decks.
+              </Text>
+              <View className="mt-2 w-full">
+                <Button onPress={() => setCreateFolderOpen(true)}>Create your first folder</Button>
+              </View>
+            </Card>
+          )}
+
+          {/* Groups section */}
+          <View className="gap-2">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Groups
+              </Text>
+              <Pressable onPress={() => router.push('/groups')} hitSlop={8}>
+                <Text className="text-primary text-sm font-medium">All groups</Text>
+              </Pressable>
+            </View>
+
+            {hasGroups ? (
+              (groups ?? []).map((group) => (
+                <GroupDrawer
+                  key={group.id}
+                  group={group}
+                  expanded={expandedGroupIds.has(group.id)}
+                  onToggle={() => toggleGroup(group.id)}
+                  onManage={() => router.push(`/groups/${group.id}`)}
+                />
+              ))
+            ) : (
+              <Card className="items-center gap-3 border-dashed p-10">
+                <View className="bg-primary/10 h-12 w-12 items-center justify-center rounded-full">
+                  <Users size={22} color="#5584bb" />
+                </View>
+                <Text className="text-lg font-semibold text-slate-900">No groups yet</Text>
+                <Text className="text-center text-sm text-slate-500">
+                  Create a group to share decks with classmates, study partners, or anyone else.
+                </Text>
+                <View className="mt-2 w-full">
+                  <Button onPress={() => setCreateGroupOpen(true)}>Create your first group</Button>
+                </View>
+              </Card>
+            )}
+          </View>
+        </View>
       </ScrollView>
 
       {/* Floating action buttons */}
@@ -364,6 +446,18 @@ export default function DecksScreen() {
         mode={{ kind: 'create' }}
         onSubmit={(values) => createFolder.mutate(values)}
         isPending={createFolder.isPending}
+      />
+
+      <GroupModal
+        visible={createGroupOpen}
+        onClose={() => setCreateGroupOpen(false)}
+        mode={{ kind: 'create' }}
+        onSubmit={(values) => createGroup.mutate(values as {
+          name: string;
+          color: string | null;
+          description: string | null;
+        })}
+        isPending={createGroup.isPending}
       />
 
       {/* Practice filters modal — opened from the Play button */}
@@ -411,6 +505,13 @@ interface FolderDrawerProps {
   onToggle: () => void;
   /** Fast O(1) deck-detail lookup built from trpc.categories.list data. */
   categoryById: Map<string, CategoryItem>;
+}
+
+interface GroupDrawerProps {
+  group: GroupItem;
+  expanded: boolean;
+  onToggle: () => void;
+  onManage: () => void;
 }
 
 /**
@@ -486,6 +587,107 @@ function FolderDrawer({ folder, expanded, onToggle, categoryById }: FolderDrawer
                       <Text className="text-base font-medium text-slate-900" numberOfLines={1}>
                         {deck.name}
                       </Text>
+                      {deck.description ? (
+                        <Text className="mt-0.5 text-xs text-slate-500" numberOfLines={1}>
+                          {deck.description}
+                        </Text>
+                      ) : null}
+                      <View className="mt-0.5 flex-row items-center gap-1">
+                        <GalleryHorizontalEnd size={11} color="#94a3b8" />
+                        <Text className="text-xs text-slate-500">
+                          {deck.cardCount} {deck.cardCount === 1 ? 'card' : 'cards'}
+                        </Text>
+                      </View>
+                    </View>
+                    <ChevronRight size={18} color="#cbd5e1" />
+                  </View>
+                </Pressable>
+              </Link>
+            ))
+          )}
+        </View>
+      ) : null}
+    </Card>
+  );
+}
+
+function GroupDrawer({ group, expanded, onToggle, onManage }: GroupDrawerProps) {
+  return (
+    <Card className="overflow-hidden">
+      <Pressable onPress={onToggle} className="active:opacity-70">
+        <View className="flex-row items-center gap-3 p-4">
+          <View
+            className="h-10 w-10 shrink-0 rounded-md"
+            style={{ backgroundColor: group.color ?? '#94a3b8' }}
+          />
+
+          <View className="flex-1">
+            <View className="flex-row items-center gap-2">
+              <Text className="text-lg font-semibold text-slate-900" numberOfLines={1}>
+                {group.name}
+              </Text>
+              {group.isOwner ? (
+                <Text className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                  Owner
+                </Text>
+              ) : null}
+            </View>
+            {group.description ? (
+              <Text className="mt-0.5 text-xs text-slate-500" numberOfLines={1}>
+                {group.description}
+              </Text>
+            ) : null}
+          </View>
+
+          <Pressable onPress={onManage} hitSlop={8} className="active:opacity-70">
+            <Text className="text-primary text-sm font-medium">Manage</Text>
+          </Pressable>
+
+          <View className="items-end gap-1.5">
+            <View className="flex-row items-center gap-1">
+              <Layers size={13} color="#94a3b8" />
+              <Text className="text-sm text-slate-500">
+                {group.deckCount} {group.deckCount === 1 ? 'deck' : 'decks'}
+              </Text>
+            </View>
+            {expanded ? (
+              <ChevronUp size={16} color="#94a3b8" />
+            ) : (
+              <ChevronDown size={16} color="#94a3b8" />
+            )}
+          </View>
+        </View>
+      </Pressable>
+
+      {expanded ? (
+        <View className="border-t border-border">
+          {group.includedDecks.length === 0 ? (
+            <View className="px-4 py-3">
+              <Text className="text-sm text-slate-400">No decks in this group yet.</Text>
+            </View>
+          ) : (
+            group.includedDecks.map((deck, index) => (
+              <Link key={deck.id} href={`/decks/${deck.id}`} asChild>
+                <Pressable
+                  className="active:bg-slate-50"
+                  style={index > 0 ? { borderTopWidth: 1, borderTopColor: '#e2e8f0' } : undefined}
+                >
+                  <View className="flex-row items-center gap-3 px-4 py-3">
+                    <View
+                      className="h-8 w-8 shrink-0 rounded-sm"
+                      style={{ backgroundColor: deck.color ?? '#94a3b8' }}
+                    />
+                    <View className="flex-1">
+                      <View className="flex-row items-center gap-2">
+                        <Text className="text-base font-medium text-slate-900" numberOfLines={1}>
+                          {deck.name}
+                        </Text>
+                        {!deck.isYours ? (
+                          <Text className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                            Shared
+                          </Text>
+                        ) : null}
+                      </View>
                       {deck.description ? (
                         <Text className="mt-0.5 text-xs text-slate-500" numberOfLines={1}>
                           {deck.description}
