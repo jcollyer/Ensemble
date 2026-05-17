@@ -1,5 +1,5 @@
 import { Link, useRouter } from 'expo-router';
-import { ChevronDown, ChevronRight, ChevronUp, FolderPlus, GalleryHorizontalEnd, Layers, LogOut, Play, Plus, Settings, Users } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, ChevronUp, FolderPlus, FolderTree, GalleryHorizontalEnd, Layers, LogOut, Play, Plus, Settings, Users } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -364,6 +364,9 @@ export default function DecksScreen() {
             </View>
           ) : (
             <Card className="items-center gap-3 border-dashed p-10">
+              <View className="bg-primary/10 h-12 w-12 items-center justify-center rounded-full">
+                <FolderTree size={22} color="#5584bb" />
+              </View>
               <Text className="text-lg font-semibold text-slate-900">No folders yet</Text>
               <Text className="text-center text-sm text-slate-500">
                 Create a folder to start organizing your decks.
@@ -380,9 +383,11 @@ export default function DecksScreen() {
               <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Groups
               </Text>
-              <Pressable onPress={() => router.push('/groups')} hitSlop={8}>
-                <Text className="text-primary text-sm font-medium">All groups</Text>
-              </Pressable>
+              {hasGroups ? (
+                <Pressable onPress={() => router.push('/groups')} hitSlop={8}>
+                  <Text className="text-primary text-sm font-medium">All groups</Text>
+                </Pressable>
+              ) : null}
             </View>
 
             {hasGroups ? (
@@ -396,18 +401,20 @@ export default function DecksScreen() {
                 />
               ))
             ) : (
-              <Card className="items-center gap-3 border-dashed p-10">
-                <View className="bg-primary/10 h-12 w-12 items-center justify-center rounded-full">
-                  <Users size={22} color="#5584bb" />
-                </View>
-                <Text className="text-lg font-semibold text-slate-900">No groups yet</Text>
-                <Text className="text-center text-sm text-slate-500">
-                  Create a group to share decks with classmates, study partners, or anyone else.
-                </Text>
-                <View className="mt-2 w-full">
-                  <Button onPress={() => setCreateGroupOpen(true)}>Create your first group</Button>
-                </View>
-              </Card>
+              <Pressable
+                onPress={() => router.push('/groups')}
+                className="active:opacity-70"
+              >
+                <Card className="gap-1 border-dashed p-4">
+                  <View className="flex-row items-center gap-2">
+                    <Users size={18} color="#5584bb" />
+                    <Text className="text-base font-semibold text-slate-900">No groups yet</Text>
+                  </View>
+                  <Text className="text-sm text-slate-500">
+                    Create a group to share decks with classmates, study partners, or anyone else.
+                  </Text>
+                </Card>
+              </Pressable>
             )}
           </View>
         </View>
