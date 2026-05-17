@@ -16,6 +16,7 @@ import type { GroupCreateInput, GroupUpdateInput } from '@ensemble/types';
 import { Button } from '../../../src/components/Button';
 import { Card } from '../../../src/components/Card';
 import { GroupModal } from '../../../src/components/GroupModal';
+import { RequireNameConfirmationDialog } from '../../../src/components/RequireNameConfirmationDialog';
 import { trpc } from '../../../src/lib/trpc';
 
 export default function GroupsScreen() {
@@ -25,6 +26,7 @@ export default function GroupsScreen() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingGroup, setDeletingGroup] = useState<{ id: string; name: string } | null>(null);
 
   const createGroup = trpc.groups.create.useMutation({
     onSuccess: async () => {
@@ -45,26 +47,12 @@ export default function GroupsScreen() {
   const deleteGroup = trpc.groups.delete.useMutation({
     onSuccess: async () => {
       await utils.groups.list.invalidate();
+      setDeletingGroup(null);
     },
     onError: (err) => Alert.alert('Could not delete group', err.message),
   });
 
   const editing = editingId ? (groups ?? []).find((group) => group.id === editingId) ?? null : null;
-
-  function confirmDeleteGroup(groupId: string, groupName: string) {
-    Alert.alert(
-      `Delete "${groupName}"?`,
-      "Members will lose access. Decks inside the group aren't deleted.",
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteGroup.mutate({ id: groupId }),
-        },
-      ],
-    );
-  }
 
   if (isLoading && !groups) {
     return (
@@ -150,7 +138,7 @@ export default function GroupsScreen() {
                           <Pencil size={16} color="#5584bb" />
                         </Pressable>
                         <Pressable
-                          onPress={() => confirmDeleteGroup(group.id, group.name)}
+                          onPress={() => setDeletingGroup({ id: group.id, name: group.name })}
                           hitSlop={8}
                           className="px-2 py-1"
                         >
@@ -204,6 +192,21 @@ export default function GroupsScreen() {
           isPending={updateGroup.isPending}
         />
       ) : null}
+
+      <RequireNameConfirmationDialog
+        visible={deletingGroup !== null}
+        onClose={() => setDeletingGroup(null)}
+        title="Delete this group?"
+        description="Members will lose access immediately. Decks shared in this group are not deleted; they go back to being personal decks for whoever owns them. This action cannot be undone."
+        confirmLabel="Group"
+        expectedName={deletingGroup?.name ?? ''}
+        confirmActionLabel={deleteGroup.isPending ? 'Deleting...' : 'Delete group'}
+        isPending={deleteGroup.isPending}
+        onConfirm={() => {
+          if (!deletingGroup) return;
+          deleteGroup.mutate({ id: deletingGroup.id });
+        }}
+      />
     </View>
   );
 }

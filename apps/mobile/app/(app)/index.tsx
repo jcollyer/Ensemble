@@ -344,9 +344,14 @@ export default function DecksScreen() {
           {/* Folders section */}
           {hasFolders ? (
             <View className="gap-2">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Folders
-              </Text>
+              <View className="flex-row items-center justify-between">
+                <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Folders
+                </Text>
+                <Pressable onPress={() => router.push('/folders')} hitSlop={8}>
+                  <Text className="text-primary text-sm font-medium">All folders</Text>
+                </Pressable>
+              </View>
               {(folders ?? []).map((folder) => (
                 <FolderDrawer
                   key={folder.id}
