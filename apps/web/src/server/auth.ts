@@ -37,7 +37,15 @@ if (process.env.AUTH_RESEND_KEY) {
 export const { handlers, signIn, signOut, auth }: NextAuthResult = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers,
-  session: { strategy: 'database' },
+  session: {
+    strategy: 'database',
+    // 90 days. Each request within updateAge (24h, default) slides the
+    // expiry back out to 90d, so active users effectively never sign out.
+    // The mobile bridge in app/auth/mobile/route.ts reads this expires
+    // value straight off the DB session row, so this single setting
+    // controls both web and mobile session lifetime.
+    maxAge: 60 * 60 * 24 * 90,
+  },
   pages: {
     signIn: '/signin',
     verifyRequest: '/signin/check-email',

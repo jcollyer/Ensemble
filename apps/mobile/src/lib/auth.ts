@@ -64,7 +64,19 @@ export async function signInWithBrowser(): Promise<StoredSession> {
     // Keep `scheme` around for older bridge versions and for clarity in logs.
     `&scheme=${APP_SCHEME}`;
 
-  const result = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl);
+  const result = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl, {
+    // In development we want an ephemeral browser session so the OAuth flow
+    // doesn't inherit Safari's Google cookies — that's what causes us to get
+    // silently re-signed-in as the previous account. With this flag the
+    // ASWebAuthenticationSession on iOS runs without shared cookies, which
+    // also suppresses the "Expo wants to use <ngrok host> to sign in" prompt.
+    //
+    // In production we leave it off so returning users get one-tap sign-in
+    // via their existing Google session in Safari. Their app session itself
+    // is persisted in SecureStore (see getStoredSession), so most launches
+    // never hit this code path at all.
+    preferEphemeralSession: __DEV__,
+  });
 
   if (result.type !== 'success' || !result.url) {
     throw new Error(result.type === 'cancel' ? 'Sign in was cancelled.' : 'Sign in failed.');
