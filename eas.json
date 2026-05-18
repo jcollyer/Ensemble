@@ -16,6 +16,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "jcollyer2000@yahoo.com",
+        "ascAppId": "6770618195",
+        "appleTeamId": "CXMM9978CT"
+      }
+    }
   }
 }
