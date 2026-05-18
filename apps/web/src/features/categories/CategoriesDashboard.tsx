@@ -294,6 +294,29 @@ export function CategoriesDashboard() {
         />
       </div>
 
+      {/* Empty state — no folders yet */}
+      {!hasFolders && !isLoading && (
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 px-6 py-12 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-gray-100">
+            <FolderPlus className="h-7 w-7 text-gray-400" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold text-gray-800">Create your first Folder</h3>
+            <p className="text-sm text-gray-500">
+              Folders help you organise your decks by topic, subject, or any structure that works for you.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setFolderOpen(true)}
+            className="mt-1"
+          >
+            <FolderPlus className="h-4 w-4" />
+            New folder
+          </Button>
+        </div>
+      )}
+
       {/* Folder sections loading */}
       {isLoading && (
         <div className="space-y-2">
