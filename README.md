@@ -1,12 +1,15 @@
 <div align="center">
 
-# FlipFlow
+<img src="apps/web/src/app/logo-small.png" alt="Ensemble icon" width="80">
+
+<img src="apps/web/src/app/logo.png" alt="Ensemble" width="300">
 
 **Spaced-repetition flashcards, on the web and in your pocket.**
 
+[**Live site → ensemblelanguage.com**](https://ensemblelanguage.com/)
+
 A type-safe TypeScript monorepo where one backend powers two clients — a Next.js web app and an Expo / React Native mobile app — with the SM-2 algorithm, Google Translate, Google Cloud Text-to-Speech, and Wiktionary baked in.
 
-[**Live site → flip-flow-web.vercel.app**](https://flip-flow-web.vercel.app/)
 
 </div>
 
@@ -19,6 +22,7 @@ A type-safe TypeScript monorepo where one backend powers two clients — a Next.
 - **Spaced repetition that actually adapts.** The SM-2 algorithm schedules each card based on the user's self-rated recall, so review queues stay short and effective.
 - **Pronunciation, translation, and dictionary lookups built in.** Google Cloud Translate auto-fills card backs, Google Cloud Text-to-Speech reads cards aloud in the deck's target language, and Wiktionary surfaces definitions and example sentences inline.
 - **Auth done once.** Auth.js v5 with Google OAuth and Resend magic links — and the mobile app reuses the same session table via a tiny deep-link handoff, so there is zero auth code duplicated across platforms.
+- **Collaborative group decks.** Users can create a group and invite others to build out a shared deck together — useful for classrooms, study groups, or language-exchange partners.
 - **Public deck library.** Users can flip a deck public and share it with the world; private is the safe default.
 
 ---
@@ -26,7 +30,7 @@ A type-safe TypeScript monorepo where one backend powers two clients — a Next.
 ## Architecture
 
 <p align="center">
-  <img src="docs/architecture.svg" alt="FlipFlow architecture: web and mobile clients consume shared TypeScript packages, which back a tRPC handler and Auth.js on Vercel, talking to Postgres, Google Translate, Google TTS, and Wiktionary." width="100%">
+  <img src="docs/architecture.svg" alt="Ensemble architecture: web and mobile clients consume shared TypeScript packages, which back a tRPC handler and Auth.js on Vercel, talking to Postgres, Google Translate, Google TTS, and Wiktionary." width="100%">
 </p>
 
 The web and mobile apps are siblings under `apps/`. Everything reusable — the Prisma schema, the tRPC router, the SM-2 implementation, the Zod input/output schemas — lives under `packages/` and is imported as a workspace dependency.
@@ -37,7 +41,7 @@ apps/
   mobile/   Expo SDK 54 · Expo Router · NativeWind · SecureStore
 packages/
   api/      tRPC routers — auth, categories, folders, flashcards,
-            practice, dictionary, translate, tts
+            practice, dictionary, translate, tts, groups
   db/       Prisma schema + generated client
   types/    Zod schemas · SM-2 spaced-repetition algorithm
   config/   Shared tsconfig presets
@@ -69,6 +73,8 @@ Turborepo orchestrates builds, typechecks, and dev tasks across the workspaces, 
 **Decks, folders, and cards.** Users organize flashcards into decks (categories), and group decks into folders. Each card holds a front, a back, optional pronunciation, part-of-speech, gender, verb-type metadata, and arrays of example sentences for both sides — enough structure to act like a lightweight language-learning workbook without ever feeling like a database admin tool.
 
 **Spaced-repetition practice.** `packages/types/src/sm2.ts` implements the [SM-2 algorithm](https://en.wikipedia.org/wiki/SuperMemo#Description_of_SM-2_algorithm). When the user rates a card 0–5, `practice.submitReview` updates `repetitions`, `easeFactor`, `interval`, and `nextReview`. The practice queue endpoint returns cards where `nextReview` is null (never seen) or has come due. Failed recalls reset the streak; passes grow the interval geometrically.
+
+**Collaborative group decks.** Users can create a group, invite others by email or link, and collectively build out a shared deck. Any group member can add, edit, or remove cards, and everyone's practice progress is tracked individually against the same shared content — ideal for classrooms, study circles, or language-exchange partners.
 
 **Translation-assisted card creation.** Toggle on a target language (French, Spanish, or German), type the front in English, and the back is auto-filled by the `translate.translate` tRPC mutation, which proxies Google Cloud Translate. The Translate API key is server-side only — the client just feature-detects via `translate.isAvailable` and hides the toggle if it isn't configured.
 
@@ -118,12 +124,12 @@ Because the client, the router, the schemas, and the database all share a single
 ## Repository layout, in one screenful
 
 ```
-FlipFlow/
+ensemble/
 ├── apps/
 │   ├── web/              Next.js 15 · App Router
 │   │   └── src/
 │   │       ├── app/      Routes (incl. /api/trpc, /api/auth, /auth/mobile)
-│   │       ├── features/ Practice, cards, categories, folders, settings
+│   │       ├── features/ Practice, cards, categories, folders, groups, settings
 │   │       ├── components/ui  shadcn/ui primitives
 │   │       └── server/   Auth handlers, tRPC context
 │   └── mobile/           Expo SDK 54 · Expo Router
@@ -134,7 +140,7 @@ FlipFlow/
 │           └── lib       Auth bridge, secure-store, tRPC client
 ├── packages/
 │   ├── api/src/routers/  auth · categories · folders · flashcards
-│   │                     practice · dictionary · translate · tts
+│   │                     practice · dictionary · translate · tts · groups
 │   ├── db/prisma/        schema.prisma + seed.ts
 │   ├── types/src/        sm2.ts · schemas.ts · languages.ts · wordClass.ts
 │   └── config/           tsconfig presets
@@ -168,6 +174,6 @@ The web app and mobile app share the same backend at `EXPO_PUBLIC_API_URL`, so a
 
 <div align="center">
 
-Built by [Jeremy Collyer](mailto:collyerdesign@gmail.com) · [Live demo](https://flip-flow-web.vercel.app/)
+Built by [Jeremy Collyer](mailto:collyerdesign@gmail.com) · [ensemblelanguage.com](https://ensemblelanguage.com/)
 
 </div>
