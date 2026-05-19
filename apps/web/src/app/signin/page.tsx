@@ -31,10 +31,10 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Link href="/" className="mx-auto mb-2 inline-flex items-center gap-2">
-            <div className="bg-primary/10 inline-flex size-10 items-center justify-center rounded-full">
-              <p className="text-primary font-brand h-12 text-4xl font-semibold">e</p>
+            <div className="bg-primary inline-flex size-8 items-center justify-center rounded-full">
+              <p className="text-white font-brand h-12 text-4xl font-semibold">e</p>
             </div>
-            <span className="font-brand text-xl font-semibold leading-none text-gray-700">
+            <span className="font-brand text-xl font-semibold leading-none text-primary">
               ensemble
             </span>
           </Link>
