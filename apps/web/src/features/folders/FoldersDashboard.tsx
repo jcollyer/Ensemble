@@ -57,7 +57,7 @@ export function FoldersDashboard() {
           <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link href="/app">
               <ArrowLeft className="h-4 w-4" />
-              Your decks
+              Back
             </Link>
           </Button>
           <div className="flex items-center gap-3">

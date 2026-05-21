@@ -461,7 +461,7 @@ export function GroupDetail({ groupId }: Props) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="max-h-72 w-72 overflow-y-auto">
-              <DropdownMenuLabel>Your decks</DropdownMenuLabel>
+              <DropdownMenuLabel>Back</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {myDecksList.length === 0 ? (
                 <p className="text-muted-foreground px-2 py-3 text-sm">

@@ -802,6 +802,7 @@ function getPercentage(value: number, total: number) {
 }
 
 const GETTING_STARTED_KEY = 'flipflow_getting_started_dismissed';
+const LEARNING_TOGETHER_KEY = 'flipflow_learning_together_dismissed';
 
 function GettingStartedSection() {
   const [visible, setVisible] = useState<boolean | null>(null);
@@ -919,57 +920,72 @@ function GettingStartedSection() {
 }
 
 function LearningTogetherSection() {
+  const [visible, setVisible] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem(LEARNING_TOGETHER_KEY);
+    setVisible(dismissed !== "true");
+  }, []);
+
+  function dismiss() {
+    localStorage.setItem(LEARNING_TOGETHER_KEY, "true");
+    setVisible(false);
+  }
+
+  if (!visible) return null;
+
   return (
-    <section className="from-primary/5 to-card border-primary/20 overflow-hidden rounded-2xl border bg-gradient-to-br p-0 shadow-sm">
+    <section className="overflow-hidden rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white shadow-sm">
       {/* Header */}
-      <div className="bg-primary/8 border-primary/15 flex items-center gap-3 border-b px-6 py-4">
-        <div className="bg-primary/15 text-primary flex h-8 w-8 items-center justify-center rounded-lg">
-          <Users className="h-4 w-4" />
+      <div className="flex items-center justify-between gap-3 border-b border-blue-200 bg-blue-100/60 px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15 text-blue-600">
+            <Users className="h-4 w-4" />
+          </div>
+          <h2 className="text-base font-semibold uppercase tracking-tight text-blue-900">
+            Learning together (English) / Apprendre ensemble (French)
+          </h2>
         </div>
-        <h2 className="text-base font-semibold tracking-tight">
-          Learning together (English) / Apprendre ensemble (French)
-        </h2>
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="Dismiss learning together section"
+          className="rounded-md p-1 text-blue-400 transition hover:bg-blue-200/60 hover:text-blue-700"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Stacked sections separated by borders */}
-      <div className="divide-border/60 divide-y">
-        {/* Section 1 */}
-        <div className="px-6 py-4">
-          <ul className="text-muted-foreground space-y-1.5 text-sm">
-            <li className="flex items-center gap-2.5">
-              <span aria-hidden className="text-primary/60 shrink-0 font-bold">
-                •
-              </span>
-              <span>Create or join a group with a friend or classmates</span>
-            </li>
-            <li className="flex items-center gap-2.5">
-              <span aria-hidden className="text-primary/60 shrink-0 font-bold">
-                •
-              </span>
-              <span>Collaborate to create a new deck [coming soon], or share decks you’ve created</span>
-            </li>
-          </ul>
-        </div>
-
-        {/* Section 2 */}
-        <div className="px-6 py-4">
-          <ul className="text-muted-foreground space-y-1.5 text-sm">
-            <li className="flex items-center gap-2.5">
-              <span aria-hidden className="text-primary/60 shrink-0 font-bold">
-                •
-              </span>
-              <span>
-                Duplicate a shared deck to springboard off of and edit to make it your own
-              </span>
-            </li>
-            <li className="flex items-center gap-2.5">
-              <span aria-hidden className="text-primary/60 shrink-0 font-bold">
-                •
-              </span>
-              <span>Play a shared deck to practice sample sentences new to you</span>
-            </li>
-          </ul>
-        </div>
+      <div className="space-y-4 px-6 py-5 text-sm text-gray-700">
+        <ul className="space-y-1">
+          <li className="flex items-start gap-2">
+            <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">
+              •
+            </span>
+            <span>Create or join a group with a friend or classmates</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">
+              •
+            </span>
+            <span>Collaborate to create a new deck [coming soon], or share decks you’ve created</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">
+              •
+            </span>
+            <span>
+              Duplicate a shared deck to springboard off of and edit to make it your own
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span aria-hidden className="mt-0.5 shrink-0 font-bold text-blue-400">
+              •
+            </span>
+            <span>Play a shared deck to practice sample sentences new to you</span>
+          </li>
+        </ul>
       </div>
     </section>
   );
