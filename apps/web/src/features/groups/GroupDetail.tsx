@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { trpc } from '@/lib/trpc/client';
 import { GroupModal } from '@/features/groups/GroupModal';
+import { DuplicateDeckModal } from '@/features/groups/DuplicateDeckModal';
 
 interface Props {
   groupId: string;
@@ -66,6 +67,11 @@ export function GroupDetail({ groupId }: Props) {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  // The deck the user clicked "Duplicate" on, if any. Drives the
+  // DuplicateDeckModal — `null` keeps it closed. We carry the deck's
+  // name as well so the modal can render it in its description without
+  // re-fetching.
+  const [duplicateTarget, setDuplicateTarget] = useState<{ id: string; name: string } | null>(null);
 
   // ── Mutations ──────────────────────────────────────────────────────────
   const updateGroup = trpc.groups.update.useMutation({
@@ -106,12 +112,6 @@ export function GroupDetail({ groupId }: Props) {
     onSuccess: () => {
       utils.groups.byId.invalidate({ id: groupId });
       utils.groups.list.invalidate();
-    },
-  });
-  const duplicateDeck = trpc.groups.duplicateDeck.useMutation({
-    onSuccess: (created) => {
-      utils.categories.list.invalidate();
-      router.push(`/app/categories/${created.id}`);
     },
   });
   const createLink = trpc.invites.createLink.useMutation({
@@ -541,12 +541,11 @@ export function GroupDetail({ groupId }: Props) {
                     duplicate action is shown when the viewer isn't the
                     deck owner. */}
                 <div className="flex items-center justify-end gap-1 border-t px-3 py-2">
-                  {!d.isYours && group.isOwner ? (
+                  {!d.isYours ? (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => duplicateDeck.mutate({ categoryId: d.id })}
-                      disabled={duplicateDeck.isPending}
+                      onClick={() => setDuplicateTarget({ id: d.id, name: d.name })}
                     >
                       <CopyPlus className="h-4 w-4" />
                       Duplicate
@@ -636,6 +635,18 @@ export function GroupDetail({ groupId }: Props) {
           }}
         />
       ) : null}
+
+      {/* Folder-picker for duplicating a shared deck into the caller's own
+          account. Mounted whenever `duplicateTarget` is set; clearing it
+          closes the dialog. The modal owns the mutation so navigation/cache
+          invalidation lives next to the form that triggers it. */}
+      <DuplicateDeckModal
+        deck={duplicateTarget}
+        open={duplicateTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setDuplicateTarget(null);
+        }}
+      />
     </div>
   );
 }
