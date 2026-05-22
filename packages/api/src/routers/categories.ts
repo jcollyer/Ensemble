@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { BackLanguageValue, CategoryCreateInput, CategoryUpdateInput } from '@ensemble/types';
 
 import { resolveDeckVisibility } from '../lib/groupAuth';
-import { protectedProcedure, router } from '../trpc';
+import { protectedProcedure, publicProcedure, router } from '../trpc';
 
 export const categoriesRouter = router({
   /** All categories owned by the current user, with card counts. */
@@ -30,14 +30,24 @@ export const categoriesRouter = router({
     }));
   }),
 
-  /** Public users and their public decks for the "Public decks" explorer. */
-  publicLibrary: protectedProcedure.query(async ({ ctx }) => {
+  /**
+   * Public users and their public decks for the "Public decks" explorer.
+   *
+   * Open to unauthenticated callers (guest browse mode) — this is the
+   * landing surface the App Store reviewer expects to be reachable without
+   * sign-in per guideline 5.1.1(v). Signed-in users have their own account
+   * excluded from the list so they don't see themselves in the explorer.
+   */
+  publicLibrary: publicProcedure.query(async ({ ctx }) => {
     const adminUserId = process.env.ADMIN_USER_ID;
+    const viewerId = ctx.session?.user?.id ?? null;
 
     const users = await ctx.prisma.user.findMany({
       where: {
         private: false,
-        id: { not: ctx.userId },
+        // Only exclude the viewer when there is one. Guests should see every
+        // public profile, including the admin's seed content.
+        ...(viewerId ? { id: { not: viewerId } } : {}),
       },
       orderBy: [{ name: 'asc' }, { createdAt: 'asc' }],
       select: {
@@ -88,10 +98,17 @@ export const categoriesRouter = router({
     });
   }),
 
-  /** Single category (with ownership check). */
-  byId: protectedProcedure
+  /**
+   * Single category (with visibility check).
+   *
+   * Open to guests so they can browse and practice public decks without
+   * signing in. Visibility falls back to "is the deck public?" when there's
+   * no session — group membership and ownership both require a user.
+   */
+  byId: publicProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(async ({ ctx, input }) => {
+      const viewerId = ctx.session?.user?.id ?? null;
       const category = await ctx.prisma.category.findFirst({
         where: { id: input.id },
         select: {
@@ -109,7 +126,7 @@ export const categoriesRouter = router({
       });
       if (!category) throw new TRPCError({ code: 'NOT_FOUND' });
 
-      const visibility = await resolveDeckVisibility(ctx.prisma, ctx.userId, category);
+      const visibility = await resolveDeckVisibility(ctx.prisma, viewerId, category);
       if (!visibility.canRead) throw new TRPCError({ code: 'NOT_FOUND' });
 
       return {

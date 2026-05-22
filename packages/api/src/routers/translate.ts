@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { protectedProcedure, publicProcedure, router } from '../trpc';
+import { publicProcedure, router } from '../trpc';
 
 /**
  * Languages exposed in the UI today. Values are ISO 639-1 codes that the
@@ -41,7 +41,7 @@ export const translateRouter = router({
    * underlying problem (e.g. invalid key, quota exceeded) without us having
    * to bake in an exhaustive translation layer.
    */
-  translate: protectedProcedure
+  translate: publicProcedure
     .input(
       z.object({
         text: z.string().trim().min(1).max(500),

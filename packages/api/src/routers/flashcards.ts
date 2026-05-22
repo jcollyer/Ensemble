@@ -8,7 +8,7 @@ import {
   resolveDeckVisibility,
   userIsGroupMemberForCategory,
 } from '../lib/groupAuth';
-import { protectedProcedure, router } from '../trpc';
+import { protectedProcedure, publicProcedure, router } from '../trpc';
 
 /**
  * Authorization model after Groups:
@@ -33,10 +33,17 @@ import { protectedProcedure, router } from '../trpc';
  */
 
 export const flashcardsRouter = router({
-  /** All cards in a category, oldest first. */
-  listByCategory: protectedProcedure
+  /**
+   * All cards in a category, oldest first.
+   *
+   * Open to guests so they can preview and practice cards in public decks
+   * without signing in. Per-user progress is omitted for guests and for
+   * non-owner/non-member public viewers (the old behaviour).
+   */
+  listByCategory: publicProcedure
     .input(z.object({ categoryId: z.string().cuid() }))
     .query(async ({ ctx, input }) => {
+      const viewerId = ctx.session?.user?.id ?? null;
       const category = await ctx.prisma.category.findFirst({
         where: { id: input.categoryId },
         select: {
@@ -48,7 +55,7 @@ export const flashcardsRouter = router({
       });
       if (!category) throw new TRPCError({ code: 'NOT_FOUND' });
 
-      const visibility = await resolveDeckVisibility(ctx.prisma, ctx.userId, category);
+      const visibility = await resolveDeckVisibility(ctx.prisma, viewerId, category);
       if (!visibility.canRead) throw new TRPCError({ code: 'NOT_FOUND' });
 
       const cards = await ctx.prisma.flashcard.findMany({
@@ -60,22 +67,25 @@ export const flashcardsRouter = router({
       // the difficultyLevel back into each card so the UI doesn't have to
       // change shape. Cards the user has never rated come back with
       // `difficultyLevel: null` (the previous behaviour for unrated cards).
-      const progressRows = cards.length
-        ? await ctx.prisma.cardProgress.findMany({
-            where: {
-              userId: ctx.userId,
-              cardId: { in: cards.map((c) => c.id) },
-            },
-            select: { cardId: true, difficultyLevel: true },
-          })
-        : [];
+      // Skipped entirely for guests since they have no progress to look up.
+      const progressRows =
+        viewerId && cards.length
+          ? await ctx.prisma.cardProgress.findMany({
+              where: {
+                userId: viewerId,
+                cardId: { in: cards.map((c) => c.id) },
+              },
+              select: { cardId: true, difficultyLevel: true },
+            })
+          : [];
       const progressByCardId = new Map(progressRows.map((p) => [p.cardId, p.difficultyLevel]));
 
       // For non-owners viewing via the "public deck" code path we keep the
       // old behaviour of hiding the viewer-specific rating, since "public"
       // means "anonymous read." Group-members get their own per-user rating
-      // back (it's their own state, not someone else's).
-      const exposeProgress = visibility.isOwner || visibility.isGroupMember;
+      // back (it's their own state, not someone else's). Guests always get
+      // null progress.
+      const exposeProgress = viewerId !== null && (visibility.isOwner || visibility.isGroupMember);
 
       return cards.map((card) => ({
         ...card,

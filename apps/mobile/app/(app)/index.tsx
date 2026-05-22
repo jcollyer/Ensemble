@@ -22,6 +22,7 @@ import { FolderModal } from '../../src/components/FolderModal';
 import { GroupModal } from '../../src/components/GroupModal';
 import { PracticeFiltersModal } from '../../src/components/PracticeFiltersModal';
 import { Stat } from '../../src/components/Stat';
+import { GuestLibraryScreen } from '../../src/features/library/GuestLibraryScreen';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -70,7 +71,20 @@ type GroupItem = {
 // ---------------------------------------------------------------------------
 
 /**
- * Home screen — shows the user's folders as collapsible drawers.
+ * Home screen entry point. Branches on session: guests see the public deck
+ * library (no protected queries fire), signed-in users see the existing
+ * folders / groups dashboard. Keeping the dispatch at the top of the file
+ * means the signed-in path below is unchanged and the protected tRPC hooks
+ * (auth.me, categories.list, etc.) never mount for an unauthenticated user.
+ */
+export default function HomeScreenEntry() {
+  const { isGuest } = useAuth();
+  if (isGuest) return <GuestLibraryScreen />;
+  return <SignedInHomeScreen />;
+}
+
+/**
+ * Signed-in home screen — shows the user's folders as collapsible drawers.
  * Each drawer contains the decks that belong to that folder.
  * Tapping a deck navigates to its detail page.
  *
@@ -82,7 +96,7 @@ type GroupItem = {
  *   └─────────────────────────────┘
  *   [+ New card]  [+ New Folder]  [+ New deck]  ← floating buttons
  */
-export default function DecksScreen() {
+function SignedInHomeScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
   const utils = trpc.useUtils();

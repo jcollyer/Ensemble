@@ -56,8 +56,8 @@ export default function SignInScreen() {
         </Pressable>
 
         <Text className="mt-6 px-4 text-center text-xs text-slate-400">
-          You'll be taken to your browser to sign in with Google or a magic link, then bounced right
-          back here.
+          You'll be taken to your browser to sign in with Apple, Google, or a magic link,
+          then bounced right back here.
         </Text>
       </View>
     </SafeAreaView>

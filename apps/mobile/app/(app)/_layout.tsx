@@ -1,14 +1,21 @@
-import { Redirect, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '../../src/lib/AuthContext';
 
 /**
- * Route group for authed screens. Kicks unauth'd users back to /signin;
- * uses a native stack so the app feels like a real iOS/Android app.
+ * Route group for the main app shell. Renders the same navigation tree for
+ * signed-in users and guests; individual screens handle their own guest
+ * affordances (e.g. the home screen renders the public library when there
+ * is no session, deck/practice screens prompt to sign in before saving).
+ *
+ * Used to redirect guests to /signin, but App Store guideline 5.1.1(v)
+ * requires that account-independent features (browsing/practicing public
+ * decks) work without an account, so the gate has moved inward — see
+ * `useRequireAuth` for the per-action sign-in flow.
  */
 export default function AppLayout() {
-  const { session, isLoading } = useAuth();
+  const { isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -17,7 +24,6 @@ export default function AppLayout() {
       </View>
     );
   }
-  if (!session) return <Redirect href="/signin" />;
 
   return (
     <Stack

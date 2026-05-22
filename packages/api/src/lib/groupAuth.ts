@@ -65,13 +65,18 @@ export async function userIsGroupMemberForCategory(
  *   - Other viewers see it only if it's marked public AND the owner's
  *     profile is public.
  *
+ * `userId` may be `null` for unauthenticated (guest) callers. Guests can
+ * never be owners or group members, so the check collapses to "is this
+ * deck public?" — which is exactly what we want for the App Store guest-
+ * browse experience.
+ *
  * Returns { canRead, isOwner, isGroupMember, isPublic }. `canRead` is the
  * OR of the three flags; the others are useful for the UI ("you can study
  * this but not edit it"-style affordances).
  */
 export async function resolveDeckVisibility(
   prisma: PrismaClient,
-  userId: string,
+  userId: string | null,
   category: {
     id: string;
     userId: string;
@@ -84,11 +89,13 @@ export async function resolveDeckVisibility(
   isGroupMember: boolean;
   isPublic: boolean;
 }> {
-  const isOwner = category.userId === userId;
+  const isOwner = userId !== null && category.userId === userId;
   const isPublic = category.private === false && category.user.private === false;
-  const isGroupMember = isOwner
-    ? false // no need to check membership if you already own it
-    : await userIsGroupMemberForCategory(prisma, userId, category.id);
+  // Guests (userId === null) and owners both skip the group-membership lookup.
+  const isGroupMember =
+    userId === null || isOwner
+      ? false
+      : await userIsGroupMemberForCategory(prisma, userId, category.id);
 
   return {
     canRead: isOwner || isPublic || isGroupMember,

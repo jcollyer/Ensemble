@@ -6,6 +6,7 @@ import { type BackLanguageValue, type DifficultyLevel } from '@ensemble/types';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { useAuth, useRequireAuth } from '@/lib/AuthContext';
 import { trpc } from '@/lib/trpc';
 import { shuffleArray } from '@/lib/format';
 import { FlipCard, NavButton, RatingButtons } from './FlashcardViewer';
@@ -57,6 +58,8 @@ export function PracticeScreen({
   const isAllCards = !categoryId;
   const router = useRouter();
   const utils = trpc.useUtils();
+  const { isGuest } = useAuth();
+  const requireAuth = useRequireAuth();
 
   const { data, isLoading } = trpc.practice.queue.useQuery(
     {
@@ -113,7 +116,12 @@ export function PracticeScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardsKey, shuffle, shuffleEpoch]);
   const isReadOnlyPublicDeck = Boolean(categoryId && data?.category && !data.category.isOwner);
+  // Signed-in users who don't own the deck can't rate cards on it (existing
+  // behaviour). Guests are a separate case: we still show them the rating
+  // buttons so they understand what the app does, but tapping one routes
+  // through `requireAuth` to prompt sign-in instead of submitting.
   const canRate = !isReadOnlyPublicDeck;
+  const showRatingButtons = canRate || isGuest;
   const current = cards[index];
   const backLanguage = (current?.category?.backLanguage ??
     data?.category?.backLanguage ??
@@ -141,7 +149,22 @@ export function PracticeScreen({
           : 'Back to deck';
 
   function handleRate(level: DifficultyLevel) {
-    if (!current || !canRate) return;
+    if (!current) return;
+    // Guests see the rating buttons but tapping one prompts sign-in rather
+    // than submitting a review. We don't try to auto-submit after sign-in:
+    // a freshly signed-in user viewing someone else's public deck still
+    // can't rate it (canRate stays false), and pretending otherwise would
+    // be confusing. The natural next step for them is to import the deck.
+    if (isGuest) {
+      requireAuth(() => {}, {
+        title: 'Sign in to save progress',
+        reason:
+          'Create an account to track your progress with spaced repetition. ' +
+          'After signing in, you can import this deck into your own library.',
+      });
+      return;
+    }
+    if (!canRate) return;
     submit.mutate({ cardId: current.id, difficultyLevel: level });
     setReviewed((n) => n + 1);
     setFlipped(false);
@@ -239,8 +262,15 @@ export function PracticeScreen({
               <NavButton direction="next" onPress={handleNext} disabled={!canGoNext} />
             </View>
 
-            {flipped && canRate ? (
-              <RatingButtons onRate={handleRate} />
+            {flipped && showRatingButtons ? (
+              <>
+                <RatingButtons onRate={handleRate} />
+                {isGuest ? (
+                  <Text className="mt-3 text-center text-xs text-slate-400">
+                    Sign in to save your progress.
+                  </Text>
+                ) : null}
+              </>
             ) : flipped ? (
               <View className="mt-6">
                 <Text className="text-center text-sm text-slate-500">

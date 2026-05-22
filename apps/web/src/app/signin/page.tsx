@@ -24,6 +24,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   if (session?.user) redirect(target);
 
   const hasGoogle = !!process.env.AUTH_GOOGLE_ID;
+  const hasApple = !!process.env.AUTH_APPLE_ID;
   const hasEmail = !!process.env.AUTH_RESEND_KEY;
 
   return (
@@ -48,6 +49,27 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             </div>
           ) : null}
 
+          {hasApple ? (
+            // Apple HIG requires this button to be presented with at least
+            // equal prominence to other third-party sign-in options. We put
+            // it first in the stack and use the official black-on-white
+            // styling. (See https://developer.apple.com/design/human-interface-guidelines/sign-in-with-apple)
+            <form
+              action={async () => {
+                'use server';
+                await signIn('apple', { redirectTo: target });
+              }}
+            >
+              <Button
+                type="submit"
+                className="w-full bg-black text-white hover:bg-black/90"
+              >
+                <AppleIcon className="h-4 w-4" />
+                Continue with Apple
+              </Button>
+            </form>
+          ) : null}
+
           {hasGoogle ? (
             <form
               action={async () => {
@@ -62,7 +84,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             </form>
           ) : null}
 
-          {hasGoogle && hasEmail ? (
+          {(hasApple || hasGoogle) && hasEmail ? (
             <div className="relative my-2">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
@@ -99,17 +121,27 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               </Button>
             </form>
           ) : null}
-
-          {!hasGoogle && !hasEmail ? (
-            <div className="bg-muted/50 text-muted-foreground rounded-md border p-4 text-sm">
-              No auth providers are configured yet. Set <code>AUTH_GOOGLE_ID</code> /
-              <code> AUTH_GOOGLE_SECRET</code> or <code>AUTH_RESEND_KEY</code> in your{' '}
-              <code>.env.local</code>.
-            </div>
-          ) : null}
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+/**
+ * Apple logo (filled). The path is sized to sit cleanly inside a 24×24
+ * viewBox — leaf-and-body proportions match Apple's branding guidelines
+ * and nothing extends beyond the box, so the icon scales to any pixel
+ * size without clipping. Per Apple's HIG, the logo and label must appear
+ * together on the button — no logo-only or label-only variants.
+ */
+function AppleIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" {...props}>
+      <path
+        d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
+        fill="currentColor"
+      />
+    </svg>
   );
 }
 

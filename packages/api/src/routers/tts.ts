@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { BackLanguageSchema } from '@ensemble/types';
 
-import { protectedProcedure, publicProcedure, router } from '../trpc';
+import { publicProcedure, router } from '../trpc';
 
 const TTS_ENDPOINT = 'https://texttospeech.googleapis.com/v1/text:synthesize';
 
@@ -57,7 +57,7 @@ export const ttsRouter = router({
    * underlying problem (e.g. invalid key, quota exceeded, unsupported
    * language) without us having to bake in an exhaustive translation layer.
    */
-  synthesize: protectedProcedure
+  synthesize: publicProcedure
     .input(
       z.object({
         text: z.string().trim().min(1).max(MAX_INPUT_LENGTH),

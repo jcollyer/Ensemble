@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { protectedProcedure, router } from '../trpc';
+import { publicProcedure, router } from '../trpc';
 
 /**
  * Languages we look up. Aligns with the translate router (fr/es/de) plus
@@ -271,7 +271,7 @@ function extractIpaFromHtml(html: string, heading: string): string | null {
 }
 
 export const dictionaryRouter = router({
-  getGender: protectedProcedure.input(Input).mutation(async ({ input }) => {
+  getGender: publicProcedure.input(Input).mutation(async ({ input }) => {
     if (isMultipleWords(input.word)) return { kind: 'multiple_words' as const };
     const page = await lookupWord(input.word);
     if (!page) return { kind: 'not_in_dictionary' as const };
@@ -289,7 +289,7 @@ export const dictionaryRouter = router({
    *  recognized POS heading in the language section, which matches
    *  Wiktionary's convention of listing the most common interpretation
    *  first. */
-  getCategory: protectedProcedure.input(Input).mutation(async ({ input }) => {
+  getCategory: publicProcedure.input(Input).mutation(async ({ input }) => {
     if (isMultipleWords(input.word)) return { kind: 'multiple_words' as const };
     const page = await lookupWord(input.word);
     if (!page) return { kind: 'not_in_dictionary' as const };
@@ -301,7 +301,7 @@ export const dictionaryRouter = router({
     return { kind: 'ok' as const, category };
   }),
 
-  getPronunciation: protectedProcedure.input(Input).mutation(async ({ input }) => {
+  getPronunciation: publicProcedure.input(Input).mutation(async ({ input }) => {
     if (isMultipleWords(input.word)) return { kind: 'multiple_words' as const };
     const page = await lookupWord(input.word);
     if (!page) return { kind: 'not_in_dictionary' as const };

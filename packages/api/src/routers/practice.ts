@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { SubmitReviewInput } from '@ensemble/types';
 
 import { resolveDeckVisibility } from '../lib/groupAuth';
-import { protectedProcedure, router } from '../trpc';
+import { protectedProcedure, publicProcedure, router } from '../trpc';
 
 /**
  * Practice procedures.
@@ -35,7 +35,7 @@ export const practiceRouter = router({
    * The client applies its own shuffle on top of this ordering for
    * "Shuffle" mode, so the server is only responsible for the in-order case.
    */
-  queue: protectedProcedure
+  queue: publicProcedure
     .input(
       z.object({
         categoryId: z.string().cuid().optional(),
@@ -46,6 +46,18 @@ export const practiceRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const viewerId = ctx.session?.user?.id ?? null;
+
+      // Guests can only practice a specific public deck. The "all cards"
+      // and multi-deck queue modes both depend on a signed-in user owning
+      // cards, so we reject the unscoped variant up front.
+      if (!viewerId && !input.categoryId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Sign in to practice across all your cards.',
+        });
+      }
+
       const category = input.categoryId
         ? await ctx.prisma.category.findFirst({
             where: { id: input.categoryId },
@@ -64,7 +76,7 @@ export const practiceRouter = router({
 
       let categoryIsOwner = false;
       if (category) {
-        const v = await resolveDeckVisibility(ctx.prisma, ctx.userId, category);
+        const v = await resolveDeckVisibility(ctx.prisma, viewerId, category);
         if (!v.canRead) throw new TRPCError({ code: 'NOT_FOUND' });
         categoryIsOwner = v.isOwner;
       }
@@ -85,8 +97,9 @@ export const practiceRouter = router({
           // decks contain cards authored by multiple members and the viewer
           // can practice all of them. For unscoped ("all cards") queries we
           // still scope to the viewer's own cards, matching the All-cards
-          // page's intent.
-          ...(input.categoryId ? {} : { userId: ctx.userId }),
+          // page's intent. (Guests never reach the unscoped branch — see
+          // the early-return above.)
+          ...(input.categoryId ? {} : { userId: viewerId! }),
           ...categoryFilter,
           ...classFilter,
         },
@@ -103,16 +116,15 @@ export const practiceRouter = router({
       });
 
       // Attach the viewer's own per-card difficulty rating from CardProgress.
-      // Pre-Groups this column lived on Flashcard; now it lives in a separate
-      // table so a card in a shared deck can have a different rating per
-      // viewer. Cards the viewer has never rated come back with null, same
-      // as before.
-      const progressRows = cards.length
-        ? await ctx.prisma.cardProgress.findMany({
-            where: { userId: ctx.userId, cardId: { in: cards.map((c) => c.id) } },
-            select: { cardId: true, difficultyLevel: true },
-          })
-        : [];
+      // Guests have no rows in CardProgress, so we skip the query entirely
+      // and every card comes back with `difficultyLevel: null`.
+      const progressRows =
+        viewerId && cards.length
+          ? await ctx.prisma.cardProgress.findMany({
+              where: { userId: viewerId, cardId: { in: cards.map((c) => c.id) } },
+              select: { cardId: true, difficultyLevel: true },
+            })
+          : [];
       const progressByCardId = new Map(progressRows.map((p) => [p.cardId, p.difficultyLevel]));
 
       return {
