@@ -201,7 +201,7 @@ function SignedInHomeScreen() {
         style: 'destructive',
         onPress: async () => {
           await signOut();
-          router.replace('/signin');
+          router.replace('/');
         },
       },
     ]);
