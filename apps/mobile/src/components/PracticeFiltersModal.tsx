@@ -111,8 +111,12 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
     const params = new URLSearchParams();
 
     if (deckMode && categoryId) {
-      // Lock to this deck's cards.
-      params.set('categoryIds', categoryId);
+      // Lock to this deck's cards. Use the singular `categoryId` param so the
+      // server's `practice.queue` runs the single-deck branch, which is the
+      // only branch a guest is allowed to hit (and which resolves public-deck
+      // visibility correctly). Passing `categoryIds` for a single-deck play
+      // routes through the multi-deck branch, which 401s for guests.
+      params.set('categoryId', categoryId);
       // Signal that the user entered practice from a deck detail page so the
       // completion view can show "Back to deck" and navigate back correctly.
       params.set('origin', 'deck');
