@@ -22,10 +22,15 @@ import { Feather } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
-import type { BackLanguageValue, DifficultyLevel } from '@ensemble/types';
+import type {
+  AdvancedDifficultyLevel,
+  BackLanguageValue,
+  DifficultyLevel,
+} from '@ensemble/types';
+import { decodeAdvancedDifficultyLevels } from '@ensemble/types';
 import { Button } from '@/components/Button';
 import { trpc } from '@/lib/trpc';
-import { FlipCard, NavButton, RatingButtons } from './FlashcardViewer';
+import { FlipCard, NavButton, RatingPanel } from './FlashcardViewer';
 
 // ── Public type for cards passed to this modal ─────────────────────────────────
 
@@ -39,6 +44,13 @@ export interface PreviewCard {
   gender: string | null;
   pronunciation: string | null;
   backLanguage: BackLanguageValue | null;
+  /**
+   * Existing advanced-rating selection (comma-separated CSV from the
+   * CardProgress row). Used to pre-tick the checkboxes when the user
+   * re-rates a card. Optional — omitting it just opens the advanced
+   * panel empty.
+   */
+  advancedDifficultyLevel?: string | null;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -91,9 +103,16 @@ export function FlashcardPreviewModal({
     setIndex((i) => Math.min(cards.length - 1, i + 1));
   }, [cards.length]);
 
-  function handleRate(level: DifficultyLevel) {
+  function handleRate(level: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) {
     if (!current || !canRate) return;
-    submit.mutate({ cardId: current.id, difficultyLevel: level });
+    submit.mutate({
+      cardId: current.id,
+      difficultyLevel: level,
+      // Only forward the advanced field when the user actually used the
+      // advanced picker. `undefined` leaves the column untouched on the
+      // server, preserving any prior selection.
+      ...(advanced !== undefined ? { advancedDifficultyLevel: advanced } : {}),
+    });
     onRated?.(current.id, level);
     // After rating, advance to next card; if on last just reset the flip.
     if (canGoNext) {
@@ -113,7 +132,7 @@ export function FlashcardPreviewModal({
     >
       <SafeAreaView className="flex-1 bg-slate-50">
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <View className="flex-row items-center justify-between border-b border-slate-100 px-4 py-3">
+        <View className="flex-row items-center justify-between border-b border-slate-100 px-4 pb-3 pt-5">
           <Text className="text-sm text-slate-500">
             {cards.length > 0 ? `${index + 1} of ${cards.length}` : ''}
           </Text>
@@ -154,7 +173,14 @@ export function FlashcardPreviewModal({
 
             {/* ── Flip button or rating buttons ───────────────────────── */}
             {flipped && canRate ? (
-              <RatingButtons onRate={handleRate} disabled={submit.isPending} />
+              <RatingPanel
+                // Re-mount per card so the advanced toggle / checked boxes
+                // reset between cards instead of bleeding over.
+                key={current.id}
+                onRate={handleRate}
+                disabled={submit.isPending}
+                initialAdvanced={decodeAdvancedDifficultyLevels(current.advancedDifficultyLevel)}
+              />
             ) : flipped ? (
               <Text className="mt-6 text-center text-sm text-slate-500">
                 Public deck — read-only. Use the arrows to navigate.

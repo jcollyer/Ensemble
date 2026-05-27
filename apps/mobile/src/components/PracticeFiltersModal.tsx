@@ -3,7 +3,11 @@ import { X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
-import { WORD_CLASS_OPTIONS } from '@ensemble/types';
+import {
+  ADVANCED_DIFFICULTY_LEVEL_OPTIONS,
+  WORD_CLASS_OPTIONS,
+  decodeAdvancedDifficultyLevels,
+} from '@ensemble/types';
 
 import { trpc } from '../lib/trpc';
 import { Button } from './Button';
@@ -38,6 +42,7 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
+  const [selectedAdvancedRatings, setSelectedAdvancedRatings] = useState<string[]>([]);
   const [playMode, setPlayMode] = useState<PlayMode>('in_order');
 
   function toggleCategory(id: string) {
@@ -58,10 +63,17 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
     );
   }
 
+  function toggleAdvancedRating(value: string) {
+    setSelectedAdvancedRatings((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
+    );
+  }
+
   function resetFilters() {
     setSelectedCategoryIds([]);
     setSelectedClasses([]);
     setSelectedRatings([]);
+    setSelectedAdvancedRatings([]);
   }
 
   // ── Data queries ──────────────────────────────────────────────────────────
@@ -91,13 +103,30 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
         return level !== null && selectedRatings.includes(level);
       });
     }
+    if (selectedAdvancedRatings.length > 0) {
+      result = result.filter((c) => {
+        const raw =
+          (c as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null;
+        const tokens = decodeAdvancedDifficultyLevels(raw);
+        if (selectedAdvancedRatings.includes('no_rating') && tokens.length === 0) return true;
+        return tokens.some((t) => selectedAdvancedRatings.includes(t));
+      });
+    }
     return result;
-  }, [baseCards, deckMode, selectedCategoryIds, selectedClasses, selectedRatings]);
+  }, [
+    baseCards,
+    deckMode,
+    selectedCategoryIds,
+    selectedClasses,
+    selectedRatings,
+    selectedAdvancedRatings,
+  ]);
 
   const hasActiveFilters =
     (!deckMode && selectedCategoryIds.length > 0) ||
     selectedClasses.length > 0 ||
-    selectedRatings.length > 0;
+    selectedRatings.length > 0 ||
+    selectedAdvancedRatings.length > 0;
 
   const practiceCountLabel = hasActiveFilters
     ? filteredCards.length > 0
@@ -135,6 +164,9 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
     if (selectedRatings.length > 0) {
       params.set('difficultyLevels', selectedRatings.join(','));
     }
+    if (selectedAdvancedRatings.length > 0) {
+      params.set('advancedDifficultyLevels', selectedAdvancedRatings.join(','));
+    }
     if (playMode === 'shuffle') {
       params.set('shuffle', '1');
     }
@@ -152,7 +184,7 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
     >
       <View className="flex-1 bg-slate-50">
         {/* Header */}
-        <View className="flex-row items-center justify-between border-b border-slate-200 bg-white px-4 py-4">
+        <View className="flex-row items-center justify-between border-b border-slate-200 bg-white px-4 pb-4 pt-6">
           <Text className="text-lg font-semibold text-slate-900">Play</Text>
           <TouchableOpacity onPress={onClose} hitSlop={8}>
             <View className="h-8 w-8 items-center justify-center rounded-full bg-slate-100">
@@ -267,6 +299,48 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
                   );
                 })}
               </View>
+            </View>
+
+            {/* Advanced Rating — mirrors the coarse Rating filter above but
+                slices by the seven advancedDifficultyLevel tokens. Selecting
+                multiple chips is an "any of" match; "No rating" matches cards
+                that have no advanced selection yet. */}
+            <View className="gap-1.5">
+              <Text className="text-xs text-slate-500">Advanced Rating</Text>
+              {(() => {
+                const opts = [
+                  ...ADVANCED_DIFFICULTY_LEVEL_OPTIONS.map((o) => ({
+                    value: o.value as string,
+                    label: o.label,
+                  })),
+                  { value: 'no_rating', label: 'No rating' },
+                ];
+                const half = Math.ceil(opts.length / 2);
+                return [opts.slice(0, half), opts.slice(half)].map((row, rowIdx) => (
+                  <View key={rowIdx} className="flex-row flex-wrap gap-1.5">
+                    {row.map((opt) => {
+                      const selected = selectedAdvancedRatings.includes(opt.value);
+                      return (
+                        <Pressable
+                          key={opt.value}
+                          onPress={() => toggleAdvancedRating(opt.value)}
+                          className={`rounded-full px-3 py-1.5 ${
+                            selected ? 'bg-blue-500' : 'bg-slate-100'
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-medium ${
+                              selected ? 'text-white' : 'text-slate-600'
+                            }`}
+                          >
+                            {opt.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ));
+              })()}
             </View>
 
             {/* Play order */}

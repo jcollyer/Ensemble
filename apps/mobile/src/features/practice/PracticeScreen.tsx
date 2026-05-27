@@ -2,14 +2,19 @@ import { Stack, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
-import { type BackLanguageValue, type DifficultyLevel } from '@ensemble/types';
+import {
+  type AdvancedDifficultyLevel,
+  type BackLanguageValue,
+  type DifficultyLevel,
+  decodeAdvancedDifficultyLevels,
+} from '@ensemble/types';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { useAuth, useRequireAuth } from '@/lib/AuthContext';
 import { trpc } from '@/lib/trpc';
 import { shuffleArray } from '@/lib/format';
-import { FlipCard, NavButton, RatingButtons } from './FlashcardViewer';
+import { FlipCard, NavButton, RatingPanel } from './FlashcardViewer';
 
 interface Props {
   categoryId?: string;
@@ -22,6 +27,13 @@ interface Props {
    * 'no_rating' (for cards with a null difficultyLevel). Empty = all ratings.
    */
   difficultyLevels?: string[];
+  /**
+   * Filter by advanced rating. Values are members of
+   * ADVANCED_DIFFICULTY_LEVEL_VALUES (`do_not_know`, `know_definition`, …)
+   * or the literal `no_rating` for cards with no advanced selection yet.
+   * Matching is "contains any of the selected tokens." Empty = all.
+   */
+  advancedDifficultyLevels?: string[];
   /**
    * When true, randomize the card order for this session. Stable across
    * renders and rating submissions — re-shuffles only on "Play again".
@@ -52,6 +64,7 @@ export function PracticeScreen({
   categoryIds,
   classes,
   difficultyLevels,
+  advancedDifficultyLevels,
   shuffle = false,
   origin,
 }: Props) {
@@ -97,13 +110,25 @@ export function PracticeScreen({
 
   const rawCards = data?.cards ?? [];
   const filteredCards = useMemo(() => {
-    if (!difficultyLevels?.length) return rawCards;
-    return rawCards.filter((c) => {
-      const level = (c as { difficultyLevel?: string | null }).difficultyLevel ?? null;
-      if (difficultyLevels.includes('no_rating') && level === null) return true;
-      return level !== null && difficultyLevels.includes(level);
-    });
-  }, [rawCards, difficultyLevels]);
+    let result = rawCards;
+    if (difficultyLevels?.length) {
+      result = result.filter((c) => {
+        const level = (c as { difficultyLevel?: string | null }).difficultyLevel ?? null;
+        if (difficultyLevels.includes('no_rating') && level === null) return true;
+        return level !== null && difficultyLevels.includes(level);
+      });
+    }
+    if (advancedDifficultyLevels?.length) {
+      result = result.filter((c) => {
+        const raw =
+          (c as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null;
+        const tokens = decodeAdvancedDifficultyLevels(raw);
+        if (advancedDifficultyLevels.includes('no_rating') && tokens.length === 0) return true;
+        return tokens.some((t) => advancedDifficultyLevels.includes(t));
+      });
+    }
+    return result;
+  }, [rawCards, difficultyLevels, advancedDifficultyLevels]);
 
   // Apply shuffle on top of the filtered list. Keyed by a signature derived
   // from the card ids so the order stays stable across re-renders and across
@@ -148,7 +173,7 @@ export function PracticeScreen({
           ? 'Back to all cards'
           : 'Back to deck';
 
-  function handleRate(level: DifficultyLevel) {
+  function handleRate(level: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) {
     if (!current) return;
     // Guests see the rating buttons but tapping one prompts sign-in rather
     // than submitting a review. We don't try to auto-submit after sign-in:
@@ -165,7 +190,13 @@ export function PracticeScreen({
       return;
     }
     if (!canRate) return;
-    submit.mutate({ cardId: current.id, difficultyLevel: level });
+    submit.mutate({
+      cardId: current.id,
+      difficultyLevel: level,
+      // Only forward advanced when the user used the advanced panel — the
+      // simple three-button path leaves the advanced column untouched.
+      ...(advanced !== undefined ? { advancedDifficultyLevel: advanced } : {}),
+    });
     setReviewed((n) => n + 1);
     setFlipped(false);
     setIndex((i) => i + 1);
@@ -262,7 +293,16 @@ export function PracticeScreen({
 
             {flipped && showRatingButtons ? (
               <>
-                <RatingButtons onRate={handleRate} />
+                <RatingPanel
+                  // Re-mount per card so the advanced toggle / checked
+                  // boxes reset cleanly between cards.
+                  key={current?.id}
+                  onRate={handleRate}
+                  initialAdvanced={decodeAdvancedDifficultyLevels(
+                    (current as { advancedDifficultyLevel?: string | null } | undefined)
+                      ?.advancedDifficultyLevel ?? null,
+                  )}
+                />
                 {isGuest ? (
                   <Text className="mt-3 text-center text-xs text-slate-400">
                     Sign in to save your progress.

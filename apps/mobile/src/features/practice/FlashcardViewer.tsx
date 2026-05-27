@@ -10,12 +10,21 @@
  */
 
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio, type AVPlaybackStatus } from 'expo-av';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Switch, Text, View } from 'react-native';
 
-import type { BackLanguageValue, DifficultyLevel } from '@ensemble/types';
-import { genderLabel } from '@ensemble/types';
+import type {
+  AdvancedDifficultyLevel,
+  BackLanguageValue,
+  DifficultyLevel,
+} from '@ensemble/types';
+import {
+  ADVANCED_DIFFICULTY_LEVEL_OPTIONS,
+  difficultyLevelFromAdvanced,
+  genderLabel,
+} from '@ensemble/types';
 import { Card } from '@/components/Card';
 import { ClassBadge } from '@/components/ClassBadge';
 import { trpc } from '@/lib/trpc';
@@ -339,6 +348,232 @@ export function RatingButtons({
           <Text className="text-xs text-slate-500">{r.sub}</Text>
         </Pressable>
       ))}
+    </View>
+  );
+}
+
+// ── AdvancedRatingPanel ────────────────────────────────────────────────────────
+
+/**
+ * React Native equivalent of the web AdvancedRatingPanel. Replaces the three
+ * Challenging/Good/Easy buttons with seven detailed checkbox-style rows.
+ *
+ * Interaction rules mirror the web version exactly:
+ *   - "Know all" auto-ticks the five middle options (definition / gender /
+ *     pronunciation / audibly / spelling) but NOT "Do not know".
+ *   - "Do not know" is mutually exclusive with everything else — ticking it
+ *     clears any other selection; ticking a middle option drops it.
+ *   - The panel always has at least one box checked so a submit is never
+ *     ambiguous. Unticking the last box falls back to the "Do not know"
+ *     sentinel.
+ *   - When every middle option is ticked by hand, "Know all" auto-ticks too.
+ */
+export function AdvancedRatingPanel({
+  onSubmit,
+  disabled,
+  initial,
+}: {
+  onSubmit: (level: DifficultyLevel, advanced: AdvancedDifficultyLevel[]) => void;
+  disabled?: boolean;
+  initial?: readonly AdvancedDifficultyLevel[];
+}) {
+  const [selected, setSelected] = useState<Set<AdvancedDifficultyLevel>>(() => {
+    if (initial && initial.length > 0) return new Set(initial);
+    return new Set(['do_not_know']);
+  });
+
+  function toggle(value: AdvancedDifficultyLevel) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const isChecked = next.has(value);
+
+      if (value === 'know_all') {
+        if (isChecked) {
+          // Unticking "Know all" leaves nothing checked; fall back to the
+          // sentinel so the panel always has a coherent state.
+          return new Set(['do_not_know']);
+        }
+        return new Set<AdvancedDifficultyLevel>([
+          'know_definition',
+          'know_gender',
+          'know_pronunciation',
+          'know_audibly',
+          'know_spelling',
+          'know_all',
+        ]);
+      }
+
+      if (value === 'do_not_know') {
+        if (isChecked) {
+          if (next.size === 1) return prev;
+          next.delete('do_not_know');
+          return next;
+        }
+        return new Set(['do_not_know']);
+      }
+
+      if (isChecked) {
+        next.delete(value);
+        if (next.size === 0) return new Set(['do_not_know']);
+        next.delete('know_all');
+        return next;
+      }
+      next.add(value);
+      next.delete('do_not_know');
+      const middleFiveCovered =
+        next.has('know_definition') &&
+        next.has('know_gender') &&
+        next.has('know_pronunciation') &&
+        next.has('know_audibly') &&
+        next.has('know_spelling');
+      if (middleFiveCovered) next.add('know_all');
+      else next.delete('know_all');
+      return next;
+    });
+  }
+
+  function handleSubmit() {
+    const values = Array.from(selected) as AdvancedDifficultyLevel[];
+    const level = difficultyLevelFromAdvanced(values) ?? 'good';
+    onSubmit(level, values);
+  }
+
+  return (
+    <View className="mt-6 gap-3 rounded-lg border border-slate-200 bg-white p-3">
+      <View className="gap-1">
+        {ADVANCED_DIFFICULTY_LEVEL_OPTIONS.map((opt) => {
+          const checked = selected.has(opt.value);
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => toggle(opt.value)}
+              disabled={disabled}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked }}
+              accessibilityLabel={opt.label}
+              className={`flex-row items-start gap-3 rounded-md px-2 py-2 active:bg-slate-50 ${
+                disabled ? 'opacity-60' : ''
+              }`}
+            >
+              {/* Hand-rolled checkbox so we don't pull in another dependency.
+                  The 4px inner square gives a clear "ticked" affordance and
+                  inherits the primary color when checked. */}
+              <View
+                className={`mt-0.5 h-5 w-5 items-center justify-center rounded border ${
+                  checked ? 'border-blue-500 bg-blue-500' : 'border-slate-300 bg-white'
+                }`}
+              >
+                {checked ? <Feather name="check" size={14} color="#ffffff" /> : null}
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text className="text-sm font-medium text-slate-900">{opt.label}</Text>
+                <Text className="text-xs text-slate-500">{opt.description}</Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Pressable
+        onPress={handleSubmit}
+        disabled={disabled}
+        accessibilityRole="button"
+        className={`items-center rounded-md bg-blue-500 px-3 py-3 active:opacity-80 ${
+          disabled ? 'opacity-50' : ''
+        }`}
+      >
+        <Text className="text-sm font-semibold text-white">Submit rating</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// ── RatingPanel ────────────────────────────────────────────────────────────────
+
+/**
+ * AsyncStorage key for the global "Advanced rating" toggle preference. Same
+ * UX contract as the web (window.localStorage on that side): once the user
+ * flips the switch on, every subsequent card opens in advanced mode until
+ * they flip it back off — across cards, screens, and app launches.
+ */
+const ADVANCED_RATING_PREF_KEY = 'ensemble:rating:advanced';
+
+/**
+ * Wraps the simple three-button picker and the seven-checkbox advanced
+ * picker behind a single "Advanced rating" toggle so every caller (the
+ * full-screen practice flow, the preview modal) gets identical UX and
+ * persistence rules without each one re-implementing the switch.
+ *
+ * If a card already has an advanced rating, we open in advanced mode for
+ * that card regardless of the global pref (so re-rating never silently
+ * downgrades). Explicit toggle flips persist the new global pref.
+ */
+export function RatingPanel({
+  onRate,
+  disabled,
+  initialAdvanced,
+}: {
+  onRate: (level: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) => void;
+  disabled?: boolean;
+  initialAdvanced?: readonly AdvancedDifficultyLevel[];
+}) {
+  // Default: open advanced if this card already has an advanced rating.
+  // Otherwise wait for the AsyncStorage read below to fill in the pref. We
+  // can't read AsyncStorage synchronously, so the first paint may flicker
+  // from the three-button view to the seven-checkbox view if the global
+  // pref is on — that's acceptable on mobile (rendering happens after Flip)
+  // and matches the React Native idiom for persisted prefs.
+  const [advanced, setAdvanced] = useState<boolean>(
+    () => (initialAdvanced?.length ?? 0) > 0,
+  );
+  const userTouchedRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(ADVANCED_RATING_PREF_KEY);
+        if (cancelled) return;
+        // Don't clobber a user flip that happened while we were reading
+        // storage — `userTouchedRef` tracks that case.
+        if (userTouchedRef.current) return;
+        if (raw === 'true') setAdvanced(true);
+        else if (raw === 'false' && (initialAdvanced?.length ?? 0) === 0) {
+          // Explicit "off" pref only applies when the card has no existing
+          // advanced selection. Otherwise the re-rate UX wins.
+          setAdvanced(false);
+        }
+      } catch {
+        // Storage may be unavailable; the in-memory default is fine.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialAdvanced]);
+
+  function handleToggle(next: boolean) {
+    userTouchedRef.current = true;
+    setAdvanced(next);
+    // Persist the user's intent. Failures are non-fatal; the toggle still
+    // works in-memory for the rest of the session.
+    AsyncStorage.setItem(ADVANCED_RATING_PREF_KEY, String(next)).catch(() => {});
+  }
+
+  return (
+    <View className="mt-6 gap-2">
+      <View className="flex-row items-center justify-end gap-2">
+        <Text className="text-xs text-slate-500">Advanced rating</Text>
+        <Switch value={advanced} onValueChange={handleToggle} disabled={disabled} />
+      </View>
+      {advanced ? (
+        <AdvancedRatingPanel
+          disabled={disabled}
+          initial={initialAdvanced}
+          onSubmit={(level, values) => onRate(level, values)}
+        />
+      ) : (
+        <RatingButtons disabled={disabled} onRate={(level) => onRate(level)} />
+      )}
     </View>
   );
 }

@@ -121,6 +121,10 @@ export default function AllCardsScreen() {
         backLanguage: (card.categoryId
           ? (decksById.get(card.categoryId)?.backLanguage ?? null)
           : null) as import('@ensemble/types').BackLanguageValue | null,
+        // Forward the existing advanced selection so the rating panel can
+        // pre-tick the user's previous choice when they re-rate a card.
+        advancedDifficultyLevel:
+          (card as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null,
       })),
     [filteredCards, decksById],
   );

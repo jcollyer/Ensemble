@@ -15,6 +15,7 @@ export default function AllCardsPracticeRoute() {
     categoryIds?: string;
     classes?: string;
     difficultyLevels?: string;
+    advancedDifficultyLevels?: string;
     shuffle?: string;
     origin?: string;
   }>();
@@ -23,6 +24,7 @@ export default function AllCardsPracticeRoute() {
   const categoryIds = params.categoryIds?.split(',').filter(Boolean);
   const classes = params.classes?.split(',').filter(Boolean);
   const difficultyLevels = params.difficultyLevels?.split(',').filter(Boolean);
+  const advancedDifficultyLevels = params.advancedDifficultyLevels?.split(',').filter(Boolean);
   const shuffle = params.shuffle === '1' || params.shuffle === 'true';
   const origin = params.origin === 'home' || params.origin === 'deck' ? params.origin : undefined;
 
@@ -32,6 +34,9 @@ export default function AllCardsPracticeRoute() {
       categoryIds={categoryIds?.length ? categoryIds : undefined}
       classes={classes?.length ? classes : undefined}
       difficultyLevels={difficultyLevels?.length ? difficultyLevels : undefined}
+      advancedDifficultyLevels={
+        advancedDifficultyLevels?.length ? advancedDifficultyLevels : undefined
+      }
       shuffle={shuffle}
       origin={origin}
     />

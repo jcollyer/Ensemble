@@ -112,6 +112,10 @@ export default function DeckDetailScreen() {
     gender: (card as { gender?: string | null }).gender ?? null,
     pronunciation: (card as { pronunciation?: string | null }).pronunciation ?? null,
     backLanguage: (category?.backLanguage ?? null) as BackLanguageValue | null,
+    // Forward the existing advanced selection so the rating panel can
+    // pre-tick the user's previous choice when they re-rate a card.
+    advancedDifficultyLevel:
+      (card as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null,
   }));
 
   return (
