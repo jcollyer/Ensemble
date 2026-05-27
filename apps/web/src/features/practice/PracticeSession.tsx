@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, CheckCircle2, Pencil, RotateCcw } from 'lucide-react';
 
-import type { BackLanguageValue, DifficultyLevel } from '@ensemble/types';
+import type { AdvancedDifficultyLevel, BackLanguageValue, DifficultyLevel } from '@ensemble/types';
+import { decodeAdvancedDifficultyLevels } from '@ensemble/types';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,7 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { trpc } from '@/lib/trpc/client';
 import { shuffleArray } from '@/lib/utils';
 import { EditCardDialog } from '@/features/cards/EditCardDialog';
-import { FlipCard, NavButton, RatingButtons } from './FlashcardViewer';
+import { FlipCard, NavButton, RatingPanel } from './FlashcardViewer';
 
 interface Props {
   categoryId?: string;
@@ -25,6 +26,15 @@ interface Props {
    * 'no_rating' (for cards with a null difficultyLevel). Empty = all ratings.
    */
   difficultyLevels?: string[];
+  /**
+   * Filter by advanced rating. Values are members of
+   * ADVANCED_DIFFICULTY_LEVEL_VALUES (`do_not_know`, `know_definition`, …)
+   * or the literal `no_rating` for cards with no advanced selection yet.
+   * Matching is "contains any of the selected tokens" so a multi-select
+   * filter like ["know_definition", "know_pronunciation"] returns every
+   * card whose CSV column mentions at least one of the two. Empty = all.
+   */
+  advancedDifficultyLevels?: string[];
   /**
    * When true, randomize the card order for this session. The shuffle is
    * stable across renders and across rating submissions — it only re-shuffles
@@ -49,6 +59,7 @@ export function PracticeSession({
   categoryIds,
   classes,
   difficultyLevels,
+  advancedDifficultyLevels,
   shuffle = false,
 }: Props) {
   const utils = trpc.useUtils();
@@ -96,13 +107,25 @@ export function PracticeSession({
 
   const rawCards = data?.cards ?? [];
   const filteredCards = useMemo(() => {
-    if (!difficultyLevels?.length) return rawCards;
-    return rawCards.filter((c) => {
-      const level = (c as { difficultyLevel?: string | null }).difficultyLevel ?? null;
-      if (difficultyLevels.includes('no_rating') && level === null) return true;
-      return level !== null && difficultyLevels.includes(level);
-    });
-  }, [rawCards, difficultyLevels]);
+    let result = rawCards;
+    if (difficultyLevels?.length) {
+      result = result.filter((c) => {
+        const level = (c as { difficultyLevel?: string | null }).difficultyLevel ?? null;
+        if (difficultyLevels.includes('no_rating') && level === null) return true;
+        return level !== null && difficultyLevels.includes(level);
+      });
+    }
+    if (advancedDifficultyLevels?.length) {
+      result = result.filter((c) => {
+        const raw =
+          (c as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null;
+        const tokens = decodeAdvancedDifficultyLevels(raw);
+        if (advancedDifficultyLevels.includes('no_rating') && tokens.length === 0) return true;
+        return tokens.some((t) => advancedDifficultyLevels.includes(t));
+      });
+    }
+    return result;
+  }, [rawCards, difficultyLevels, advancedDifficultyLevels]);
 
   // Apply shuffle on top of the filtered list. Keyed by a signature derived
   // from the card ids so the order stays stable across re-renders and across
@@ -171,9 +194,16 @@ export function PracticeSession({
     return () => window.removeEventListener('keydown', handler);
   }, [current, done, canGoPrev, canGoNext, handlePrev, handleNext]);
 
-  function handleRate(level: DifficultyLevel) {
+  function handleRate(level: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) {
     if (!current || !canRate) return;
-    submit.mutate({ cardId: current.id, difficultyLevel: level });
+    submit.mutate({
+      cardId: current.id,
+      difficultyLevel: level,
+      // Only forward advanced when the user used the advanced panel. See
+      // FlashcardPreviewModal for the same rule — keeps the column
+      // untouched on a simple three-button submit.
+      ...(advanced !== undefined ? { advancedDifficultyLevel: advanced } : {}),
+    });
     setReviewed((n) => n + 1);
     setFlipped(false);
     setIndex((i) => i + 1);
@@ -266,7 +296,17 @@ export function PracticeSession({
           </div>
 
           {flipped && canRate ? (
-            <RatingButtons onRate={handleRate} disabled={submit.isPending} />
+            <RatingPanel
+              // Re-mount the panel per card so the advanced toggle / checked
+              // boxes reset between cards instead of bleeding over.
+              key={current?.id}
+              onRate={handleRate}
+              disabled={submit.isPending}
+              initialAdvanced={decodeAdvancedDifficultyLevels(
+                (current as { advancedDifficultyLevel?: string | null } | undefined)
+                  ?.advancedDifficultyLevel ?? null,
+              )}
+            />
           ) : flipped ? (
             <div className="text-muted-foreground text-center text-sm">
               Public deck practice is read-only. Use the arrow buttons to move between cards.

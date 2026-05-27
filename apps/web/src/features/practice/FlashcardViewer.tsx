@@ -14,9 +14,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Volume2 } from 'lucide-react';
 
-import type { BackLanguageValue, DifficultyLevel } from '@ensemble/types';
-import { genderLabel } from '@ensemble/types';
+import type { AdvancedDifficultyLevel, BackLanguageValue, DifficultyLevel } from '@ensemble/types';
+import {
+  ADVANCED_DIFFICULTY_LEVEL_OPTIONS,
+  difficultyLevelFromAdvanced,
+  genderLabel,
+} from '@ensemble/types';
 import { Card, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { trpc } from '@/lib/trpc/client';
 import { cn } from '@/lib/utils';
 import { ClassBadge } from '@/features/cards/ClassBadge';
@@ -352,6 +358,266 @@ export function RatingButtons({
           <span className="text-muted-foreground text-xs">{r.sub}</span>
         </button>
       ))}
+    </div>
+  );
+}
+
+// ── AdvancedRatingPanel ────────────────────────────────────────────────────────
+
+/**
+ * Replaces the three Challenging/Good/Easy buttons with the seven detailed
+ * checkboxes spec'd by Advanced rating. Checking "Know all" auto-ticks every
+ * other box except "Do not know"; checking "Do not know" clears every other
+ * box (since it's the "I literally can't use this yet" sentinel).
+ *
+ * The component is uncontrolled at the value level — callers just receive an
+ * `onSubmit` with the chosen advanced values plus the coarse
+ * difficultyLevel derived via `difficultyLevelFromAdvanced` so the existing
+ * filter/snapshot/stat surface keeps working unchanged.
+ */
+export function AdvancedRatingPanel({
+  onSubmit,
+  disabled,
+  initial,
+}: {
+  onSubmit: (level: DifficultyLevel, advanced: AdvancedDifficultyLevel[]) => void;
+  disabled?: boolean;
+  /** Pre-tick these boxes on mount (e.g. after a re-rate). */
+  initial?: readonly AdvancedDifficultyLevel[];
+}) {
+  // "Do not know" is the default sentinel until the user picks something
+  // else — matches the "← defaults until you check another" spec.
+  const [selected, setSelected] = useState<Set<AdvancedDifficultyLevel>>(() => {
+    if (initial && initial.length > 0) return new Set(initial);
+    return new Set(['do_not_know']);
+  });
+
+  function toggle(value: AdvancedDifficultyLevel) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const isChecked = next.has(value);
+
+      if (value === 'know_all') {
+        if (isChecked) {
+          // Unticking "Know all" leaves nothing checked; fall back to the
+          // "Do not know" default so the user always has at least one box.
+          return new Set(['do_not_know']);
+        }
+        // Ticking "Know all" auto-ticks every middle option but NOT "Do not
+        // know" (that's mutually exclusive with knowing anything).
+        return new Set<AdvancedDifficultyLevel>([
+          'know_definition',
+          'know_gender',
+          'know_pronunciation',
+          'know_audibly',
+          'know_spelling',
+          'know_all',
+        ]);
+      }
+
+      if (value === 'do_not_know') {
+        if (isChecked) {
+          // Unticking "Do not know" with nothing else checked: stay on it so
+          // the panel never reaches "no boxes ticked." A submit in that state
+          // would be ambiguous.
+          if (next.size === 1) return prev;
+          next.delete('do_not_know');
+          return next;
+        }
+        // Ticking "Do not know" clears every other selection — they're
+        // mutually exclusive with the "can't use yet" sentinel.
+        return new Set(['do_not_know']);
+      }
+
+      // Any of the five middle options: untick if already on, otherwise
+      // tick it AND drop the "Do not know" sentinel (mutually exclusive).
+      if (isChecked) {
+        next.delete(value);
+        // If unticking this dropped us to empty, fall back to the sentinel
+        // so the panel always has a coherent state.
+        if (next.size === 0) return new Set(['do_not_know']);
+        // Also drop "Know all" since the set is no longer exhaustive.
+        next.delete('know_all');
+        return next;
+      }
+      next.add(value);
+      next.delete('do_not_know');
+      // If this brings the middle five to all-on, automatically tick
+      // "Know all" so the visual state matches the implied rating.
+      const middleFiveCovered =
+        next.has('know_definition') &&
+        next.has('know_gender') &&
+        next.has('know_pronunciation') &&
+        next.has('know_audibly') &&
+        next.has('know_spelling');
+      if (middleFiveCovered) next.add('know_all');
+      else next.delete('know_all');
+      return next;
+    });
+  }
+
+  function handleSubmit() {
+    const values = Array.from(selected) as AdvancedDifficultyLevel[];
+    const level = difficultyLevelFromAdvanced(values) ?? 'good';
+    onSubmit(level, values);
+  }
+
+  return (
+    <div className="space-y-3 rounded-md border p-3">
+      <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+        {ADVANCED_DIFFICULTY_LEVEL_OPTIONS.map((opt) => {
+          const checked = selected.has(opt.value);
+          return (
+            <li key={opt.value}>
+              <label
+                className={cn(
+                  'hover:bg-muted/50 flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 transition',
+                  disabled && 'pointer-events-none opacity-60',
+                )}
+              >
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 shrink-0 cursor-pointer"
+                  checked={checked}
+                  disabled={disabled}
+                  onChange={() => toggle(opt.value)}
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">{opt.label}</span>
+                  <span className="text-muted-foreground block text-xs">{opt.description}</span>
+                </span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={disabled}
+        className={cn(
+          'bg-primary text-primary-foreground hover:bg-primary/90 w-full rounded-md py-2 text-sm font-semibold transition',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+        )}
+      >
+        Submit rating
+      </button>
+    </div>
+  );
+}
+
+// ── RatingPanel ────────────────────────────────────────────────────────────────
+
+/**
+ * localStorage key for the global "Advanced rating" toggle preference.
+ *
+ * The toggle is a per-user-per-browser preference: once a user flips it on it
+ * stays on across cards, deck/practice views, and sessions, until they flip
+ * it back off. We deliberately don't sync this through the database because
+ * it's a UI display choice, not part of any user's profile — losing it on a
+ * new device is a feature, not a bug (a fresh device shouldn't surprise the
+ * user with the heavier picker before they ask for it).
+ */
+const ADVANCED_RATING_PREF_KEY = 'ensemble:rating:advanced';
+
+function readAdvancedRatingPref(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(ADVANCED_RATING_PREF_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeAdvancedRatingPref(on: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(ADVANCED_RATING_PREF_KEY, String(on));
+  } catch {
+    // Storage may be unavailable (private mode, quota, etc.); failing to
+    // persist is non-fatal — the toggle still works in-memory for the rest
+    // of the session.
+  }
+}
+
+/**
+ * Wraps the simple three-button picker and the seven-checkbox advanced picker
+ * behind a single "Advanced rating" toggle so every caller (Practice page,
+ * preview modal, etc.) gets identical UX without each one re-implementing
+ * the switch.
+ *
+ * The toggle preference is persisted in localStorage under
+ * `ADVANCED_RATING_PREF_KEY`, so flipping it once turns the advanced picker
+ * on for every subsequent card — across views and across sessions — until
+ * the user flips it back off.
+ *
+ * If a specific card already has an advanced rating, we still open in
+ * advanced mode for that card regardless of the global pref (so re-rating
+ * never silently downgrades the existing selection). Toggling off via the
+ * switch then clears the global pref AND the per-card override.
+ */
+export function RatingPanel({
+  onRate,
+  disabled,
+  initialAdvanced,
+}: {
+  /**
+   * Called with the coarse `DifficultyLevel` (always) and the advanced
+   * selection (only when the advanced toggle is on — `undefined` when the
+   * user used the simple picker, so the API leaves the advanced column
+   * untouched). The caller forwards both to `submitReview`.
+   */
+  onRate: (level: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) => void;
+  disabled?: boolean;
+  /** Pre-tick these boxes when the advanced panel opens (re-rate UX). */
+  initialAdvanced?: readonly AdvancedDifficultyLevel[];
+}) {
+  // Lazy initializer reads the persisted preference on mount. This is a
+  // client component (PracticeSession / FlashcardPreviewModal both render
+  // client-side and the panel only ever mounts after the user clicks Flip),
+  // so reading localStorage here is safe and avoids a flicker that an
+  // effect-based read would cause.
+  //
+  // We OR in `initialAdvanced.length > 0` so a card that already has an
+  // advanced rating opens advanced even if the global pref is off. That
+  // protects the re-rate flow: flipping a previously-advanced rating back
+  // to a coarse one should be a deliberate user action, not the side-effect
+  // of having the global pref off.
+  const [advanced, setAdvanced] = useState<boolean>(() => {
+    if ((initialAdvanced?.length ?? 0) > 0) return true;
+    return readAdvancedRatingPref();
+  });
+
+  function handleToggle(next: boolean) {
+    setAdvanced(next);
+    // Persist the user's intent. We update the global pref on every flip
+    // (including the case where the panel opened in advanced mode purely
+    // because of the per-card override) — the user's explicit toggle wins.
+    writeAdvancedRatingPref(next);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-end gap-2">
+        <Label htmlFor="advanced-rating-toggle" className="cursor-pointer text-xs">
+          Advanced rating
+        </Label>
+        <Switch
+          id="advanced-rating-toggle"
+          checked={advanced}
+          onCheckedChange={handleToggle}
+          disabled={disabled}
+        />
+      </div>
+      {advanced ? (
+        <AdvancedRatingPanel
+          disabled={disabled}
+          initial={initialAdvanced}
+          onSubmit={(level, values) => onRate(level, values)}
+        />
+      ) : (
+        <RatingButtons disabled={disabled} onRate={(level) => onRate(level)} />
+      )}
     </div>
   );
 }

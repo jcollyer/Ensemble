@@ -43,6 +43,7 @@ import {
   BACK_LANGUAGES,
   CategoryCreateInput,
   DECK_FOLDER_COLOR_PALETTE,
+  decodeAdvancedDifficultyLevels,
   FolderCreateInput,
   WORD_CLASS_OPTIONS,
 } from '@ensemble/types';
@@ -71,6 +72,7 @@ import { trpc } from '@/lib/trpc/client';
 import { cn } from '@/lib/utils';
 import { FolderModal } from '@/features/folders/FolderModal';
 import { ProgressSnapshotCard } from '@/features/categories/ProgressSnapshotCard';
+import { AdvancedRatingFilter } from '@/features/practice/AdvancedRatingFilter';
 import { PlayModeToggle, type PlayMode } from '@/features/practice/PlayModeToggle';
 
 // Sentinels because the Radix Select doesn't allow an empty-string value.
@@ -88,6 +90,7 @@ export function CategoriesDashboard() {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
+  const [selectedAdvancedRatings, setSelectedAdvancedRatings] = useState<string[]>([]);
   const [playMode, setPlayMode] = useState<PlayMode>('in_order');
 
   function togglePlayCategory(id: string) {
@@ -105,14 +108,23 @@ export function CategoriesDashboard() {
       prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
     );
   }
+  function togglePlayAdvancedRating(value: string) {
+    setSelectedAdvancedRatings((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
+    );
+  }
 
   const hasPlayFilters =
-    selectedCategoryIds.length > 0 || selectedClasses.length > 0 || selectedRatings.length > 0;
+    selectedCategoryIds.length > 0 ||
+    selectedClasses.length > 0 ||
+    selectedRatings.length > 0 ||
+    selectedAdvancedRatings.length > 0;
 
   function resetPlayFilters() {
     setSelectedCategoryIds([]);
     setSelectedClasses([]);
     setSelectedRatings([]);
+    setSelectedAdvancedRatings([]);
     setPlayMode('in_order');
   }
 
@@ -121,6 +133,8 @@ export function CategoriesDashboard() {
     if (selectedCategoryIds.length > 0) params.set('categoryIds', selectedCategoryIds.join(','));
     if (selectedClasses.length > 0) params.set('classes', selectedClasses.join(','));
     if (selectedRatings.length > 0) params.set('difficultyLevels', selectedRatings.join(','));
+    if (selectedAdvancedRatings.length > 0)
+      params.set('advancedDifficultyLevels', selectedAdvancedRatings.join(','));
     if (playMode === 'shuffle') params.set('shuffle', '1');
     const qs = params.toString();
     return qs ? `/app/all-categories/practice?${qs}` : '/app/all-categories/practice';
@@ -157,9 +171,25 @@ export function CategoriesDashboard() {
         return level !== null && selectedRatings.includes(level);
       });
     }
+    if (selectedAdvancedRatings.length > 0) {
+      result = result.filter((c) => {
+        const raw =
+          (c as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null;
+        const tokens = decodeAdvancedDifficultyLevels(raw);
+        if (selectedAdvancedRatings.includes('no_rating') && tokens.length === 0) return true;
+        return tokens.some((t) => selectedAdvancedRatings.includes(t));
+      });
+    }
     return result.length;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allCards, selectedCategoryIds, selectedClasses, selectedRatings, hasPlayFilters]);
+  }, [
+    allCards,
+    selectedCategoryIds,
+    selectedClasses,
+    selectedRatings,
+    selectedAdvancedRatings,
+    hasPlayFilters,
+  ]);
 
   const create = trpc.categories.create.useMutation({
     onSuccess: () => {
@@ -554,6 +584,19 @@ export function CategoriesDashboard() {
                 })}
               </div>
             </div>
+
+            {/* Advanced Rating — mirrors the coarse Rating filter above but
+                lets the user slice by the seven advancedDifficultyLevel
+                tokens. Selecting multiple chips is an "any of" match (the
+                card's CSV column needs to contain at least one of the
+                selected tokens). "No rating" matches cards that have no
+                advanced selection yet. Markup lives in
+                @/features/practice/AdvancedRatingFilter so the deck-detail
+                Play modal renders the identical UI without duplication. */}
+            <AdvancedRatingFilter
+              selected={selectedAdvancedRatings}
+              onToggle={togglePlayAdvancedRating}
+            />
           </div>
 
           <DialogFooter className="sm:items-center sm:justify-between">

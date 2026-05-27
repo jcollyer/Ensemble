@@ -45,6 +45,7 @@ import {
   DECK_FOLDER_COLOR_PALETTE,
   type BackLanguageValue,
   CategoryUpdateInput,
+  decodeAdvancedDifficultyLevels,
   FlashcardUpdateInput,
   GENDER_OPTIONS,
   genderLabel,
@@ -81,6 +82,7 @@ import { CreateCardDialog } from '@/features/cards/CreateCardDialog';
 import { ClassSelect } from '@/features/cards/ClassSelect';
 import { ClassBadge } from '@/features/cards/ClassBadge';
 import { ProgressSnapshotCard } from '@/features/categories/ProgressSnapshotCard';
+import { AdvancedRatingFilter } from '@/features/practice/AdvancedRatingFilter';
 import { FlashcardPreviewModal, type PreviewCard } from '@/features/practice/FlashcardPreviewModal';
 import { PlayModeToggle, type PlayMode } from '@/features/practice/PlayModeToggle';
 
@@ -329,6 +331,7 @@ export function CategoryDetail({ categoryId }: Props) {
   const [playOpen, setPlayOpen] = useState(false);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
+  const [selectedAdvancedRatings, setSelectedAdvancedRatings] = useState<string[]>([]);
   const [playMode, setPlayMode] = useState<PlayMode>('in_order');
 
   function togglePlayClass(value: string) {
@@ -341,11 +344,18 @@ export function CategoryDetail({ categoryId }: Props) {
       prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
     );
   }
-  const hasPlayFilters = selectedClasses.length > 0 || selectedRatings.length > 0;
+  function togglePlayAdvancedRating(value: string) {
+    setSelectedAdvancedRatings((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
+    );
+  }
+  const hasPlayFilters =
+    selectedClasses.length > 0 || selectedRatings.length > 0 || selectedAdvancedRatings.length > 0;
 
   function resetPlayFilters() {
     setSelectedClasses([]);
     setSelectedRatings([]);
+    setSelectedAdvancedRatings([]);
     setPlayMode('in_order');
   }
 
@@ -353,6 +363,8 @@ export function CategoryDetail({ categoryId }: Props) {
     const params = new URLSearchParams();
     if (selectedClasses.length > 0) params.set('classes', selectedClasses.join(','));
     if (selectedRatings.length > 0) params.set('difficultyLevels', selectedRatings.join(','));
+    if (selectedAdvancedRatings.length > 0)
+      params.set('advancedDifficultyLevels', selectedAdvancedRatings.join(','));
     if (playMode === 'shuffle') params.set('shuffle', '1');
     const qs = params.toString();
     return qs
@@ -374,9 +386,18 @@ export function CategoryDetail({ categoryId }: Props) {
         return level !== null && selectedRatings.includes(level);
       });
     }
+    if (selectedAdvancedRatings.length > 0) {
+      result = result.filter((c) => {
+        const raw =
+          (c as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null;
+        const tokens = decodeAdvancedDifficultyLevels(raw);
+        if (selectedAdvancedRatings.includes('no_rating') && tokens.length === 0) return true;
+        return tokens.some((t) => selectedAdvancedRatings.includes(t));
+      });
+    }
     return result.length;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cards, selectedClasses, selectedRatings, hasPlayFilters]);
+  }, [cards, selectedClasses, selectedRatings, selectedAdvancedRatings, hasPlayFilters]);
 
   // Local ordering state for drag-and-drop. Seeded from the server query and
   // updated optimistically on drag so the UI doesn't flash before the mutation
@@ -447,6 +468,11 @@ export function CategoryDetail({ categoryId }: Props) {
     gender: (card as { gender?: string | null }).gender ?? null,
     pronunciation: (card as { pronunciation?: string | null }).pronunciation ?? null,
     backLanguage: (category?.backLanguage ?? null) as BackLanguageValue | null,
+    // Forward the existing advanced selection so the rating panel can
+    // pre-tick the user's previous choice when they re-rate a card from
+    // the deck detail view.
+    advancedDifficultyLevel:
+      (card as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null,
   }));
 
   return (
@@ -735,6 +761,15 @@ export function CategoryDetail({ categoryId }: Props) {
                 })}
               </div>
             </div>
+
+            {/* Advanced Rating — shared with the home dashboard's Play
+                modal via @/features/practice/AdvancedRatingFilter so the two
+                surfaces can't drift. See that component / CategoriesDashboard
+                for the full rationale. */}
+            <AdvancedRatingFilter
+              selected={selectedAdvancedRatings}
+              onToggle={togglePlayAdvancedRating}
+            />
           </div>
 
           <DialogFooter className="sm:items-center sm:justify-between">

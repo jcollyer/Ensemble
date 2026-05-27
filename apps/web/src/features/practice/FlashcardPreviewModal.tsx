@@ -22,11 +22,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import type { BackLanguageValue, DifficultyLevel } from '@ensemble/types';
+import type { AdvancedDifficultyLevel, BackLanguageValue, DifficultyLevel } from '@ensemble/types';
+import { decodeAdvancedDifficultyLevels } from '@ensemble/types';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/trpc/client';
-import { FlipCard, NavButton, RatingButtons } from './FlashcardViewer';
+import { FlipCard, NavButton, RatingPanel } from './FlashcardViewer';
 
 // ── Public type for a card passed to this modal ────────────────────────────────
 
@@ -40,6 +41,13 @@ export interface PreviewCard {
   gender: string | null;
   pronunciation: string | null;
   backLanguage: BackLanguageValue | null;
+  /**
+   * Existing advanced-rating selection (comma-separated CSV from the
+   * CardProgress row). Used to pre-tick the checkboxes when the user
+   * re-rates a card. Optional — omitting it just opens the advanced
+   * panel empty.
+   */
+  advancedDifficultyLevel?: string | null;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -117,9 +125,18 @@ export function FlashcardPreviewModal({
     return () => window.removeEventListener('keydown', handler);
   }, [open, canGoPrev, canGoNext, handlePrev, handleNext]);
 
-  function handleRate(level: DifficultyLevel) {
+  function handleRate(level: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) {
     if (!current || !canRate) return;
-    submit.mutate({ cardId: current.id, difficultyLevel: level });
+    submit.mutate({
+      cardId: current.id,
+      difficultyLevel: level,
+      // Only forward the advanced field when the user actually used the
+      // advanced picker — `undefined` leaves the column untouched on the
+      // server, preserving any prior selection. Empty arrays explicitly
+      // clear, but the panel guarantees at least one box is checked at
+      // submit time so we shouldn't hit that branch in practice.
+      ...(advanced !== undefined ? { advancedDifficultyLevel: advanced } : {}),
+    });
     onRated?.(current.id, level);
     // After rating, advance to the next card; if on the last card just reset
     // the flip so the user can see the front again.
@@ -169,7 +186,15 @@ export function FlashcardPreviewModal({
 
           {/* Flip button or rating buttons */}
           {flipped && canRate ? (
-            <RatingButtons onRate={handleRate} disabled={submit.isPending} />
+            <RatingPanel
+              // Re-mount the panel per card so the internal "advanced toggle"
+              // state and the checkbox selection reset between cards instead
+              // of bleeding over from the last one the user just rated.
+              key={current.id}
+              onRate={handleRate}
+              disabled={submit.isPending}
+              initialAdvanced={decodeAdvancedDifficultyLevels(current.advancedDifficultyLevel)}
+            />
           ) : flipped ? (
             <p className="text-muted-foreground text-center text-sm">
               Public deck — read-only. Use the arrows to navigate.

@@ -363,6 +363,12 @@ model CardProgress {
   // 'challenging' | 'good' | 'easy' | null. Validation lives at the API
   // edge (z.enum in @ensemble/types).
   difficultyLevel String?
+  // Optional fine-grained rating from the "Advanced rating" picker. Stored
+  // as a comma-separated list of values drawn from
+  // ADVANCED_DIFFICULTY_LEVEL_VALUES — e.g. "know_definition,know_pronunciation".
+  // Null/empty means the user has not used the advanced picker for this card.
+  // Validation lives at the API edge in @ensemble/types.
+  advancedDifficultyLevel String?
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   card            Flashcard @relation(fields: [cardId], references: [id], onDelete: Cascade)
   createdAt       DateTime  @default(now())

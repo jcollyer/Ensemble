@@ -272,8 +272,105 @@ export const DIFFICULTY_LEVEL_VALUES = ['challenging', 'good', 'easy'] as const;
 export const DifficultyLevelSchema = z.enum(DIFFICULTY_LEVEL_VALUES);
 export type DifficultyLevel = z.infer<typeof DifficultyLevelSchema>;
 
+/**
+ * Advanced rating — a finer-grained alternative to the three-button picker.
+ *
+ * The user toggles "Advanced rating" on the rating panel and then ticks one
+ * or more of seven boxes describing exactly what they know about the card.
+ * Multiple boxes can be selected simultaneously, and the resulting list is
+ * persisted as a comma-separated string on `CardProgress.advancedDifficultyLevel`.
+ *
+ * The values intentionally use snake_case so they're URL- and CSV-safe.
+ *
+ * Mapping to the coarse `difficultyLevel`:
+ *   - only `do_not_know`   → 'challenging'
+ *   - `know_all`           → 'easy'
+ *   - any other selection  → 'good'
+ *
+ * Display labels live in ADVANCED_DIFFICULTY_LEVEL_OPTIONS below so the UI
+ * doesn't duplicate them.
+ */
+export const ADVANCED_DIFFICULTY_LEVEL_VALUES = [
+  'do_not_know',
+  'know_definition',
+  'know_gender',
+  'know_pronunciation',
+  'know_audibly',
+  'know_spelling',
+  'know_all',
+] as const;
+export const AdvancedDifficultyLevelSchema = z.enum(ADVANCED_DIFFICULTY_LEVEL_VALUES);
+export type AdvancedDifficultyLevel = z.infer<typeof AdvancedDifficultyLevelSchema>;
+
+/**
+ * Human-readable labels + short descriptions for each advanced-rating option.
+ * Order matches the on-screen list (top-to-bottom). The descriptions echo the
+ * spec ("can use & read it", etc.) so the UI doesn't drift from intent.
+ */
+export const ADVANCED_DIFFICULTY_LEVEL_OPTIONS = [
+  { value: 'do_not_know', label: 'Do not know', description: "can't use yet" },
+  { value: 'know_definition', label: 'Know definition', description: 'can use & read it' },
+  { value: 'know_gender', label: 'Know gender', description: 'can properly use it' },
+  { value: 'know_pronunciation', label: 'Know pronunciation', description: 'can say it' },
+  { value: 'know_audibly', label: 'Know audibly', description: 'can understand it' },
+  { value: 'know_spelling', label: 'Know spelling', description: 'can correctly write it' },
+  { value: 'know_all', label: 'Know all', description: 'entire card all examples' },
+] as const satisfies ReadonlyArray<{
+  value: AdvancedDifficultyLevel;
+  label: string;
+  description: string;
+}>;
+
+/**
+ * Encode/decode helpers for the comma-separated `advancedDifficultyLevel`
+ * column. Kept here so both the API edge and the UI layer agree on the
+ * format. `encode` drops duplicates and preserves canonical order; `decode`
+ * tolerates whitespace and unknown tokens (those are dropped silently so a
+ * future option rename never explodes old rows).
+ */
+export function encodeAdvancedDifficultyLevels(values: readonly AdvancedDifficultyLevel[]): string {
+  const set = new Set(values);
+  return ADVANCED_DIFFICULTY_LEVEL_VALUES.filter((v) => set.has(v)).join(',');
+}
+export function decodeAdvancedDifficultyLevels(
+  raw: string | null | undefined,
+): AdvancedDifficultyLevel[] {
+  if (!raw) return [];
+  const allowed = new Set<string>(ADVANCED_DIFFICULTY_LEVEL_VALUES);
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => allowed.has(s)) as AdvancedDifficultyLevel[];
+}
+
+/**
+ * Map the user's advanced-rating selection to a coarse difficultyLevel so
+ * the existing filters / stats / snapshot tiles keep working. The rule
+ * mirrors the spec:
+ *   - any selection that includes `know_all`       → 'easy'
+ *   - exactly `do_not_know` (and nothing else)     → 'challenging'
+ *   - any other non-empty selection                → 'good'
+ *   - empty selection                              → null (clears the rating)
+ */
+export function difficultyLevelFromAdvanced(
+  values: readonly AdvancedDifficultyLevel[],
+): DifficultyLevel | null {
+  if (values.length === 0) return null;
+  if (values.includes('know_all')) return 'easy';
+  if (values.length === 1 && values[0] === 'do_not_know') return 'challenging';
+  return 'good';
+}
+
+/**
+ * Wire format accepted by `practice.submitReview`. The client always sends a
+ * coarse `difficultyLevel` (so the existing filters keep working), and may
+ * optionally include the matching advanced selection. When the advanced
+ * payload is provided we validate every value against the enum at the edge.
+ * `advancedDifficultyLevel: null` explicitly clears any prior selection.
+ */
 export const SubmitReviewInput = z.object({
   cardId: z.string().cuid(),
   difficultyLevel: DifficultyLevelSchema,
+  advancedDifficultyLevel: z.array(AdvancedDifficultyLevelSchema).nullish(),
 });
 export type SubmitReviewInput = z.infer<typeof SubmitReviewInput>;

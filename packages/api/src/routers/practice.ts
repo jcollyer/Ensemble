@@ -1,7 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { SubmitReviewInput } from '@ensemble/types';
+import { encodeAdvancedDifficultyLevels, SubmitReviewInput } from '@ensemble/types';
 
 import { resolveDeckVisibility } from '../lib/groupAuth';
 import { protectedProcedure, publicProcedure, router } from '../trpc';
@@ -117,15 +117,17 @@ export const practiceRouter = router({
 
       // Attach the viewer's own per-card difficulty rating from CardProgress.
       // Guests have no rows in CardProgress, so we skip the query entirely
-      // and every card comes back with `difficultyLevel: null`.
+      // and every card comes back with `difficultyLevel: null`. We also
+      // surface the matching `advancedDifficultyLevel` so the rating panel
+      // can pre-tick the user's previous selection on re-rate.
       const progressRows =
         viewerId && cards.length
           ? await ctx.prisma.cardProgress.findMany({
               where: { userId: viewerId, cardId: { in: cards.map((c) => c.id) } },
-              select: { cardId: true, difficultyLevel: true },
+              select: { cardId: true, difficultyLevel: true, advancedDifficultyLevel: true },
             })
           : [];
-      const progressByCardId = new Map(progressRows.map((p) => [p.cardId, p.difficultyLevel]));
+      const progressByCardId = new Map(progressRows.map((p) => [p.cardId, p]));
 
       return {
         category: category
@@ -137,10 +139,14 @@ export const practiceRouter = router({
               isOwner: categoryIsOwner,
             }
           : null,
-        cards: cards.map((card) => ({
-          ...card,
-          difficultyLevel: progressByCardId.get(card.id) ?? null,
-        })),
+        cards: cards.map((card) => {
+          const p = progressByCardId.get(card.id);
+          return {
+            ...card,
+            difficultyLevel: p?.difficultyLevel ?? null,
+            advancedDifficultyLevel: p?.advancedDifficultyLevel ?? null,
+          };
+        }),
       };
     }),
 
@@ -175,14 +181,33 @@ export const practiceRouter = router({
     }
     if (!canRate) throw new TRPCError({ code: 'NOT_FOUND' });
 
+    // The advanced selection is optional: `undefined` means "the client used
+    // the simple picker, leave the advanced column untouched"; `null` or an
+    // empty array explicitly clears any prior selection; an array writes the
+    // canonical CSV form. We never read the column back here — encoding +
+    // upsert is enough to keep the next queue/list response in sync.
+    const advancedColumnUpdate =
+      input.advancedDifficultyLevel === undefined
+        ? {}
+        : {
+            advancedDifficultyLevel:
+              input.advancedDifficultyLevel === null || input.advancedDifficultyLevel.length === 0
+                ? null
+                : encodeAdvancedDifficultyLevels(input.advancedDifficultyLevel),
+          };
+
     return ctx.prisma.cardProgress.upsert({
       where: { userId_cardId: { userId: ctx.userId, cardId: card.id } },
       create: {
         userId: ctx.userId,
         cardId: card.id,
         difficultyLevel: input.difficultyLevel,
+        ...advancedColumnUpdate,
       },
-      update: { difficultyLevel: input.difficultyLevel },
+      update: {
+        difficultyLevel: input.difficultyLevel,
+        ...advancedColumnUpdate,
+      },
     });
   }),
 
