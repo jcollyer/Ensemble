@@ -24,7 +24,11 @@ import { cn } from '@/lib/utils';
 import { CreateCardDialog } from '@/features/cards/CreateCardDialog';
 import { EditCardDialog } from '@/features/cards/EditCardDialog';
 import { ClassBadge } from '@/features/cards/ClassBadge';
-import { FavoriteFilter } from '@/features/practice/FavoriteFilter';
+import {
+  FavoriteToggle,
+  favoriteFilterFromArray,
+  favoriteFilterToArray,
+} from '@/features/practice/FavoriteToggle';
 import { FlashcardPreviewModal, type PreviewCard } from '@/features/practice/FlashcardPreviewModal';
 import { PlayModeToggle, type PlayMode } from '@/features/practice/PlayModeToggle';
 
@@ -66,12 +70,6 @@ export function AllCardsView() {
 
   function toggleRating(value: string) {
     setSelectedRatings((prev) =>
-      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
-    );
-  }
-
-  function toggleFavorite(value: string) {
-    setSelectedFavorites((prev) =>
       prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
     );
   }
@@ -361,8 +359,14 @@ export function AllCardsView() {
               </div>
             </div>
 
-            {/* Favorite — per-user flag. Both chips selected = no filter. */}
-            <FavoriteFilter selected={selectedFavorites} onToggle={toggleFavorite} />
+            {/* Favorite — segmented "All / Favorite / Not favorite" toggle,
+                styled to match the play-order toggle in the header. */}
+            <div>
+              <FavoriteToggle
+                value={favoriteFilterFromArray(selectedFavorites)}
+                onChange={(next) => setSelectedFavorites(favoriteFilterToArray(next))}
+              />
+            </div>
           </CardContent>
         </Card>
       )}

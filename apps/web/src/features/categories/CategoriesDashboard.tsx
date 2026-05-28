@@ -73,7 +73,11 @@ import { cn } from '@/lib/utils';
 import { FolderModal } from '@/features/folders/FolderModal';
 import { ProgressSnapshotCard } from '@/features/categories/ProgressSnapshotCard';
 import { AdvancedRatingFilter } from '@/features/practice/AdvancedRatingFilter';
-import { FavoriteFilter } from '@/features/practice/FavoriteFilter';
+import {
+  FavoriteToggle,
+  favoriteFilterFromArray,
+  favoriteFilterToArray,
+} from '@/features/practice/FavoriteToggle';
 import { PlayModeToggle, type PlayMode } from '@/features/practice/PlayModeToggle';
 
 // Sentinels because the Radix Select doesn't allow an empty-string value.
@@ -115,12 +119,6 @@ export function CategoriesDashboard() {
       prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
     );
   }
-  function togglePlayFavorite(value: string) {
-    setSelectedFavorites((prev) =>
-      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
-    );
-  }
-
   const hasPlayFilters =
     selectedCategoryIds.length > 0 ||
     selectedClasses.length > 0 ||
@@ -619,9 +617,15 @@ export function CategoriesDashboard() {
               onToggle={togglePlayAdvancedRating}
             />
 
-            {/* Favorite — per-user flag toggled from the back of a card.
-                Both chips selected (or neither) = no favorite filter. */}
-            <FavoriteFilter selected={selectedFavorites} onToggle={togglePlayFavorite} />
+            {/* Favorite — segmented "All / Favorite / Not favorite" toggle,
+                styled to match the play-order toggle in the footer. No
+                section label by design; the segments speak for themselves. */}
+            <div>
+              <FavoriteToggle
+                value={favoriteFilterFromArray(selectedFavorites)}
+                onChange={(next) => setSelectedFavorites(favoriteFilterToArray(next))}
+              />
+            </div>
           </div>
 
           <DialogFooter className="sm:items-center sm:justify-between">

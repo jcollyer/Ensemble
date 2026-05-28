@@ -84,7 +84,11 @@ import { ClassSelect } from '@/features/cards/ClassSelect';
 import { ClassBadge } from '@/features/cards/ClassBadge';
 import { ProgressSnapshotCard } from '@/features/categories/ProgressSnapshotCard';
 import { AdvancedRatingFilter } from '@/features/practice/AdvancedRatingFilter';
-import { FavoriteFilter } from '@/features/practice/FavoriteFilter';
+import {
+  FavoriteToggle,
+  favoriteFilterFromArray,
+  favoriteFilterToArray,
+} from '@/features/practice/FavoriteToggle';
 import { FlashcardPreviewModal, type PreviewCard } from '@/features/practice/FlashcardPreviewModal';
 import { PlayModeToggle, type PlayMode } from '@/features/practice/PlayModeToggle';
 
@@ -381,11 +385,6 @@ export function CategoryDetail({ categoryId }: Props) {
   }
   function togglePlayAdvancedRating(value: string) {
     setSelectedAdvancedRatings((prev) =>
-      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
-    );
-  }
-  function togglePlayFavorite(value: string) {
-    setSelectedFavorites((prev) =>
       prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
     );
   }
@@ -865,9 +864,14 @@ export function CategoryDetail({ categoryId }: Props) {
               onToggle={togglePlayAdvancedRating}
             />
 
-            {/* Favorite — per-user flag toggled from the back of a card or
-                the heart in the card list. Both chips selected = no filter. */}
-            <FavoriteFilter selected={selectedFavorites} onToggle={togglePlayFavorite} />
+            {/* Favorite — segmented "All / Favorite / Not favorite" toggle,
+                styled to match the play-order toggle in the footer. */}
+            <div>
+              <FavoriteToggle
+                value={favoriteFilterFromArray(selectedFavorites)}
+                onChange={(next) => setSelectedFavorites(favoriteFilterToArray(next))}
+              />
+            </div>
           </div>
 
           <DialogFooter className="sm:items-center sm:justify-between">
