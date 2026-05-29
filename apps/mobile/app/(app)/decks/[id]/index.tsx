@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Grid2x2, List, Play } from 'lucide-react-native';
+import { Grid2x2, Heart, List, Play } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -53,6 +53,28 @@ export default function DeckDetailScreen() {
       utils.categories.list.invalidate();
     },
     onError: (err) => Alert.alert('Could not delete card', err.message),
+  });
+
+  // Per-user favorite toggle from the deck's card rows. Optimistically
+  // rewrites the listByCategory cache so the heart flips instantly; rolls
+  // back if the request fails. We don't touch practice.stats — favorite
+  // doesn't affect the difficulty breakdown tiles.
+  const setFavorite = trpc.practice.setFavorite.useMutation({
+    onMutate: async ({ cardId, favorite }) => {
+      await utils.flashcards.listByCategory.cancel({ categoryId });
+      const previous = utils.flashcards.listByCategory.getData({ categoryId });
+      if (previous) {
+        utils.flashcards.listByCategory.setData(
+          { categoryId },
+          previous.map((c) => (c.id === cardId ? { ...c, favorite } : c)),
+        );
+      }
+      return { previous };
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.previous) utils.flashcards.listByCategory.setData({ categoryId }, ctx.previous);
+      Alert.alert('Could not update favorite', err.message);
+    },
   });
 
   const deleteDeck = trpc.categories.delete.useMutation({
@@ -116,6 +138,7 @@ export default function DeckDetailScreen() {
     // pre-tick the user's previous choice when they re-rate a card.
     advancedDifficultyLevel:
       (card as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null,
+    favorite: (card as { favorite?: boolean }).favorite ?? false,
   }));
 
   return (
@@ -318,9 +341,30 @@ export default function DeckDetailScreen() {
                   </>
                 )}
               </View>
-              {/* Inner Pressables win over the outer tap — edit/delete still work */}
+              {/* Inner Pressables win over the outer tap — edit/delete/favorite still work */}
               {isOwner ? (
-                <View className="flex-row">
+                <View className="flex-row items-center">
+                  {(() => {
+                    const isFavorite = (item as { favorite?: boolean }).favorite ?? false;
+                    return (
+                      <Pressable
+                        onPress={() =>
+                          setFavorite.mutate({ cardId: item.id, favorite: !isFavorite })
+                        }
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isFavorite }}
+                        accessibilityLabel={isFavorite ? 'Unfavorite' : 'Favorite'}
+                        className="px-2 py-1"
+                      >
+                        <Heart
+                          size={18}
+                          color={isFavorite ? '#e11d48' : '#94a3b8'}
+                          fill={isFavorite ? '#e11d48' : 'transparent'}
+                        />
+                      </Pressable>
+                    );
+                  })()}
                   <Pressable
                     onPress={() => router.push(`/cards/${item.id}/edit`)}
                     hitSlop={8}
@@ -397,6 +441,18 @@ export default function DeckDetailScreen() {
           // No-arg invalidate so the dashboard's `practice.stats({})`
           // also refreshes — not just this view's `{ categoryId }` query.
           utils.practice.stats.invalidate();
+        }}
+        onFavoriteToggled={(cardId, favorite) => {
+          // Mirror the modal's optimistic flip into this view's
+          // listByCategory cache so the heart on the underlying card row
+          // stays in sync without waiting for an invalidate round-trip.
+          const previous = utils.flashcards.listByCategory.getData({ categoryId });
+          if (previous) {
+            utils.flashcards.listByCategory.setData(
+              { categoryId },
+              previous.map((c) => (c.id === cardId ? { ...c, favorite } : c)),
+            );
+          }
         }}
       />
 

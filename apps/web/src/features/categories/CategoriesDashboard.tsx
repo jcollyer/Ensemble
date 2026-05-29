@@ -560,7 +560,7 @@ export function CategoriesDashboard() {
                   <DropdownMenuTrigger asChild>
                     <Button type="button" variant="outline" className="w-full justify-between">
                       <span className="truncate">{playDeckLabel}</span>
-                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                      <ChevronDown className="h-4 w-4 text-slate-500" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
@@ -646,7 +646,7 @@ export function CategoriesDashboard() {
 
               {playRatingMode === 'basic' ? (
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs">Rating</p>
+                  <p className="text-muted-foreground ml-1 text-xs">Basic Rating</p>
                   <div className="flex flex-wrap gap-2">
                     {(
                       [

@@ -8,7 +8,7 @@ interface RatingModeToggleProps {
 }
 
 const OPTIONS: { value: RatingMode; label: string }[] = [
-  { value: 'basic', label: 'Rating' },
+  { value: 'basic', label: 'Basic Rating' },
   { value: 'advanced', label: 'Advanced Rating' },
 ];
 

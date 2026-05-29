@@ -47,6 +47,11 @@ export interface PreviewCard {
    * panel empty.
    */
   advancedDifficultyLevel?: string | null;
+  /**
+   * Whether this card is currently favorited by the viewer. Drives the
+   * filled/outlined state of the heart in the rating panel.
+   */
+  favorite?: boolean;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -62,6 +67,14 @@ interface FlashcardPreviewModalProps {
   canRate?: boolean;
   /** Called after each rating so the parent can invalidate caches. */
   onRated?: (cardId: string, level: DifficultyLevel) => void;
+  /**
+   * Called when the user toggles the heart inside the rating panel. The
+   * parent owns the underlying card list, so it should mirror the new
+   * state into its own query cache. The mutation itself fires from
+   * inside this modal — the callback only signals "the user just changed
+   * the favorite state."
+   */
+  onFavoriteToggled?: (cardId: string, favorite: boolean) => void;
 }
 
 export function FlashcardPreviewModal({
@@ -71,17 +84,25 @@ export function FlashcardPreviewModal({
   onClose,
   canRate = true,
   onRated,
+  onFavoriteToggled,
 }: FlashcardPreviewModalProps) {
   const submit = trpc.practice.submitReview.useMutation();
+  const setFavorite = trpc.practice.setFavorite.useMutation();
 
   const [index, setIndex] = useState(initialIndex);
   const [flipped, setFlipped] = useState(false);
+  // Local overlay of favorite state so the heart updates instantly while
+  // the mutation is in flight. Keyed by cardId so it survives navigation
+  // between cards inside the modal. Cleared when the modal closes.
+  const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
 
   // Reset to the chosen card whenever the modal opens.
   useEffect(() => {
     if (visible) {
       setIndex(initialIndex);
       setFlipped(false);
+    } else {
+      setFavoriteOverrides({});
     }
   }, [visible, initialIndex]);
 
@@ -176,6 +197,26 @@ export function FlashcardPreviewModal({
                 onRate={handleRate}
                 disabled={submit.isPending}
                 initialAdvanced={decodeAdvancedDifficultyLevels(current.advancedDifficultyLevel)}
+                favorite={favoriteOverrides[current.id] ?? current.favorite ?? false}
+                onToggleFavorite={() => {
+                  const next = !(favoriteOverrides[current.id] ?? current.favorite ?? false);
+                  // Optimistically flip so the heart updates instantly,
+                  // then fire the mutation. On failure, roll back the
+                  // override so the heart matches the server state again.
+                  setFavoriteOverrides((prev) => ({ ...prev, [current.id]: next }));
+                  setFavorite.mutate(
+                    { cardId: current.id, favorite: next },
+                    {
+                      onError: () => {
+                        setFavoriteOverrides((prev) => {
+                          const { [current.id]: _omit, ...rest } = prev;
+                          return rest;
+                        });
+                      },
+                      onSuccess: () => onFavoriteToggled?.(current.id, next),
+                    },
+                  );
+                }}
               />
             ) : flipped ? (
               <Text className="mt-6 text-center text-sm text-slate-500">

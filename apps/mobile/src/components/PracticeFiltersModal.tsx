@@ -12,6 +12,11 @@ import {
 import { trpc } from '../lib/trpc';
 import { Button } from './Button';
 import { Card } from './Card';
+import {
+  FavoriteToggle,
+  favoriteFilterFromArray,
+  favoriteFilterToArray,
+} from '../features/practice/FavoriteToggle';
 import { PlayModeToggle, type PlayMode } from '../features/practice/PlayModeToggle';
 import { RatingModeToggle, type RatingMode } from '../features/practice/RatingModeToggle';
 
@@ -47,6 +52,7 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
   const [selectedAdvancedRatings, setSelectedAdvancedRatings] = useState<string[]>([]);
+  const [selectedFavorites, setSelectedFavorites] = useState<string[]>([]);
   const [playMode, setPlayMode] = useState<PlayMode>('in_order');
 
   function toggleCategory(id: string) {
@@ -88,6 +94,7 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
     setSelectedRatings([]);
     setSelectedAdvancedRatings([]);
     setRatingMode('basic');
+    setSelectedFavorites([]);
   }
 
   // ── Data queries ──────────────────────────────────────────────────────────
@@ -126,6 +133,16 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
         return tokens.some((t) => selectedAdvancedRatings.includes(t));
       });
     }
+    if (selectedFavorites.length > 0) {
+      const wantFav = selectedFavorites.includes('favorite');
+      const wantNotFav = selectedFavorites.includes('not_favorite');
+      if (wantFav !== wantNotFav) {
+        result = result.filter((c) => {
+          const fav = (c as { favorite?: boolean }).favorite ?? false;
+          return wantFav ? fav : !fav;
+        });
+      }
+    }
     return result;
   }, [
     baseCards,
@@ -134,13 +151,15 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
     selectedClasses,
     selectedRatings,
     selectedAdvancedRatings,
+    selectedFavorites,
   ]);
 
   const hasActiveFilters =
     (!deckMode && selectedCategoryIds.length > 0) ||
     selectedClasses.length > 0 ||
     selectedRatings.length > 0 ||
-    selectedAdvancedRatings.length > 0;
+    selectedAdvancedRatings.length > 0 ||
+    selectedFavorites.length > 0;
 
   const practiceCountLabel = hasActiveFilters
     ? filteredCards.length > 0
@@ -200,6 +219,9 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
     }
     if (selectedAdvancedRatings.length > 0) {
       params.set('advancedDifficultyLevels', selectedAdvancedRatings.join(','));
+    }
+    if (selectedFavorites.length > 0) {
+      params.set('favorites', selectedFavorites.join(','));
     }
     if (playMode === 'shuffle') {
       params.set('shuffle', '1');
@@ -421,6 +443,15 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
                 </View>
               )}
             </View>
+
+            {/* Favorite — segmented "All / Favorite / Not favorite" toggle,
+                placed directly below Advanced Rating per spec. Styled to
+                match PlayModeToggle so the modal's controls read as a
+                consistent set. No section label by design. */}
+            <FavoriteToggle
+              value={favoriteFilterFromArray(selectedFavorites)}
+              onChange={(next) => setSelectedFavorites(favoriteFilterToArray(next))}
+            />
 
             {/* Play order */}
             <View className="flex-row items-center justify-between">

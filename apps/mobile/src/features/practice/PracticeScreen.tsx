@@ -35,6 +35,12 @@ interface Props {
    */
   advancedDifficultyLevels?: string[];
   /**
+   * Filter by the per-user favorite flag. Values: `'favorite'` (only show
+   * favorited cards), `'not_favorite'` (only show non-favorited). Empty
+   * array or undefined = no favorite filtering.
+   */
+  favorites?: string[];
+  /**
    * When true, randomize the card order for this session. Stable across
    * renders and rating submissions — re-shuffles only on "Play again".
    */
@@ -65,6 +71,7 @@ export function PracticeScreen({
   classes,
   difficultyLevels,
   advancedDifficultyLevels,
+  favorites,
   shuffle = false,
   origin,
 }: Props) {
@@ -101,6 +108,39 @@ export function PracticeScreen({
     },
   });
 
+  // Per-user favorite toggle. Optimistically rewrites the practice.queue
+  // cache so the heart flips instantly; rolls back if the request fails.
+  // We don't touch practice.stats — favorite doesn't affect the difficulty
+  // breakdown tiles.
+  const setFavorite = trpc.practice.setFavorite.useMutation({
+    onMutate: async ({ cardId, favorite }) => {
+      const input = {
+        categoryId,
+        categoryIds: categoryIds?.length ? categoryIds : undefined,
+        classes: classes?.length ? classes : undefined,
+      };
+      await utils.practice.queue.cancel(input);
+      const previous = utils.practice.queue.getData(input);
+      if (previous) {
+        utils.practice.queue.setData(input, {
+          ...previous,
+          cards: previous.cards.map((c) => (c.id === cardId ? { ...c, favorite } : c)),
+        });
+      }
+      return { previous, input };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) utils.practice.queue.setData(ctx.input, ctx.previous);
+    },
+    onSettled: () => {
+      if (categoryId) {
+        utils.flashcards.listByCategory.invalidate({ categoryId });
+      } else {
+        utils.flashcards.listAll.invalidate();
+      }
+    },
+  });
+
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(0);
@@ -127,8 +167,18 @@ export function PracticeScreen({
         return tokens.some((t) => advancedDifficultyLevels.includes(t));
       });
     }
+    if (favorites?.length) {
+      const wantFav = favorites.includes('favorite');
+      const wantNotFav = favorites.includes('not_favorite');
+      if (wantFav !== wantNotFav) {
+        result = result.filter((c) => {
+          const fav = (c as { favorite?: boolean }).favorite ?? false;
+          return wantFav ? fav : !fav;
+        });
+      }
+    }
     return result;
-  }, [rawCards, difficultyLevels, advancedDifficultyLevels]);
+  }, [rawCards, difficultyLevels, advancedDifficultyLevels, favorites]);
 
   // Apply shuffle on top of the filtered list. Keyed by a signature derived
   // from the card ids so the order stays stable across re-renders and across
@@ -302,6 +352,23 @@ export function PracticeScreen({
                     (current as { advancedDifficultyLevel?: string | null } | undefined)
                       ?.advancedDifficultyLevel ?? null,
                   )}
+                  // Guests see the heart but tapping prompts sign-in — same
+                  // pattern as handleRate above. Once signed in, the favorite
+                  // state lives on the user's CardProgress row.
+                  favorite={(current as { favorite?: boolean } | undefined)?.favorite ?? false}
+                  onToggleFavorite={() => {
+                    if (!current) return;
+                    if (isGuest) {
+                      requireAuth(() => {}, {
+                        title: 'Sign in to favorite cards',
+                        reason: 'Create an account to favorite cards and find them quickly later.',
+                      });
+                      return;
+                    }
+                    if (!canRate) return;
+                    const next = !((current as { favorite?: boolean }).favorite ?? false);
+                    setFavorite.mutate({ cardId: current.id, favorite: next });
+                  }}
                 />
                 {isGuest ? (
                   <Text className="mt-3 text-center text-xs text-slate-400">

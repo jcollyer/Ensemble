@@ -44,7 +44,7 @@ export function AdvancedRatingFilter({ selected, onToggle, label = 'Advanced Rat
 
   return (
     <div className="space-y-2">
-      <p className="text-muted-foreground text-xs">{label}</p>
+      <p className="text-muted-foreground ml-1 text-xs">{label}</p>
       <div className="flex flex-wrap gap-2">
         {options.map((opt) => {
           const isSelected = selected.includes(opt.value);

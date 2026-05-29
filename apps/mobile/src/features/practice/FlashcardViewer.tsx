@@ -320,17 +320,71 @@ export function AudioButton({
   );
 }
 
+// ── FavoriteButton ─────────────────────────────────────────────────────────────
+
+/**
+ * Heart-icon toggle for the per-user "favorite" flag. Lives to the right of
+ * the three rating buttons in simple mode and as a visually-distinct 8th
+ * row in the advanced panel.
+ *
+ * Filled rose heart = favorited; outline = not. Sized narrower than the
+ * rating buttons so Challenging / Good / Easy keep their visual weight as
+ * the primary affordances.
+ */
+export function FavoriteButton({
+  favorite,
+  onToggle,
+  disabled,
+}: {
+  favorite: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onToggle}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ selected: favorite, disabled }}
+      accessibilityLabel={favorite ? 'Unfavorite' : 'Favorite'}
+      hitSlop={6}
+      className={`items-center justify-center rounded-lg border bg-white px-3 py-3 active:opacity-70 ${
+        favorite ? 'border-rose-300 bg-rose-50' : 'border-slate-200'
+      } ${disabled ? 'opacity-50' : ''}`}
+    >
+      <Feather
+        name="heart"
+        size={20}
+        color={favorite ? '#e11d48' : '#94a3b8'}
+        // expo-vector-icons Feather doesn't support solid fill, but the
+        // tinted background + colored stroke already reads as "on" vs
+        // "off" clearly at this size.
+      />
+    </Pressable>
+  );
+}
+
 // ── RatingButtons ──────────────────────────────────────────────────────────────
 
 export function RatingButtons({
   onRate,
   disabled,
+  favorite,
+  onToggleFavorite,
 }: {
   onRate: (level: DifficultyLevel) => void;
   disabled?: boolean;
+  /**
+   * Optional favorite state. When provided, a heart toggle is rendered to
+   * the right of the three rating buttons. Omitting both `favorite` and
+   * `onToggleFavorite` hides the heart entirely.
+   */
+  favorite?: boolean;
+  onToggleFavorite?: () => void;
 }) {
+  const showFavorite = favorite !== undefined && onToggleFavorite !== undefined;
   return (
-    <View className="mt-6 flex-row gap-2">
+    <View className="mt-6 flex-row items-stretch gap-2">
       {RATINGS.map((r) => (
         <Pressable
           key={r.value}
@@ -344,6 +398,9 @@ export function RatingButtons({
           <Text className="text-xs text-slate-500">{r.sub}</Text>
         </Pressable>
       ))}
+      {showFavorite ? (
+        <FavoriteButton favorite={favorite} onToggle={onToggleFavorite} disabled={disabled} />
+      ) : null}
     </View>
   );
 }
@@ -368,11 +425,25 @@ export function AdvancedRatingPanel({
   onSubmit,
   disabled,
   initial,
+  favorite,
+  onToggleFavorite,
 }: {
   onSubmit: (level: DifficultyLevel, advanced: AdvancedDifficultyLevel[]) => void;
   disabled?: boolean;
   initial?: readonly AdvancedDifficultyLevel[];
+  /**
+   * Optional favorite state. When both are provided, the panel renders an
+   * 8th row at the bottom of the checkbox list (visually distinct, heart
+   * icon, rose-tint when active) that toggles the per-user favorite column
+   * independently of the rating selection.
+   *
+   * Intentionally NOT part of the do_not_know / know_all mutual-exclusion
+   * rules — it lives outside the rating set.
+   */
+  favorite?: boolean;
+  onToggleFavorite?: () => void;
 }) {
+  const showFavorite = favorite !== undefined && onToggleFavorite !== undefined;
   const [selected, setSelected] = useState<Set<AdvancedDifficultyLevel>>(() => {
     if (initial && initial.length > 0) return new Set(initial);
     return new Set(['do_not_know']);
@@ -469,6 +540,39 @@ export function AdvancedRatingPanel({
           );
         })}
       </View>
+
+      {/* Favorite — visually distinct 8th row that toggles the per-user
+          favorite column independently of the rating selection. Top border
+          + heart icon + rose tint when active signal that it's a different
+          kind of action from the 7 advanced-rating checkboxes above. */}
+      {showFavorite ? (
+        <Pressable
+          onPress={() => onToggleFavorite?.()}
+          disabled={disabled}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: favorite }}
+          accessibilityLabel="Favorite"
+          className={`-mx-1 mt-1 flex-row items-center gap-3 rounded-md border-t border-slate-200 px-3 py-2.5 pt-3 active:bg-rose-50 ${
+            disabled ? 'opacity-60' : ''
+          } ${favorite ? 'bg-rose-50/60' : ''}`}
+        >
+          <View
+            className={`h-5 w-5 items-center justify-center rounded border ${
+              favorite ? 'border-rose-500 bg-rose-500' : 'border-slate-300 bg-white'
+            }`}
+          >
+            {favorite ? <Feather name="check" size={14} color="#ffffff" /> : null}
+          </View>
+          <Feather name="heart" size={16} color={favorite ? '#e11d48' : '#94a3b8'} />
+          <View className="min-w-0 flex-1">
+            <Text className="text-sm font-medium text-slate-900">Favorite</Text>
+            <Text className="text-xs text-slate-500">
+              Mark this card to find it quickly in the Favorite filter
+            </Text>
+          </View>
+        </Pressable>
+      ) : null}
+
       <Pressable
         onPress={handleSubmit}
         disabled={disabled}
@@ -507,10 +611,19 @@ export function RatingPanel({
   onRate,
   disabled,
   initialAdvanced,
+  favorite,
+  onToggleFavorite,
 }: {
   onRate: (level: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) => void;
   disabled?: boolean;
   initialAdvanced?: readonly AdvancedDifficultyLevel[];
+  /**
+   * Current favorite state and toggle callback. Threaded into both the
+   * simple and advanced sub-panels. Omit both to hide the heart entirely
+   * (e.g. public-deck read-only views).
+   */
+  favorite?: boolean;
+  onToggleFavorite?: () => void;
 }) {
   // Default: open advanced if this card already has an advanced rating.
   // Otherwise wait for the AsyncStorage read below to fill in the pref. We
@@ -563,10 +676,17 @@ export function RatingPanel({
         <AdvancedRatingPanel
           disabled={disabled}
           initial={initialAdvanced}
+          favorite={favorite}
+          onToggleFavorite={onToggleFavorite}
           onSubmit={(level, values) => onRate(level, values)}
         />
       ) : (
-        <RatingButtons disabled={disabled} onRate={(level) => onRate(level)} />
+        <RatingButtons
+          disabled={disabled}
+          onRate={(level) => onRate(level)}
+          favorite={favorite}
+          onToggleFavorite={onToggleFavorite}
+        />
       )}
     </View>
   );

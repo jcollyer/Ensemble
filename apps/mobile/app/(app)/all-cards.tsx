@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { Heart } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,6 +18,11 @@ import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { ClassBadge } from '../../src/components/ClassBadge';
 import { trpc } from '../../src/lib/trpc';
+import {
+  FavoriteToggle,
+  favoriteFilterFromArray,
+  favoriteFilterToArray,
+} from '../../src/features/practice/FavoriteToggle';
 import {
   FlashcardPreviewModal,
   type PreviewCard,
@@ -41,6 +47,7 @@ export default function AllCardsScreen() {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
+  const [selectedFavorites, setSelectedFavorites] = useState<string[]>([]);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [playMode, setPlayMode] = useState<PlayMode>('in_order');
 
@@ -73,6 +80,27 @@ export default function AllCardsScreen() {
     onError: (err) => Alert.alert('Could not delete card', err.message),
   });
 
+  // Per-user favorite toggle from the All cards rows. Optimistically
+  // rewrites the listAll cache so the heart flips instantly; rolls back
+  // if the request fails.
+  const setFavorite = trpc.practice.setFavorite.useMutation({
+    onMutate: async ({ cardId, favorite }) => {
+      await utils.flashcards.listAll.cancel();
+      const previous = utils.flashcards.listAll.getData();
+      if (previous) {
+        utils.flashcards.listAll.setData(
+          undefined,
+          previous.map((c) => (c.id === cardId ? { ...c, favorite } : c)),
+        );
+      }
+      return { previous };
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.previous) utils.flashcards.listAll.setData(undefined, ctx.previous);
+      Alert.alert('Could not update favorite', err.message);
+    },
+  });
+
   // Build a deck lookup so each row can show its source deck without an
   // N+1 query. Categories.list is already in the cache from the home view.
   const decksById = useMemo(() => {
@@ -103,8 +131,18 @@ export default function AllCardsScreen() {
         return level !== null && selectedRatings.includes(level);
       });
     }
+    if (selectedFavorites.length > 0) {
+      const wantFav = selectedFavorites.includes('favorite');
+      const wantNotFav = selectedFavorites.includes('not_favorite');
+      if (wantFav !== wantNotFav) {
+        result = result.filter((c) => {
+          const fav = (c as { favorite?: boolean }).favorite ?? false;
+          return wantFav ? fav : !fav;
+        });
+      }
+    }
     return result;
-  }, [allCards, selectedCategoryIds, selectedClasses, selectedRatings]);
+  }, [allCards, selectedCategoryIds, selectedClasses, selectedRatings, selectedFavorites]);
 
   // Build the ordered card array for the preview modal.
   const previewCards: PreviewCard[] = useMemo(
@@ -125,6 +163,7 @@ export default function AllCardsScreen() {
         // pre-tick the user's previous choice when they re-rate a card.
         advancedDifficultyLevel:
           (card as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null,
+        favorite: (card as { favorite?: boolean }).favorite ?? false,
       })),
     [filteredCards, decksById],
   );
@@ -151,6 +190,9 @@ export default function AllCardsScreen() {
     if (selectedRatings.length > 0) {
       params.set('difficultyLevels', selectedRatings.join(','));
     }
+    if (selectedFavorites.length > 0) {
+      params.set('favorites', selectedFavorites.join(','));
+    }
     if (playMode === 'shuffle') {
       params.set('shuffle', '1');
     }
@@ -167,7 +209,10 @@ export default function AllCardsScreen() {
   }
 
   const hasActiveFilters =
-    selectedCategoryIds.length > 0 || selectedClasses.length > 0 || selectedRatings.length > 0;
+    selectedCategoryIds.length > 0 ||
+    selectedClasses.length > 0 ||
+    selectedRatings.length > 0 ||
+    selectedFavorites.length > 0;
   // Practice button count = filtered cards when filters active, otherwise the
   // total card count.
   const practiceCountLabel = hasActiveFilters
@@ -208,6 +253,7 @@ export default function AllCardsScreen() {
                       setSelectedCategoryIds([]);
                       setSelectedClasses([]);
                       setSelectedRatings([]);
+                      setSelectedFavorites([]);
                     }}
                     hitSlop={8}
                   >
@@ -312,6 +358,14 @@ export default function AllCardsScreen() {
                 </View>
               </View>
 
+              {/* Favorite — segmented "All / Favorite / Not favorite" toggle,
+                  styled to match the play-order toggle below. No section
+                  label by design; the segments speak for themselves. */}
+              <FavoriteToggle
+                value={favoriteFilterFromArray(selectedFavorites)}
+                onChange={(next) => setSelectedFavorites(favoriteFilterToArray(next))}
+              />
+
               <View className="flex-row items-center justify-between">
                 <Text className="text-xs font-medium uppercase tracking-wide text-slate-500">
                   Play order
@@ -387,8 +441,29 @@ export default function AllCardsScreen() {
                     ) : null}
                   </View>
                 </View>
-                {/* Inner Pressables win over the outer tap — edit/delete still work */}
-                <View className="flex-row">
+                {/* Inner Pressables win over the outer tap — edit/delete/favorite still work */}
+                <View className="flex-row items-center">
+                  {(() => {
+                    const isFavorite = (item as { favorite?: boolean }).favorite ?? false;
+                    return (
+                      <Pressable
+                        onPress={() =>
+                          setFavorite.mutate({ cardId: item.id, favorite: !isFavorite })
+                        }
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isFavorite }}
+                        accessibilityLabel={isFavorite ? 'Unfavorite' : 'Favorite'}
+                        className="px-2 py-1"
+                      >
+                        <Heart
+                          size={18}
+                          color={isFavorite ? '#e11d48' : '#94a3b8'}
+                          fill={isFavorite ? '#e11d48' : 'transparent'}
+                        />
+                      </Pressable>
+                    );
+                  })()}
                   <Pressable
                     onPress={() => router.push(`/cards/${item.id}/edit`)}
                     hitSlop={8}
@@ -449,6 +524,18 @@ export default function AllCardsScreen() {
         canRate
         onRated={() => {
           utils.flashcards.listAll.invalidate();
+        }}
+        onFavoriteToggled={(cardId, favorite) => {
+          // Mirror the modal's optimistic flip into this view's listAll
+          // cache so the heart on the underlying card row stays in sync
+          // without waiting for an invalidate round-trip.
+          const previous = utils.flashcards.listAll.getData();
+          if (previous) {
+            utils.flashcards.listAll.setData(
+              undefined,
+              previous.map((c) => (c.id === cardId ? { ...c, favorite } : c)),
+            );
+          }
         }}
       />
     </View>
