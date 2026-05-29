@@ -873,7 +873,7 @@ export function CategoryDetail({ categoryId }: Props) {
 
               {playRatingMode === 'basic' ? (
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs">Rating</p>
+                  <p className="text-muted-foreground text-xs ml-1">Basic Rating</p>
                   <div className="flex flex-wrap gap-2">
                     {(
                       [

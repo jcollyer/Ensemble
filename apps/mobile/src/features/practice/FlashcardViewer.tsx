@@ -9,7 +9,7 @@
  * audio-button caching logic, and rating button layout.
  */
 
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio, type AVPlaybackStatus } from 'expo-av';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -352,13 +352,10 @@ export function FavoriteButton({
         favorite ? 'border-rose-300 bg-rose-50' : 'border-slate-200'
       } ${disabled ? 'opacity-50' : ''}`}
     >
-      <Feather
-        name="heart"
+      <FontAwesome
+        name={favorite ? 'heart' : 'heart-o'}
         size={20}
         color={favorite ? '#e11d48' : '#94a3b8'}
-        // expo-vector-icons Feather doesn't support solid fill, but the
-        // tinted background + colored stroke already reads as "on" vs
-        // "off" clearly at this size.
       />
     </Pressable>
   );
@@ -563,7 +560,11 @@ export function AdvancedRatingPanel({
           >
             {favorite ? <Feather name="check" size={14} color="#ffffff" /> : null}
           </View>
-          <Feather name="heart" size={16} color={favorite ? '#e11d48' : '#94a3b8'} />
+          <FontAwesome
+            name={favorite ? 'heart' : 'heart-o'}
+            size={16}
+            color={favorite ? '#e11d48' : '#94a3b8'}
+          />
           <View className="min-w-0 flex-1">
             <Text className="text-sm font-medium text-slate-900">Favorite</Text>
             <Text className="text-xs text-slate-500">

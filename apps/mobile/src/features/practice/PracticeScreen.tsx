@@ -185,11 +185,17 @@ export function PracticeScreen({
   // rating submissions — it only re-derives when the underlying card set
   // changes or the user presses "Play again" (which bumps shuffleEpoch).
   const cardsKey = filteredCards.map((c) => c.id).join('|');
-  const cards = useMemo(() => {
-    if (!shuffle) return filteredCards;
-    return shuffleArray(filteredCards);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const shuffledCardIds = useMemo(() => {
+    if (!shuffle) return null;
+    return shuffleArray(filteredCards.map((c) => c.id));
   }, [cardsKey, shuffle, shuffleEpoch]);
+  const cards = useMemo(() => {
+    if (!shuffle || !shuffledCardIds) return filteredCards;
+    const cardsById = new Map(filteredCards.map((card) => [card.id, card]));
+    return shuffledCardIds
+      .map((cardId) => cardsById.get(cardId))
+      .filter((card): card is (typeof filteredCards)[number] => card !== undefined);
+  }, [filteredCards, shuffle, shuffledCardIds]);
   const isReadOnlyPublicDeck = Boolean(categoryId && data?.category && !data.category.isOwner);
   // Signed-in users who don't own the deck can't rate cards on it (existing
   // behaviour). Guests are a separate case: we still show them the rating
