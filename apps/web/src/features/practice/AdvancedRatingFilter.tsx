@@ -28,11 +28,9 @@ interface Props {
   selected: string[];
   /** Fired with the clicked chip's token. The parent toggles it in/out. */
   onToggle: (value: string) => void;
-  /** Section heading. Defaults to "Advanced Rating". */
-  label?: string;
 }
 
-export function AdvancedRatingFilter({ selected, onToggle, label = 'Advanced Rating' }: Props) {
+export function AdvancedRatingFilter({ selected, onToggle }: Props) {
   // Build the option list once per render. The seven advanced tokens come
   // straight from the types package so a rename or addition there flows here
   // automatically; we then append the synthetic "No rating" pill that maps
@@ -44,7 +42,6 @@ export function AdvancedRatingFilter({ selected, onToggle, label = 'Advanced Rat
 
   return (
     <div className="space-y-2">
-      <p className="text-muted-foreground ml-1 text-xs">{label}</p>
       <div className="flex flex-wrap gap-2">
         {options.map((opt) => {
           const isSelected = selected.includes(opt.value);

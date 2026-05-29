@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 
-export type RatingMode = 'basic' | 'advanced';
+export type RatingMode = 'all' | 'basic' | 'advanced';
 
 interface Props {
   value: RatingMode;
@@ -11,6 +11,7 @@ interface Props {
 }
 
 const OPTIONS: { value: RatingMode; label: string }[] = [
+  { value: 'all', label: 'All' },
   { value: 'basic', label: 'Basic Rating' },
   { value: 'advanced', label: 'Advanced Rating' },
 ];

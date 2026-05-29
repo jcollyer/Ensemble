@@ -70,7 +70,7 @@ export function PlayFlashcardsDialog({
 }: PlayFlashcardsDialogProps) {
   const router = useRouter();
   const [categorySectionOpen, setCategorySectionOpen] = useState(false);
-  const [ratingMode, setRatingMode] = useState<RatingMode>('basic');
+  const [ratingMode, setRatingMode] = useState<RatingMode>('all');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
@@ -88,6 +88,11 @@ export function PlayFlashcardsDialog({
 
   function handleRatingModeChange(next: RatingMode) {
     setRatingMode(next);
+    if (next === 'all') {
+      setSelectedRatings([]);
+      setSelectedAdvancedRatings([]);
+      return;
+    }
     if (next === 'basic') {
       setSelectedAdvancedRatings([]);
       return;
@@ -101,7 +106,7 @@ export function PlayFlashcardsDialog({
     setSelectedRatings([]);
     setSelectedAdvancedRatings([]);
     setSelectedFavorites([]);
-    setRatingMode('basic');
+    setRatingMode('all');
     setPlayMode('in_order');
   }
 
@@ -240,6 +245,7 @@ export function PlayFlashcardsDialog({
 
           {showDeckFilter && (
             <div className="space-y-2">
+              <p className="text-muted-foreground ml-1 text-xs font-semibold tracking-[0.18em]">DECKS</p>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button type="button" variant="outline" className="w-full justify-between">
@@ -279,16 +285,14 @@ export function PlayFlashcardsDialog({
           )}
 
           <div className="space-y-2">
+            <p className="text-muted-foreground ml-1 text-xs font-semibold tracking-[0.18em]">CATEGORY</p>
             <div className="bg-background overflow-hidden rounded-md border">
               <button
                 type="button"
                 onClick={() => setCategorySectionOpen((current) => !current)}
                 className="flex w-full items-center justify-between px-3 py-2 text-left"
               >
-                <div className="min-w-0 flex-1 pr-3">
-                  <p className="text-muted-foreground text-xs">Category</p>
-                  <p className="truncate text-sm">{classLabel}</p>
-                </div>
+                <p className="min-w-0 flex-1 truncate pr-3 text-sm">{classLabel}</p>
                 <ChevronDown
                   className={cn(
                     'text-muted-foreground h-4 w-4 transition-transform',
@@ -325,41 +329,48 @@ export function PlayFlashcardsDialog({
           </div>
 
           <div className="space-y-2">
+            <p className="text-muted-foreground ml-1 text-xs font-semibold tracking-[0.18em]">RATINGS</p>
             <RatingModeToggle value={ratingMode} onChange={handleRatingModeChange} />
 
-            {ratingMode === 'basic' ? (
-              <div className="space-y-2">
-                <p className="text-muted-foreground ml-1 text-xs">Basic Rating</p>
-                <div className="flex flex-wrap gap-2">
-                  {BASIC_RATING_OPTIONS.map((option) => {
-                    const selected = selectedRatings.includes(option.value);
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => toggleValue(option.value, setSelectedRatings)}
-                        className={cn(
-                          'rounded-full px-3 py-1 text-sm font-medium transition',
-                          selected
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground hover:bg-muted/70',
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
+            {ratingMode === 'basic' || ratingMode === 'advanced' ? (
+              <div className="bg-muted/30 border-border/60 ml-1 w-[97%] rounded-xl border px-3 py-3">
+                <p className="text-muted-foreground mb-2 ml-1 text-[11px] font-semibold uppercase tracking-[0.18em]">
+                  {ratingMode === 'basic' ? 'Basic rating options' : 'Advanced rating options'}
+                </p>
+
+                {ratingMode === 'basic' ? (
+                  <div className="flex flex-wrap gap-2">
+                    {BASIC_RATING_OPTIONS.map((option) => {
+                      const selected = selectedRatings.includes(option.value);
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => toggleValue(option.value, setSelectedRatings)}
+                          className={cn(
+                            'rounded-full px-3 py-1 text-sm font-medium transition',
+                            selected
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-background text-muted-foreground hover:bg-background/70',
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <AdvancedRatingFilter
+                    selected={selectedAdvancedRatings}
+                    onToggle={(value) => toggleValue(value, setSelectedAdvancedRatings)}
+                  />
+                )}
               </div>
-            ) : (
-              <AdvancedRatingFilter
-                selected={selectedAdvancedRatings}
-                onToggle={(value) => toggleValue(value, setSelectedAdvancedRatings)}
-              />
-            )}
+            ) : null}
           </div>
 
           <div>
+            <p className="text-muted-foreground mb-2 ml-1 text-xs font-semibold tracking-[0.18em]">FAVORITES</p>
             <FavoriteToggle
               value={favoriteFilterFromArray(selectedFavorites)}
               onChange={(next) => setSelectedFavorites(favoriteFilterToArray(next))}
