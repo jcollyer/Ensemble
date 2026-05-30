@@ -298,48 +298,68 @@ export function PlayFlashcardsDialog({
 
           <div className="space-y-2">
             <p className="text-muted-foreground ml-1 text-xs font-semibold tracking-[0.18em]">
-              CATEGORY
+              CATEGORIES
             </p>
-            <div className="bg-background overflow-hidden rounded-md border">
+            <div
+              role="radiogroup"
+              aria-label="Category filter"
+              className="bg-muted inline-flex items-center gap-0.5 rounded-full p-0.5 text-sm"
+            >
               <button
                 type="button"
-                onClick={() => setCategorySectionOpen((current) => !current)}
-                className="flex w-full items-center justify-between px-3 py-2 text-left"
+                role="radio"
+                aria-checked={!categorySectionOpen}
+                onClick={() => {
+                  setCategorySectionOpen(false);
+                  setSelectedClasses([]);
+                }}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium transition',
+                  !categorySectionOpen
+                    ? 'bg-background text-primary font-semibold shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
               >
-                <p className="min-w-0 flex-1 truncate pr-3 text-sm">{classLabel}</p>
-                <ChevronDown
-                  className={cn(
-                    'text-muted-foreground h-4 w-4 transition-transform',
-                    categorySectionOpen && 'rotate-180',
-                  )}
-                />
+                All categories
               </button>
-
-              {categorySectionOpen && (
-                <div className="border-t px-3 py-3">
-                  <div className="flex flex-wrap gap-2">
-                    {WORD_CLASS_OPTIONS.map((option) => {
-                      const selected = selectedClasses.includes(option.value);
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => toggleValue(option.value, setSelectedClasses)}
-                          className={cn(
-                            'rounded-full px-3 py-1 text-sm font-medium transition',
-                            selected
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted text-muted-foreground hover:bg-muted/70',
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={categorySectionOpen}
+                onClick={() => setCategorySectionOpen(true)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium transition',
+                  categorySectionOpen
+                    ? 'bg-background font-semibold shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                Choose categories
+              </button>
             </div>
+
+            {categorySectionOpen && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {WORD_CLASS_OPTIONS.map((option) => {
+                  const selected = selectedClasses.includes(option.value);
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => toggleValue(option.value, setSelectedClasses)}
+                      className={cn(
+                        'rounded-full px-3 py-1 text-sm font-medium transition',
+                        selected
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/70',
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -399,9 +419,9 @@ export function PlayFlashcardsDialog({
             </p>
             <PlayModeToggle value={playMode} onChange={setPlayMode} />
           </div>
-          <Button onClick={handlePlay}>
+          <Button onClick={handlePlay} disabled={filteredCount === 0}>
             <Play className="h-4 w-4" />
-            Play{filteredCount > 0 ? ` (${filteredCount})` : ''}
+            Play{` (${filteredCount})`}
           </Button>
         </DialogFooter>
       </DialogContent>
