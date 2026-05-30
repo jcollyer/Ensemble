@@ -66,7 +66,7 @@ interface FlashcardPreviewModalProps {
   /** Whether the user can rate cards (false for public / non-owned decks). */
   canRate?: boolean;
   /** Called after each rating so the parent can invalidate caches. */
-  onRated?: (cardId: string, level: DifficultyLevel) => void;
+  onRated?: (cardId: string, level?: DifficultyLevel) => void;
   /**
    * Called when the user toggles the heart inside the rating panel. The
    * parent owns the underlying card list, so it should mirror the new
@@ -120,11 +120,11 @@ export function FlashcardPreviewModal({
     setIndex((i) => Math.min(cards.length - 1, i + 1));
   }, [cards.length]);
 
-  function handleRate(level: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) {
+  function handleRate(level?: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) {
     if (!current || !canRate) return;
     submit.mutate({
       cardId: current.id,
-      difficultyLevel: level,
+      ...(level !== undefined ? { difficultyLevel: level } : {}),
       // Only forward the advanced field when the user actually used the
       // advanced picker. `undefined` leaves the column untouched on the
       // server, preserving any prior selection.

@@ -229,7 +229,7 @@ export function PracticeScreen({
           ? 'Back to all cards'
           : 'Back to deck';
 
-  function handleRate(level: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) {
+  function handleRate(level?: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) {
     if (!current) return;
     // Guests see the rating buttons but tapping one prompts sign-in rather
     // than submitting a review. We don't try to auto-submit after sign-in:
@@ -248,7 +248,7 @@ export function PracticeScreen({
     if (!canRate) return;
     submit.mutate({
       cardId: current.id,
-      difficultyLevel: level,
+      ...(level !== undefined ? { difficultyLevel: level } : {}),
       // Only forward advanced when the user used the advanced panel — the
       // simple three-button path leaves the advanced column untouched.
       ...(advanced !== undefined ? { advancedDifficultyLevel: advanced } : {}),

@@ -18,7 +18,6 @@ import { ActivityIndicator, Pressable, Switch, Text, View } from 'react-native';
 import type { AdvancedDifficultyLevel, BackLanguageValue, DifficultyLevel } from '@ensemble/types';
 import {
   ADVANCED_DIFFICULTY_LEVEL_OPTIONS,
-  difficultyLevelFromAdvanced,
   genderLabel,
 } from '@ensemble/types';
 import { Card } from '@/components/Card';
@@ -425,7 +424,7 @@ export function AdvancedRatingPanel({
   favorite,
   onToggleFavorite,
 }: {
-  onSubmit: (level: DifficultyLevel, advanced: AdvancedDifficultyLevel[]) => void;
+  onSubmit: (advanced: AdvancedDifficultyLevel[]) => void;
   disabled?: boolean;
   initial?: readonly AdvancedDifficultyLevel[];
   /**
@@ -498,8 +497,7 @@ export function AdvancedRatingPanel({
 
   function handleSubmit() {
     const values = Array.from(selected) as AdvancedDifficultyLevel[];
-    const level = difficultyLevelFromAdvanced(values) ?? 'good';
-    onSubmit(level, values);
+    onSubmit(values);
   }
 
   return (
@@ -615,7 +613,7 @@ export function RatingPanel({
   favorite,
   onToggleFavorite,
 }: {
-  onRate: (level: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) => void;
+  onRate: (level?: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) => void;
   disabled?: boolean;
   initialAdvanced?: readonly AdvancedDifficultyLevel[];
   /**
@@ -679,7 +677,7 @@ export function RatingPanel({
           initial={initialAdvanced}
           favorite={favorite}
           onToggleFavorite={onToggleFavorite}
-          onSubmit={(level, values) => onRate(level, values)}
+          onSubmit={(values) => onRate(undefined, values)}
         />
       ) : (
         <RatingButtons

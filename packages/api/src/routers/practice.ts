@@ -194,11 +194,12 @@ export const practiceRouter = router({
     }
     if (!canRate) throw new TRPCError({ code: 'NOT_FOUND' });
 
-    // The advanced selection is optional: `undefined` means "the client used
-    // the simple picker, leave the advanced column untouched"; `null` or an
-    // empty array explicitly clears any prior selection; an array writes the
-    // canonical CSV form. We never read the column back here — encoding +
-    // upsert is enough to keep the next queue/list response in sync.
+    // Each rating field is independently optional: omitting one means
+    // "leave that column untouched." Advanced still accepts `null` /
+    // empty-array to explicitly clear its stored selection.
+    const difficultyColumnUpdate =
+      input.difficultyLevel === undefined ? {} : { difficultyLevel: input.difficultyLevel };
+
     const advancedColumnUpdate =
       input.advancedDifficultyLevel === undefined
         ? {}
@@ -214,11 +215,11 @@ export const practiceRouter = router({
       create: {
         userId: ctx.userId,
         cardId: card.id,
-        difficultyLevel: input.difficultyLevel,
+        ...difficultyColumnUpdate,
         ...advancedColumnUpdate,
       },
       update: {
-        difficultyLevel: input.difficultyLevel,
+        ...difficultyColumnUpdate,
         ...advancedColumnUpdate,
       },
     });

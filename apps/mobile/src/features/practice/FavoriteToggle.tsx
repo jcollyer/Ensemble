@@ -50,19 +50,30 @@ export function FavoriteToggle({ value, onChange }: Props) {
             accessibilityState={{ selected: checked }}
             accessibilityLabel={opt.label}
             onPress={() => onChange(opt.value)}
-            className={`flex-row items-center gap-1.5 rounded-full px-3 py-1.5 ${
-              checked ? 'bg-white shadow-sm' : ''
-            }`}
+            className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5"
+            style={
+              checked
+                ? {
+                    backgroundColor: '#ffffff',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 2,
+                    elevation: 1,
+                  }
+                : undefined
+            }
           >
             <Feather name={opt.icon} size={12} color={iconColor} />
             <Text
-              className={`text-xs font-medium ${
-                checked
+              className="text-xs font-medium"
+              style={{
+                color: checked
                   ? opt.value === 'favorite'
-                    ? 'text-rose-600'
-                    : 'text-slate-900'
-                  : 'text-slate-500'
-              }`}
+                    ? '#e11d48'
+                    : '#0f172a'
+                  : '#64748b',
+              }}
             >
               {opt.label}
             </Text>

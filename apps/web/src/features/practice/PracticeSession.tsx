@@ -256,11 +256,11 @@ export function PracticeSession({
     return () => window.removeEventListener('keydown', handler);
   }, [current, done, canGoPrev, canGoNext, handlePrev, handleNext]);
 
-  function handleRate(level: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) {
+  function handleRate(level?: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) {
     if (!current || !canRate) return;
     submit.mutate({
       cardId: current.id,
-      difficultyLevel: level,
+      ...(level !== undefined ? { difficultyLevel: level } : {}),
       // Only forward advanced when the user used the advanced panel. See
       // FlashcardPreviewModal for the same rule — keeps the column
       // untouched on a simple three-button submit.

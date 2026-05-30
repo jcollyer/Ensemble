@@ -17,7 +17,6 @@ import { ChevronLeft, ChevronRight, Heart, Loader2, Volume2 } from 'lucide-react
 import type { AdvancedDifficultyLevel, BackLanguageValue, DifficultyLevel } from '@ensemble/types';
 import {
   ADVANCED_DIFFICULTY_LEVEL_OPTIONS,
-  difficultyLevelFromAdvanced,
   genderLabel,
 } from '@ensemble/types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -429,10 +428,9 @@ export function RatingButtons({
  * other box except "Do not know"; checking "Do not know" clears every other
  * box (since it's the "I literally can't use this yet" sentinel).
  *
- * The component is uncontrolled at the value level — callers just receive an
- * `onSubmit` with the chosen advanced values plus the coarse
- * difficultyLevel derived via `difficultyLevelFromAdvanced` so the existing
- * filter/snapshot/stat surface keeps working unchanged.
+ * The component is uncontrolled at the value level — callers just receive the
+ * chosen advanced values and can persist them independently from any coarse
+ * difficulty selection.
  */
 export function AdvancedRatingPanel({
   onSubmit,
@@ -441,7 +439,7 @@ export function AdvancedRatingPanel({
   favorite,
   onToggleFavorite,
 }: {
-  onSubmit: (level: DifficultyLevel, advanced: AdvancedDifficultyLevel[]) => void;
+  onSubmit: (advanced: AdvancedDifficultyLevel[]) => void;
   disabled?: boolean;
   /** Pre-tick these boxes on mount (e.g. after a re-rate). */
   initial?: readonly AdvancedDifficultyLevel[];
@@ -531,8 +529,7 @@ export function AdvancedRatingPanel({
 
   function handleSubmit() {
     const values = Array.from(selected) as AdvancedDifficultyLevel[];
-    const level = difficultyLevelFromAdvanced(values) ?? 'good';
-    onSubmit(level, values);
+    onSubmit(values);
   }
 
   return (
@@ -671,12 +668,12 @@ export function RatingPanel({
   onToggleFavorite,
 }: {
   /**
-   * Called with the coarse `DifficultyLevel` (always) and the advanced
-   * selection (only when the advanced toggle is on — `undefined` when the
-   * user used the simple picker, so the API leaves the advanced column
-   * untouched). The caller forwards both to `submitReview`.
+  * Called with the coarse `DifficultyLevel` when the user used the simple
+  * picker, and with `advanced` when they used the advanced picker. The two
+  * payloads are intentionally independent so submitting an advanced rating
+  * does not rewrite the coarse difficulty column.
    */
-  onRate: (level: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) => void;
+  onRate: (level?: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) => void;
   disabled?: boolean;
   /** Pre-tick these boxes when the advanced panel opens (re-rate UX). */
   initialAdvanced?: readonly AdvancedDifficultyLevel[];
@@ -732,7 +729,7 @@ export function RatingPanel({
           initial={initialAdvanced}
           favorite={favorite}
           onToggleFavorite={onToggleFavorite}
-          onSubmit={(level, values) => onRate(level, values)}
+          onSubmit={(values) => onRate(undefined, values)}
         />
       ) : (
         <RatingButtons

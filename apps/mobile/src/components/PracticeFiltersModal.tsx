@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Check, ChevronDown, X } from 'lucide-react-native';
+import { Check, ChevronDown, Play, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
@@ -34,9 +34,9 @@ interface PracticeFiltersModalProps {
 /**
  * A bottom-sheet modal containing the Practice Filters panel.
  *
- * - Home screen (no categoryId): shows all filters including Categories,
+ * - Home screen (no categoryId): shows all filters including Decks,
  *   routes to /all-cards-practice.
- * - Deck detail screen (categoryId set): hides the Categories filter (the
+ * - Deck detail screen (categoryId set): hides the Decks filter (the
  *   deck is already implicit), routes to /all-cards-practice with the deck
  *   pre-locked via categoryIds param.
  */
@@ -46,8 +46,8 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [deckDropdownOpen, setDeckDropdownOpen] = useState(false);
-  const [classSectionOpen, setClassSectionOpen] = useState(false);
-  const [ratingMode, setRatingMode] = useState<RatingMode>('basic');
+  const [chooseCategoryMode, setChooseCategoryMode] = useState(false);
+  const [ratingMode, setRatingMode] = useState<RatingMode>('all');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
@@ -81,11 +81,16 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
 
   function handleRatingModeChange(next: RatingMode) {
     setRatingMode(next);
+    if (next === 'all') {
+      setSelectedRatings([]);
+      setSelectedAdvancedRatings([]);
+      return;
+    }
     if (next === 'basic') {
       setSelectedAdvancedRatings([]);
-    } else {
-      setSelectedRatings([]);
+      return;
     }
+    setSelectedRatings([]);
   }
 
   function resetFilters() {
@@ -93,12 +98,13 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
     setSelectedClasses([]);
     setSelectedRatings([]);
     setSelectedAdvancedRatings([]);
-    setRatingMode('basic');
+    setRatingMode('all');
     setSelectedFavorites([]);
+    setChooseCategoryMode(false);
+    setPlayMode('in_order');
   }
 
   // ── Data queries ──────────────────────────────────────────────────────────
-  // In deck mode we fetch only the deck's cards; otherwise all cards.
   const categoriesQuery = trpc.categories.list.useQuery(undefined, { enabled: !deckMode });
   const allCardsQuery = trpc.flashcards.listAll.useQuery(undefined, { enabled: !deckMode });
   const deckCardsQuery = trpc.flashcards.listByCategory.useQuery(
@@ -110,7 +116,6 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
 
   const filteredCards = useMemo(() => {
     let result = baseCards;
-    // In deck mode the category is already implicit — skip category filter.
     if (!deckMode && selectedCategoryIds.length > 0) {
       result = result.filter((c) => c.categoryId && selectedCategoryIds.includes(c.categoryId));
     }
@@ -161,13 +166,7 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
     selectedAdvancedRatings.length > 0 ||
     selectedFavorites.length > 0;
 
-  const practiceCountLabel = hasActiveFilters
-    ? filteredCards.length > 0
-      ? ` (${filteredCards.length})`
-      : ''
-    : baseCards.length > 0
-      ? ` (${baseCards.length})`
-      : '';
+  const practiceCount = hasActiveFilters ? filteredCards.length : baseCards.length;
 
   const deckSummaryLabel = useMemo(() => {
     if (selectedCategoryIds.length === 0) return 'All decks';
@@ -179,57 +178,38 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
     return `${selectedCategoryIds.length} decks selected`;
   }, [categoriesQuery.data, selectedCategoryIds]);
 
-  const classSummaryLabel = useMemo(() => {
-    if (selectedClasses.length === 0) return 'All word classes';
-    if (selectedClasses.length === 1) {
-      return (
-        WORD_CLASS_OPTIONS.find((cls) => cls.value === selectedClasses[0])?.label ?? '1 word class'
-      );
-    }
-    return `${selectedClasses.length} word classes selected`;
-  }, [selectedClasses]);
-
   function navigateToPractice() {
     const params = new URLSearchParams();
 
     if (deckMode && categoryId) {
-      // Lock to this deck's cards. Use the singular `categoryId` param so the
-      // server's `practice.queue` runs the single-deck branch, which is the
-      // only branch a guest is allowed to hit (and which resolves public-deck
-      // visibility correctly). Passing `categoryIds` for a single-deck play
-      // routes through the multi-deck branch, which 401s for guests.
       params.set('categoryId', categoryId);
-      // Signal that the user entered practice from a deck detail page so the
-      // completion view can show "Back to deck" and navigate back correctly.
       params.set('origin', 'deck');
     } else {
       if (selectedCategoryIds.length > 0) {
         params.set('categoryIds', selectedCategoryIds.join(','));
       }
-      // Signal that the user entered practice from the home page so the
-      // completion view can show "Back to home".
       params.set('origin', 'home');
     }
 
-    if (selectedClasses.length > 0) {
-      params.set('classes', selectedClasses.join(','));
-    }
-    if (selectedRatings.length > 0) {
-      params.set('difficultyLevels', selectedRatings.join(','));
-    }
+    if (selectedClasses.length > 0) params.set('classes', selectedClasses.join(','));
+    if (selectedRatings.length > 0) params.set('difficultyLevels', selectedRatings.join(','));
     if (selectedAdvancedRatings.length > 0) {
       params.set('advancedDifficultyLevels', selectedAdvancedRatings.join(','));
     }
-    if (selectedFavorites.length > 0) {
-      params.set('favorites', selectedFavorites.join(','));
-    }
-    if (playMode === 'shuffle') {
-      params.set('shuffle', '1');
-    }
+    if (selectedFavorites.length > 0) params.set('favorites', selectedFavorites.join(','));
+    if (playMode === 'shuffle') params.set('shuffle', '1');
+
     const qs = params.toString();
     onClose();
     router.push((qs ? `/all-cards-practice?${qs}` : '/all-cards-practice') as never);
   }
+
+  // ── Shared styles ─────────────────────────────────────────────────────────
+  const SECTION_LABEL = 'ml-1 text-xs font-semibold uppercase tracking-widest text-slate-500';
+  const PILL_SELECTED = 'bg-blue-500';
+  const PILL_DEFAULT = 'bg-slate-100';
+  const PILL_TEXT_SELECTED = 'text-xs font-medium text-white';
+  const PILL_TEXT_DEFAULT = 'text-xs font-medium text-slate-600';
 
   return (
     <Modal
@@ -250,8 +230,8 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 16 }}>
-          {/* Practice filter panel */}
-          <Card className="gap-4 p-4">
+          <Card className="gap-5 p-4">
+            {/* Header row */}
             <View className="flex-row items-center justify-between">
               <Text className="text-sm font-semibold text-slate-700">Play filters</Text>
               {hasActiveFilters && (
@@ -261,10 +241,10 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
               )}
             </View>
 
-            {/* Decks — hidden in deck mode (scope is already implicit) */}
+            {/* ── DECKS ─────────────────────────────────────────────────── */}
             {!deckMode && (categoriesQuery.data?.length ?? 0) > 0 && (
-              <View className="gap-1.5">
-                <Text className="text-xs text-slate-500">Decks</Text>
+              <View className="gap-2">
+                <Text className={SECTION_LABEL}>Decks</Text>
                 <Pressable
                   onPress={() => setDeckDropdownOpen((open) => !open)}
                   accessibilityRole="button"
@@ -316,152 +296,156 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
               </View>
             )}
 
-            {/* Word classes */}
-            <View className="gap-1.5">
-              <View className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+            {/* ── CATEGORIES ────────────────────────────────────────────── */}
+            <View className="gap-2">
+              <Text className={SECTION_LABEL}>Categories</Text>
+              {/* Segmented toggle */}
+              <View
+                accessibilityRole="radiogroup"
+                className="flex-row items-center gap-0.5 self-start rounded-full bg-slate-100 p-0.5"
+              >
                 <Pressable
-                  onPress={() => setClassSectionOpen((open) => !open)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Toggle word class filters"
-                  className="flex-row items-center justify-between px-4 py-3 active:opacity-80"
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: !chooseCategoryMode }}
+                  accessibilityLabel="All categories"
+                  onPress={() => {
+                    setChooseCategoryMode(false);
+                    setSelectedClasses([]);
+                  }}
+                  className="rounded-full px-3 py-1.5"
+                  style={
+                    !chooseCategoryMode
+                      ? [{ backgroundColor: '#ffffff' }, { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }]
+                      : undefined
+                  }
                 >
-                  <View className="flex-1 pr-3">
-                    <Text className="text-xs text-slate-500">Word class</Text>
-                    <Text numberOfLines={1} className="mt-1 text-sm text-slate-900">
-                      {classSummaryLabel}
-                    </Text>
-                  </View>
-                  <ChevronDown
-                    size={18}
-                    color="#94a3b8"
-                    style={{ transform: [{ rotate: classSectionOpen ? '180deg' : '0deg' }] }}
-                  />
+                  <Text
+                    className="text-xs font-medium"
+                    style={{ color: !chooseCategoryMode ? '#0f172a' : '#64748b' }}
+                  >
+                    All categories
+                  </Text>
                 </Pressable>
-
-                {classSectionOpen && (
-                  <View className="border-t border-slate-100 px-4 py-3">
-                    <View className="flex-row flex-wrap gap-1.5">
-                      {WORD_CLASS_OPTIONS.map((cls) => {
-                        const selected = selectedClasses.includes(cls.value);
-                        return (
-                          <Pressable
-                            key={cls.value}
-                            onPress={() => toggleClass(cls.value)}
-                            className={`rounded-full px-3 py-1.5 ${
-                              selected ? 'bg-blue-500' : 'bg-slate-100'
-                            }`}
-                          >
-                            <Text
-                              className={`text-xs font-medium ${
-                                selected ? 'text-white' : 'text-slate-600'
-                              }`}
-                            >
-                              {cls.label}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  </View>
-                )}
+                <Pressable
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: chooseCategoryMode }}
+                  accessibilityLabel="Choose categories"
+                  onPress={() => setChooseCategoryMode(true)}
+                  className="rounded-full px-3 py-1.5"
+                  style={
+                    chooseCategoryMode
+                      ? [{ backgroundColor: '#ffffff' }, { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }]
+                      : undefined
+                  }
+                >
+                  <Text
+                    className="text-xs font-medium"
+                    style={{ color: chooseCategoryMode ? '#0f172a' : '#64748b' }}
+                  >
+                    Choose categories
+                  </Text>
+                </Pressable>
               </View>
-            </View>
 
-            <View className="gap-1.5">
-              <RatingModeToggle value={ratingMode} onChange={handleRatingModeChange} />
-
-              {ratingMode === 'basic' ? (
-                <View className="gap-1.5">
-                  <Text className="ml-1 text-xs text-slate-500">Rating</Text>
-                  <View className="flex-row flex-wrap gap-1.5">
-                    {(
-                      [
-                        { value: 'challenging', label: 'Challenging' },
-                        { value: 'good', label: 'Good' },
-                        { value: 'easy', label: 'Easy' },
-                        { value: 'no_rating', label: 'Not rated' },
-                      ] as const
-                    ).map((opt) => {
-                      const selected = selectedRatings.includes(opt.value);
-                      return (
-                        <Pressable
-                          key={opt.value}
-                          onPress={() => toggleRating(opt.value)}
-                          className={`rounded-full px-3 py-1.5 ${
-                            selected ? 'bg-blue-500' : 'bg-slate-100'
-                          }`}
-                        >
-                          <Text
-                            className={`text-xs font-medium ${
-                              selected ? 'text-white' : 'text-slate-600'
-                            }`}
-                          >
-                            {opt.label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              ) : (
-                <View className="gap-1.5">
-                  <Text className="ml-1 text-xs text-slate-500">Advanced Rating</Text>
-                  {(() => {
-                    const opts = [
-                      ...ADVANCED_DIFFICULTY_LEVEL_OPTIONS.map((o) => ({
-                        value: o.value as string,
-                        label: o.label,
-                      })),
-                      { value: 'no_rating', label: 'No rating' },
-                    ];
-                    const half = Math.ceil(opts.length / 2);
-                    return [opts.slice(0, half), opts.slice(half)].map((row, rowIdx) => (
-                      <View key={rowIdx} className="flex-row flex-wrap gap-1.5">
-                        {row.map((opt) => {
-                          const selected = selectedAdvancedRatings.includes(opt.value);
-                          return (
-                            <Pressable
-                              key={opt.value}
-                              onPress={() => toggleAdvancedRating(opt.value)}
-                              className={`rounded-full px-3 py-1.5 ${
-                                selected ? 'bg-blue-500' : 'bg-slate-100'
-                              }`}
-                            >
-                              <Text
-                                className={`text-xs font-medium ${
-                                  selected ? 'text-white' : 'text-slate-600'
-                                }`}
-                              >
-                                {opt.label}
-                              </Text>
-                            </Pressable>
-                          );
-                        })}
-                      </View>
-                    ));
-                  })()}
+              {/* Category pills */}
+              {chooseCategoryMode && (
+                <View className="flex-row flex-wrap gap-1.5 pt-1">
+                  {WORD_CLASS_OPTIONS.map((cls) => {
+                    const selected = selectedClasses.includes(cls.value);
+                    return (
+                      <Pressable
+                        key={cls.value}
+                        onPress={() => toggleClass(cls.value)}
+                        className={`rounded-full px-3 py-1.5 ${selected ? PILL_SELECTED : PILL_DEFAULT}`}
+                      >
+                        <Text className={selected ? PILL_TEXT_SELECTED : PILL_TEXT_DEFAULT}>
+                          {cls.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
               )}
             </View>
 
-            {/* Favorite — segmented "All / Favorite / Not favorite" toggle,
-                placed directly below Advanced Rating per spec. Styled to
-                match PlayModeToggle so the modal's controls read as a
-                consistent set. No section label by design. */}
-            <FavoriteToggle
-              value={favoriteFilterFromArray(selectedFavorites)}
-              onChange={(next) => setSelectedFavorites(favoriteFilterToArray(next))}
-            />
+            {/* ── RATINGS ───────────────────────────────────────────────── */}
+            <View className="gap-2">
+              <Text className={SECTION_LABEL}>Ratings</Text>
+              <RatingModeToggle value={ratingMode} onChange={handleRatingModeChange} />
 
-            {/* Play order */}
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Play order
-              </Text>
+              {ratingMode === 'basic' && (
+                <View className="flex-row flex-wrap gap-1.5 pt-1">
+                  {(
+                    [
+                      { value: 'challenging', label: 'Challenging' },
+                      { value: 'good', label: 'Good' },
+                      { value: 'easy', label: 'Easy' },
+                      { value: 'no_rating', label: 'Not rated' },
+                    ] as const
+                  ).map((opt) => {
+                    const selected = selectedRatings.includes(opt.value);
+                    return (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => toggleRating(opt.value)}
+                        className={`rounded-full px-3 py-1.5 ${selected ? PILL_SELECTED : PILL_DEFAULT}`}
+                      >
+                        <Text className={selected ? PILL_TEXT_SELECTED : PILL_TEXT_DEFAULT}>
+                          {opt.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+
+              {ratingMode === 'advanced' && (
+                <View className="flex-row flex-wrap gap-1.5 pt-1">
+                  {[
+                    ...ADVANCED_DIFFICULTY_LEVEL_OPTIONS.map((o) => ({
+                      value: o.value as string,
+                      label: o.label,
+                    })),
+                    { value: 'no_rating', label: 'No rating' },
+                  ].map((opt) => {
+                    const selected = selectedAdvancedRatings.includes(opt.value);
+                    return (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => toggleAdvancedRating(opt.value)}
+                        className={`rounded-full px-3 py-1.5 ${selected ? PILL_SELECTED : PILL_DEFAULT}`}
+                      >
+                        <Text className={selected ? PILL_TEXT_SELECTED : PILL_TEXT_DEFAULT}>
+                          {opt.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+
+            {/* ── FAVORITES ─────────────────────────────────────────────── */}
+            <View className="gap-2">
+              <Text className={SECTION_LABEL}>Favorites</Text>
+              <FavoriteToggle
+                value={favoriteFilterFromArray(selectedFavorites)}
+                onChange={(next) => setSelectedFavorites(favoriteFilterToArray(next))}
+              />
+            </View>
+
+            {/* ── PLAY ORDER ────────────────────────────────────────────── */}
+            <View className="gap-2">
+              <Text className={SECTION_LABEL}>Play order</Text>
               <PlayModeToggle value={playMode} onChange={setPlayMode} />
             </View>
 
-            <Button onPress={navigateToPractice}>{`Play${practiceCountLabel}`}</Button>
+            <Button onPress={navigateToPractice} disabled={practiceCount === 0}>
+              <Play size={14} color="#ffffff" style={{ marginRight: 6 }} />
+              <Text className="text-sm font-semibold text-white">
+                {`Play (${practiceCount})`}
+              </Text>
+            </Button>
           </Card>
         </ScrollView>
       </View>

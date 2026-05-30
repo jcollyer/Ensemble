@@ -362,15 +362,14 @@ export function difficultyLevelFromAdvanced(
 }
 
 /**
- * Wire format accepted by `practice.submitReview`. The client always sends a
- * coarse `difficultyLevel` (so the existing filters keep working), and may
- * optionally include the matching advanced selection. When the advanced
- * payload is provided we validate every value against the enum at the edge.
- * `advancedDifficultyLevel: null` explicitly clears any prior selection.
+ * Wire format accepted by `practice.submitReview`. The caller may submit a
+ * coarse `difficultyLevel`, an advanced selection, or both. Omitted fields
+ * are left untouched on the existing CardProgress row; `advancedDifficultyLevel:
+ * null` still explicitly clears any prior selection.
  */
 export const SubmitReviewInput = z.object({
   cardId: z.string().cuid(),
-  difficultyLevel: DifficultyLevelSchema,
+  difficultyLevel: DifficultyLevelSchema.optional(),
   advancedDifficultyLevel: z.array(AdvancedDifficultyLevelSchema).nullish(),
 });
 export type SubmitReviewInput = z.infer<typeof SubmitReviewInput>;
