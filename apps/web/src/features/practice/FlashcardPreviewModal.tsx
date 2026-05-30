@@ -27,6 +27,7 @@ import { decodeAdvancedDifficultyLevels } from '@ensemble/types';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/trpc/client';
+import { Pencil } from 'lucide-react';
 import { FlipCard, NavButton, RatingPanel } from './FlashcardViewer';
 
 // ── Public type for a card passed to this modal ────────────────────────────────
@@ -82,6 +83,12 @@ interface FlashcardPreviewModalProps {
    * only signals "the user just changed favorite state."
    */
   onFavoriteToggled?: (cardId: string, favorite: boolean) => void;
+  /**
+   * Called when the user clicks the Edit button in the modal header.
+   * Only rendered when `canRate` is true (i.e. the viewer is the owner).
+   * The parent should open the edit dialog for the given card ID.
+   */
+  onEdit?: (cardId: string) => void;
 }
 
 export function FlashcardPreviewModal({
@@ -92,6 +99,7 @@ export function FlashcardPreviewModal({
   canRate = true,
   onRated,
   onFavoriteToggled,
+  onEdit,
 }: FlashcardPreviewModalProps) {
   const submit = trpc.practice.submitReview.useMutation();
   const setFavorite = trpc.practice.setFavorite.useMutation();
@@ -179,13 +187,26 @@ export function FlashcardPreviewModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl gap-0 p-6">
-        {/* Visually hidden title for screen readers */}
-        <DialogTitle className="sr-only">Flashcard preview</DialogTitle>
-
         <div className="flex flex-col space-y-4">
-          {/* Counter */}
-          <div className="text-muted-foreground text-center text-xs">
-            {index + 1} of {cards.length}
+          {/* Header: title (sr-only) + counter + optional Edit button */}
+          <DialogTitle className="sr-only">Flashcard preview</DialogTitle>
+          <div className="flex items-center justify-between">
+            <div className="text-muted-foreground text-xs">
+              {index + 1} of {cards.length}
+            </div>
+            {canRate && onEdit ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onEdit(current.id);
+                  onOpenChange(false);
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </Button>
+            ) : null}
           </div>
 
           {/* Card + navigation */}

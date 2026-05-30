@@ -753,6 +753,10 @@ export function CategoryDetail({ categoryId }: Props) {
             );
           }
         }}
+        onEdit={(cardId) => {
+          setPreviewIndex(null);
+          setEditingId(cardId);
+        }}
       />
     </div>
   );
