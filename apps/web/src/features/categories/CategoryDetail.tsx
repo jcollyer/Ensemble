@@ -457,6 +457,8 @@ export function CategoryDetail({ categoryId }: Props) {
     // the deck detail view.
     advancedDifficultyLevel:
       (card as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null,
+    difficultyLevel:
+      (card as { difficultyLevel?: string | null }).difficultyLevel as import('@ensemble/types').DifficultyLevel | null ?? null,
     favorite: (card as { favorite?: boolean }).favorite ?? false,
   }));
 

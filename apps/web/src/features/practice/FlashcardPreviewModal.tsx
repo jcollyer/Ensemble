@@ -49,6 +49,11 @@ export interface PreviewCard {
    */
   advancedDifficultyLevel?: string | null;
   /**
+   * Current simple difficulty rating. Used to pre-select the matching
+   * button in the rating panel. Optional — omitting it shows no selection.
+   */
+  difficultyLevel?: DifficultyLevel | null;
+  /**
    * Whether this card is currently favorited by the viewer. Drives the
    * filled/outlined state of the heart in the rating panel. Optional —
    * omitting it (or passing false) renders the heart outlined.
@@ -93,12 +98,15 @@ export function FlashcardPreviewModal({
 
   const [index, setIndex] = useState(initialIndex);
   const [flipped, setFlipped] = useState(false);
-  // Local overlay of favorite state so the heart updates instantly while the
-  // mutation is in flight. Keyed by cardId so it survives navigation between
-  // cards inside the modal. Cleared when the modal closes.
+  // Local overlays so ratings/favorites update instantly in the UI while the
+  // mutation is in flight. Keyed by cardId, cleared when the modal closes.
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+  const [difficultyOverrides, setDifficultyOverrides] = useState<Record<string, DifficultyLevel>>({});
   useEffect(() => {
-    if (!open) setFavoriteOverrides({});
+    if (!open) {
+      setFavoriteOverrides({});
+      setDifficultyOverrides({});
+    }
   }, [open]);
 
   // Reset to the chosen card whenever the modal opens.
@@ -155,20 +163,14 @@ export function FlashcardPreviewModal({
       ...(level !== undefined ? { difficultyLevel: level } : {}),
       // Only forward the advanced field when the user actually used the
       // advanced picker — `undefined` leaves the column untouched on the
-      // server, preserving any prior selection. Empty arrays explicitly
-      // clear, but the panel guarantees at least one box is checked at
-      // submit time so we shouldn't hit that branch in practice.
+      // server, preserving any prior selection.
       ...(advanced !== undefined ? { advancedDifficultyLevel: advanced } : {}),
     });
-    onRated?.(current.id, level);
-    // After rating, advance to the next card; if on the last card just reset
-    // the flip so the user can see the front again.
-    if (canGoNext) {
-      setFlipped(false);
-      setIndex((i) => i + 1);
-    } else {
-      setFlipped(false);
+    // Immediately reflect the new simple rating in the UI.
+    if (level !== undefined) {
+      setDifficultyOverrides((prev) => ({ ...prev, [current.id]: level }));
     }
+    onRated?.(current.id, level);
   }
 
   // Nothing to show yet (cards array empty or modal closed before first open).
@@ -216,6 +218,7 @@ export function FlashcardPreviewModal({
               key={current.id}
               onRate={handleRate}
               disabled={submit.isPending}
+              initialDifficulty={difficultyOverrides[current.id] ?? current.difficultyLevel ?? null}
               initialAdvanced={decodeAdvancedDifficultyLevels(current.advancedDifficultyLevel)}
               favorite={favoriteOverrides[current.id] ?? current.favorite ?? false}
               onToggleFavorite={() => {

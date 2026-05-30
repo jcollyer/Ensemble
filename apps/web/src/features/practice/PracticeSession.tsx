@@ -94,6 +94,28 @@ export function PracticeSession({
   // `{ categoryId: ... }` (deck-scoped) variants are refetched. Same for
   // categories.list, which feeds deck-tile counts on the dashboard.
   const submit = trpc.practice.submitReview.useMutation({
+    onMutate: async ({ cardId, difficultyLevel }) => {
+      if (difficultyLevel === undefined) return;
+      const input = {
+        categoryId,
+        categoryIds: categoryIds?.length ? categoryIds : undefined,
+        classes: classes?.length ? classes : undefined,
+      };
+      await utils.practice.queue.cancel(input);
+      const previous = utils.practice.queue.getData(input);
+      if (previous) {
+        utils.practice.queue.setData(input, {
+          ...previous,
+          cards: previous.cards.map((c) =>
+            c.id === cardId ? { ...c, difficultyLevel } : c,
+          ),
+        });
+      }
+      return { previous, input };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) utils.practice.queue.setData(ctx.input, ctx.previous);
+    },
     onSuccess: () => {
       utils.practice.stats.invalidate();
       utils.categories.list.invalidate();
