@@ -48,6 +48,11 @@ export interface PreviewCard {
    */
   advancedDifficultyLevel?: string | null;
   /**
+   * Current simple difficulty rating. Used to pre-select the matching
+   * button in the rating panel. Optional — omitting it shows no selection.
+   */
+  difficultyLevel?: DifficultyLevel | null;
+  /**
    * Whether this card is currently favorited by the viewer. Drives the
    * filled/outlined state of the heart in the rating panel.
    */
@@ -95,6 +100,7 @@ export function FlashcardPreviewModal({
   // the mutation is in flight. Keyed by cardId so it survives navigation
   // between cards inside the modal. Cleared when the modal closes.
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
+  const [difficultyOverrides, setDifficultyOverrides] = useState<Record<string, DifficultyLevel>>({});
 
   // Reset to the chosen card whenever the modal opens.
   useEffect(() => {
@@ -103,6 +109,7 @@ export function FlashcardPreviewModal({
       setFlipped(false);
     } else {
       setFavoriteOverrides({});
+      setDifficultyOverrides({});
     }
   }, [visible, initialIndex]);
 
@@ -130,14 +137,10 @@ export function FlashcardPreviewModal({
       // server, preserving any prior selection.
       ...(advanced !== undefined ? { advancedDifficultyLevel: advanced } : {}),
     });
-    onRated?.(current.id, level);
-    // After rating, advance to next card; if on last just reset the flip.
-    if (canGoNext) {
-      setFlipped(false);
-      setIndex((i) => i + 1);
-    } else {
-      setFlipped(false);
+    if (level !== undefined) {
+      setDifficultyOverrides((prev) => ({ ...prev, [current.id]: level }));
     }
+    onRated?.(current.id, level);
   }
 
   return (
@@ -196,6 +199,7 @@ export function FlashcardPreviewModal({
                 key={current.id}
                 onRate={handleRate}
                 disabled={submit.isPending}
+                initialDifficulty={difficultyOverrides[current.id] ?? current.difficultyLevel ?? null}
                 initialAdvanced={decodeAdvancedDifficultyLevels(current.advancedDifficultyLevel)}
                 favorite={favoriteOverrides[current.id] ?? current.favorite ?? false}
                 onToggleFavorite={() => {

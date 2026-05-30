@@ -138,6 +138,8 @@ export default function DeckDetailScreen() {
     // pre-tick the user's previous choice when they re-rate a card.
     advancedDifficultyLevel:
       (card as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null,
+    difficultyLevel:
+      (card as { difficultyLevel?: string | null }).difficultyLevel as import('@ensemble/types').DifficultyLevel | null ?? null,
     favorite: (card as { favorite?: boolean }).favorite ?? false,
   }));
 
