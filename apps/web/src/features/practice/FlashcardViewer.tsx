@@ -475,11 +475,11 @@ export function AdvancedRatingPanel({
   onToggleFavorite?: () => void;
 }) {
   const showFavorite = favorite !== undefined && onToggleFavorite !== undefined;
-  // "Do not know" is the default sentinel until the user picks something
-  // else — matches the "← defaults until you check another" spec.
   const [selected, setSelected] = useState<Set<AdvancedDifficultyLevel>>(() => {
     if (initial && initial.length > 0) return new Set(initial);
-    return new Set(['do_not_know']);
+    // No saved rating — start with nothing checked so NULL stays NULL until
+    // the user makes an explicit selection.
+    return new Set();
   });
 
   function getNextSelected(

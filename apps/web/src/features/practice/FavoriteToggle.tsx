@@ -26,8 +26,8 @@ interface Props {
   className?: string;
 }
 
-const OPTIONS: { value: FavoriteFilterValue; label: string; Icon: typeof Heart }[] = [
-  { value: 'all', label: 'All cards', Icon: List },
+const OPTIONS: { value: FavoriteFilterValue; label: string; Icon?: typeof Heart }[] = [
+  { value: 'all', label: 'All cards' },
   { value: 'favorite', label: 'Favorite', Icon: Heart },
   { value: 'not_favorite', label: 'Not favorite', Icon: HeartOff },
 ];
@@ -63,9 +63,9 @@ export function FavoriteToggle({ value, onChange, className }: Props) {
               checked && opt.value === 'favorite' && 'text-primary',
             )}
           >
-            <Icon
+            {Icon && <Icon
               className={cn('h-3.5 w-3.5', checked && opt.value === 'favorite' && 'fill-current')}
-            />
+            />}
             {opt.label}
           </button>
         );

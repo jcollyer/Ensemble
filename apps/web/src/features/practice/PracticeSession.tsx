@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, CheckCircle2, Pencil, RotateCcw } from 'lucide-react';
 
 import type { AdvancedDifficultyLevel, BackLanguageValue, DifficultyLevel } from '@ensemble/types';
-import { decodeAdvancedDifficultyLevels } from '@ensemble/types';
+import { decodeAdvancedDifficultyLevels, encodeAdvancedDifficultyLevels } from '@ensemble/types';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -94,8 +94,8 @@ export function PracticeSession({
   // `{ categoryId: ... }` (deck-scoped) variants are refetched. Same for
   // categories.list, which feeds deck-tile counts on the dashboard.
   const submit = trpc.practice.submitReview.useMutation({
-    onMutate: async ({ cardId, difficultyLevel }) => {
-      if (difficultyLevel === undefined) return;
+    onMutate: async ({ cardId, difficultyLevel, advancedDifficultyLevel }) => {
+      if (difficultyLevel === undefined && advancedDifficultyLevel === undefined) return;
       const input = {
         categoryId,
         categoryIds: categoryIds?.length ? categoryIds : undefined,
@@ -106,9 +106,21 @@ export function PracticeSession({
       if (previous) {
         utils.practice.queue.setData(input, {
           ...previous,
-          cards: previous.cards.map((c) =>
-            c.id === cardId ? { ...c, difficultyLevel } : c,
-          ),
+          cards: previous.cards.map((c) => {
+            if (c.id !== cardId) return c;
+            return {
+              ...c,
+              ...(difficultyLevel !== undefined ? { difficultyLevel } : {}),
+              ...(advancedDifficultyLevel !== undefined
+                ? {
+                    advancedDifficultyLevel:
+                      advancedDifficultyLevel === null
+                        ? null
+                        : encodeAdvancedDifficultyLevels(advancedDifficultyLevel),
+                  }
+                : {}),
+            };
+          }),
         });
       }
       return { previous, input };

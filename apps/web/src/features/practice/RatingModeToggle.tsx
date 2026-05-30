@@ -12,7 +12,7 @@ interface Props {
 }
 
 const OPTIONS: { value: RatingMode; label: string; Icon?: typeof List }[] = [
-  { value: 'all', label: 'All cards', Icon: List },
+  { value: 'all', label: 'All cards' },
   { value: 'basic', label: 'Basic Rating' },
   { value: 'advanced', label: 'Advanced Rating' },
 ];

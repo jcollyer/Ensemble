@@ -480,7 +480,9 @@ export function AdvancedRatingPanel({
   const showFavorite = favorite !== undefined && onToggleFavorite !== undefined;
   const [selected, setSelected] = useState<Set<AdvancedDifficultyLevel>>(() => {
     if (initial && initial.length > 0) return new Set(initial);
-    return new Set(['do_not_know']);
+    // No saved rating — start with nothing checked so NULL stays NULL until
+    // the user makes an explicit selection.
+    return new Set();
   });
 
   function getNextSelected(
