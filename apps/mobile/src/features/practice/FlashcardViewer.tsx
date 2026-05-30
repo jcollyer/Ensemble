@@ -26,10 +26,38 @@ import { trpc } from '@/lib/trpc';
 
 // ── Rating definitions ─────────────────────────────────────────────────────────
 
-export const RATINGS: { value: DifficultyLevel; label: string; sub: string; tone: string }[] = [
-  { value: 'challenging', label: 'Challenging', sub: 'Not yet', tone: 'border-orange-300' },
-  { value: 'good', label: 'Good', sub: 'Warm', tone: 'border-blue-300' },
-  { value: 'easy', label: 'Easy', sub: 'Got it', tone: 'border-green-300' },
+export const RATINGS: {
+  value: DifficultyLevel;
+  label: string;
+  sub: string;
+  tone: string;
+  selectedBg: string;
+  selectedBorder: string;
+}[] = [
+  {
+    value: 'challenging',
+    label: 'Challenging',
+    sub: 'Not yet',
+    tone: 'border-orange-300',
+    selectedBg: 'bg-orange-100',
+    selectedBorder: 'border-orange-500',
+  },
+  {
+    value: 'good',
+    label: 'Good',
+    sub: 'Warm',
+    tone: 'border-blue-300',
+    selectedBg: 'bg-blue-100',
+    selectedBorder: 'border-blue-500',
+  },
+  {
+    value: 'easy',
+    label: 'Easy',
+    sub: 'Got it',
+    tone: 'border-green-300',
+    selectedBg: 'bg-green-100',
+    selectedBorder: 'border-green-500',
+  },
 ];
 
 // ── NavButton ──────────────────────────────────────────────────────────────────
@@ -367,6 +395,7 @@ export function RatingButtons({
   disabled,
   favorite,
   onToggleFavorite,
+  initialDifficulty,
 }: {
   onRate: (level: DifficultyLevel) => void;
   disabled?: boolean;
@@ -377,23 +406,32 @@ export function RatingButtons({
    */
   favorite?: boolean;
   onToggleFavorite?: () => void;
+  /** Pre-select this rating on mount to reflect the card's saved difficultyLevel. */
+  initialDifficulty?: DifficultyLevel | null;
 }) {
+  const [selected, setSelected] = useState<DifficultyLevel | null>(initialDifficulty ?? null);
   const showFavorite = favorite !== undefined && onToggleFavorite !== undefined;
   return (
     <View className="mt-6 flex-row items-stretch gap-2">
-      {RATINGS.map((r) => (
-        <Pressable
-          key={r.value}
-          onPress={() => onRate(r.value)}
-          disabled={disabled}
-          className={`min-w-0 flex-1 items-center rounded-lg border bg-white px-2 py-3 active:opacity-70 ${r.tone} ${
-            disabled ? 'opacity-50' : ''
-          }`}
-        >
-          <Text className="text-base font-semibold text-slate-900">{r.label}</Text>
-          <Text className="text-xs text-slate-500">{r.sub}</Text>
-        </Pressable>
-      ))}
+      {RATINGS.map((r) => {
+        const isSelected = selected === r.value;
+        return (
+          <Pressable
+            key={r.value}
+            onPress={() => {
+              setSelected(r.value);
+              onRate(r.value);
+            }}
+            disabled={disabled}
+            className={`min-w-0 flex-1 items-center rounded-lg border px-2 py-3 active:opacity-70 ${
+              isSelected ? `${r.selectedBg} ${r.selectedBorder}` : `bg-white ${r.tone}`
+            } ${disabled ? 'opacity-50' : ''}`}
+          >
+            <Text className="text-base font-semibold text-slate-900">{r.label}</Text>
+            <Text className="text-xs text-slate-500">{r.sub}</Text>
+          </Pressable>
+        );
+      })}
       {showFavorite ? (
         <FavoriteButton favorite={favorite} onToggle={onToggleFavorite} disabled={disabled} />
       ) : null}
@@ -601,12 +639,15 @@ export function RatingPanel({
   onRate,
   disabled,
   initialAdvanced,
+  initialDifficulty,
   favorite,
   onToggleFavorite,
 }: {
   onRate: (level?: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) => void;
   disabled?: boolean;
   initialAdvanced?: readonly AdvancedDifficultyLevel[];
+  /** Pre-select this rating on mount to reflect the card's saved difficultyLevel. */
+  initialDifficulty?: DifficultyLevel | null;
   /**
    * Current favorite state and toggle callback. Threaded into both the
    * simple and advanced sub-panels. Omit both to hide the heart entirely
@@ -663,6 +704,7 @@ export function RatingPanel({
         onRate={(level) => onRate(level)}
         favorite={favorite}
         onToggleFavorite={onToggleFavorite}
+        initialDifficulty={initialDifficulty}
       />
       <View className="flex-row items-center justify-end gap-2">
         <Text className="text-xs text-slate-500">Advanced rating</Text>

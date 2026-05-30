@@ -254,8 +254,6 @@ export function PracticeScreen({
       ...(advanced !== undefined ? { advancedDifficultyLevel: advanced } : {}),
     });
     setReviewed((n) => n + 1);
-    setFlipped(false);
-    setIndex((i) => i + 1);
   }
 
   // Skip controls. These intentionally don't fire submitReview, so a card
@@ -354,6 +352,10 @@ export function PracticeScreen({
                   // boxes reset cleanly between cards.
                   key={current?.id}
                   onRate={handleRate}
+                  initialDifficulty={
+                    (current as { difficultyLevel?: string | null } | undefined)
+                      ?.difficultyLevel as DifficultyLevel | null | undefined
+                  }
                   initialAdvanced={decodeAdvancedDifficultyLevels(
                     (current as { advancedDifficultyLevel?: string | null } | undefined)
                       ?.advancedDifficultyLevel ?? null,

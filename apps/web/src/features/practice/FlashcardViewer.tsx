@@ -28,24 +28,33 @@ import { ClassBadge } from '@/features/cards/ClassBadge';
 
 // ── Rating definitions ─────────────────────────────────────────────────────────
 
-export const RATINGS: { value: DifficultyLevel; label: string; sub: string; tone: string }[] = [
+export const RATINGS: {
+  value: DifficultyLevel;
+  label: string;
+  sub: string;
+  tone: string;
+  selectedTone: string;
+}[] = [
   {
     value: 'challenging',
     label: 'Challenging',
     sub: 'Not yet',
     tone: 'border-orange-500/40 hover:bg-orange-500/10',
+    selectedTone: 'border-orange-500 bg-orange-500/20 hover:bg-orange-500/25',
   },
   {
     value: 'good',
     label: 'Good',
     sub: 'Warm',
     tone: 'border-blue-500/40 hover:bg-blue-500/10',
+    selectedTone: 'border-blue-500 bg-blue-500/20 hover:bg-blue-500/25',
   },
   {
     value: 'easy',
     label: 'Easy',
     sub: 'Got it',
     tone: 'border-green-500/40 hover:bg-green-500/10',
+    selectedTone: 'border-green-500 bg-green-500/20 hover:bg-green-500/25',
   },
 ];
 
@@ -382,6 +391,7 @@ export function RatingButtons({
   disabled,
   favorite,
   onToggleFavorite,
+  initialDifficulty,
 }: {
   onRate: (level: DifficultyLevel) => void;
   disabled?: boolean;
@@ -393,25 +403,34 @@ export function RatingButtons({
    */
   favorite?: boolean;
   onToggleFavorite?: () => void;
+  /** Pre-select this rating on mount (e.g. current card's saved difficultyLevel). */
+  initialDifficulty?: DifficultyLevel | null;
 }) {
+  const [selected, setSelected] = useState<DifficultyLevel | null>(initialDifficulty ?? null);
   const showFavorite = favorite !== undefined && onToggleFavorite !== undefined;
   return (
     <div className="flex items-stretch gap-2">
       <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
-        {RATINGS.map((r) => (
-          <button
-            key={r.value}
-            onClick={() => onRate(r.value)}
-            disabled={disabled}
-            className={cn(
-              'bg-background flex flex-col items-center rounded-md border py-3 transition disabled:opacity-50',
-              r.tone,
-            )}
-          >
-            <span className="text-base font-semibold">{r.label}</span>
-            <span className="text-muted-foreground text-xs">{r.sub}</span>
-          </button>
-        ))}
+        {RATINGS.map((r) => {
+          const isSelected = selected === r.value;
+          return (
+            <button
+              key={r.value}
+              onClick={() => {
+                setSelected(r.value);
+                onRate(r.value);
+              }}
+              disabled={disabled}
+              className={cn(
+                'flex flex-col items-center rounded-md border py-3 transition disabled:opacity-50',
+                isSelected ? r.selectedTone : `bg-background ${r.tone}`,
+              )}
+            >
+              <span className="text-base font-semibold">{r.label}</span>
+              <span className="text-muted-foreground text-xs">{r.sub}</span>
+            </button>
+          );
+        })}
       </div>
       {showFavorite ? (
         <FavoriteButton favorite={favorite} onToggle={onToggleFavorite} disabled={disabled} />
@@ -655,6 +674,7 @@ export function RatingPanel({
   onRate,
   disabled,
   initialAdvanced,
+  initialDifficulty,
   favorite,
   onToggleFavorite,
 }: {
@@ -668,6 +688,8 @@ export function RatingPanel({
   disabled?: boolean;
   /** Pre-tick these boxes when the advanced panel opens (re-rate UX). */
   initialAdvanced?: readonly AdvancedDifficultyLevel[];
+  /** Pre-select this rating on mount to reflect the card's saved difficultyLevel. */
+  initialDifficulty?: DifficultyLevel | null;
   /**
    * Current favorite state and toggle callback. Threaded straight into the
    * simple and advanced sub-panels so the heart button / row appears in
@@ -708,6 +730,7 @@ export function RatingPanel({
         onRate={(level) => onRate(level)}
         favorite={favorite}
         onToggleFavorite={onToggleFavorite}
+        initialDifficulty={initialDifficulty}
       />
       <div className="flex items-center justify-end gap-2">
         <Label htmlFor="advanced-rating-toggle" className="cursor-pointer text-xs">
