@@ -397,8 +397,10 @@ export function PracticeSession({
               onRate={handleRate}
               disabled={submit.isPending}
               initialDifficulty={
-                (current as { difficultyLevel?: string | null } | undefined)
-                  ?.difficultyLevel as import('@ensemble/types').DifficultyLevel | null | undefined
+                (current as { difficultyLevel?: string | null } | undefined)?.difficultyLevel as
+                  | import('@ensemble/types').DifficultyLevel
+                  | null
+                  | undefined
               }
               initialAdvanced={decodeAdvancedDifficultyLevels(
                 (current as { advancedDifficultyLevel?: string | null } | undefined)

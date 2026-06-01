@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 18.9.1",
-    "appVersionSource": "remote"
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -22,6 +22,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "jcollyer2000@yahoo.com",
+        "ascAppId": "6770618195",
+        "appleTeamId": "CXMM9978CT"
+      }
+    }
   }
 }

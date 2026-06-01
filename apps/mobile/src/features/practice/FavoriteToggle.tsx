@@ -68,11 +68,7 @@ export function FavoriteToggle({ value, onChange }: Props) {
             <Text
               className="text-xs font-medium"
               style={{
-                color: checked
-                  ? opt.value === 'favorite'
-                    ? '#e11d48'
-                    : '#0f172a'
-                  : '#64748b',
+                color: checked ? (opt.value === 'favorite' ? '#e11d48' : '#0f172a') : '#64748b',
               }}
             >
               {opt.label}

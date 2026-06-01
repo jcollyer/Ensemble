@@ -15,10 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Heart, Loader2, Volume2 } from 'lucide-react';
 
 import type { AdvancedDifficultyLevel, BackLanguageValue, DifficultyLevel } from '@ensemble/types';
-import {
-  ADVANCED_DIFFICULTY_LEVEL_OPTIONS,
-  genderLabel,
-} from '@ensemble/types';
+import { ADVANCED_DIFFICULTY_LEVEL_OPTIONS, genderLabel } from '@ensemble/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -679,10 +676,10 @@ export function RatingPanel({
   onToggleFavorite,
 }: {
   /**
-  * Called with the coarse `DifficultyLevel` when the user used the simple
-  * picker, and with `advanced` when they used the advanced picker. The two
-  * payloads are intentionally independent so submitting an advanced rating
-  * does not rewrite the coarse difficulty column.
+   * Called with the coarse `DifficultyLevel` when the user used the simple
+   * picker, and with `advanced` when they used the advanced picker. The two
+   * payloads are intentionally independent so submitting an advanced rating
+   * does not rewrite the coarse difficulty column.
    */
   onRate: (level?: DifficultyLevel, advanced?: AdvancedDifficultyLevel[]) => void;
   disabled?: boolean;

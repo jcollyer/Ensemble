@@ -16,10 +16,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Switch, Text, View } from 'react-native';
 
 import type { AdvancedDifficultyLevel, BackLanguageValue, DifficultyLevel } from '@ensemble/types';
-import {
-  ADVANCED_DIFFICULTY_LEVEL_OPTIONS,
-  genderLabel,
-} from '@ensemble/types';
+import { ADVANCED_DIFFICULTY_LEVEL_OPTIONS, genderLabel } from '@ensemble/types';
 import { Card } from '@/components/Card';
 import { ClassBadge } from '@/components/ClassBadge';
 import { trpc } from '@/lib/trpc';

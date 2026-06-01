@@ -100,7 +100,9 @@ export function FlashcardPreviewModal({
   // the mutation is in flight. Keyed by cardId so it survives navigation
   // between cards inside the modal. Cleared when the modal closes.
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
-  const [difficultyOverrides, setDifficultyOverrides] = useState<Record<string, DifficultyLevel>>({});
+  const [difficultyOverrides, setDifficultyOverrides] = useState<Record<string, DifficultyLevel>>(
+    {},
+  );
 
   // Reset to the chosen card whenever the modal opens.
   useEffect(() => {
@@ -199,7 +201,9 @@ export function FlashcardPreviewModal({
                 key={current.id}
                 onRate={handleRate}
                 disabled={submit.isPending}
-                initialDifficulty={difficultyOverrides[current.id] ?? current.difficultyLevel ?? null}
+                initialDifficulty={
+                  difficultyOverrides[current.id] ?? current.difficultyLevel ?? null
+                }
                 initialAdvanced={decodeAdvancedDifficultyLevels(current.advancedDifficultyLevel)}
                 favorite={favoriteOverrides[current.id] ?? current.favorite ?? false}
                 onToggleFavorite={() => {

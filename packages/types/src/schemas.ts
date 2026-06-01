@@ -310,7 +310,11 @@ export type AdvancedDifficultyLevel = z.infer<typeof AdvancedDifficultyLevelSche
 export const ADVANCED_DIFFICULTY_LEVEL_OPTIONS = [
   { value: 'do_not_know', label: 'Do not know', description: "can't use yet" },
   { value: 'know_definition', label: 'Know definition', description: 'can use & read it' },
-  { value: 'know_gender', label: 'Know gender/conjugation/application', description: 'can properly use it' },
+  {
+    value: 'know_gender',
+    label: 'Know gender/conjugation/application',
+    description: 'can properly use it',
+  },
   { value: 'know_pronunciation', label: 'Know pronunciation', description: 'can say it' },
   { value: 'know_audibly', label: 'Know audibly', description: 'can understand it' },
   { value: 'know_spelling', label: 'Know spelling', description: 'can correctly write it' },

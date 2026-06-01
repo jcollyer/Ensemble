@@ -315,7 +315,16 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
                   className="rounded-full px-3 py-1.5"
                   style={
                     !chooseCategoryMode
-                      ? [{ backgroundColor: '#ffffff' }, { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }]
+                      ? [
+                          { backgroundColor: '#ffffff' },
+                          {
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.05,
+                            shadowRadius: 2,
+                            elevation: 1,
+                          },
+                        ]
                       : undefined
                   }
                 >
@@ -334,7 +343,16 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
                   className="rounded-full px-3 py-1.5"
                   style={
                     chooseCategoryMode
-                      ? [{ backgroundColor: '#ffffff' }, { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }]
+                      ? [
+                          { backgroundColor: '#ffffff' },
+                          {
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.05,
+                            shadowRadius: 2,
+                            elevation: 1,
+                          },
+                        ]
                       : undefined
                   }
                 >
@@ -442,9 +460,7 @@ export function PracticeFiltersModal({ visible, onClose, categoryId }: PracticeF
 
             <Button onPress={navigateToPractice} disabled={practiceCount === 0}>
               <Play size={14} color="#ffffff" style={{ marginRight: 6 }} />
-              <Text className="text-sm font-semibold text-white">
-                {`Play (${practiceCount})`}
-              </Text>
+              <Text className="text-sm font-semibold text-white">{`Play (${practiceCount})`}</Text>
             </Button>
           </Card>
         </ScrollView>

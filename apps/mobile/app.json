@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ensemble Language",
     "slug": "ensemble",
-    "version": "0.1.1",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "scheme": "ensemble",

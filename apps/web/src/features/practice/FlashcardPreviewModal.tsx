@@ -109,7 +109,9 @@ export function FlashcardPreviewModal({
   // Local overlays so ratings/favorites update instantly in the UI while the
   // mutation is in flight. Keyed by cardId, cleared when the modal closes.
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<string, boolean>>({});
-  const [difficultyOverrides, setDifficultyOverrides] = useState<Record<string, DifficultyLevel>>({});
+  const [difficultyOverrides, setDifficultyOverrides] = useState<Record<string, DifficultyLevel>>(
+    {},
+  );
   useEffect(() => {
     if (!open) {
       setFavoriteOverrides({});

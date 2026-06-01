@@ -211,7 +211,10 @@ export function CategoriesDashboard() {
           <ProgressSnapshotCard
             label="Challenging cards"
             value={stats?.difficultyBreakdown.challenging ?? 0}
-            percentage={getPercentage(stats?.difficultyBreakdown.challenging ?? 0, stats?.total ?? 0)}
+            percentage={getPercentage(
+              stats?.difficultyBreakdown.challenging ?? 0,
+              stats?.total ?? 0,
+            )}
             tone="amber"
             percentageLabel="of total cards"
             valueLabel="Across every deck"
@@ -310,7 +313,9 @@ export function CategoriesDashboard() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Users className="text-muted-foreground h-4 w-4" />
-              <h2 className="text-sm font-semibold uppercase tracking-tight text-gray-700">Groups</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-tight text-gray-700">
+                Groups
+              </h2>
             </div>
             <Link
               href="/app/groups"
