@@ -24,6 +24,12 @@ interface Props {
   value: FavoriteFilterValue;
   onChange: (next: FavoriteFilterValue) => void;
   className?: string;
+  /**
+   * When true the segmented control is non-interactive and visually muted.
+   * Used by the Favorites view's Play modal, where every card is already a
+   * favorite so the filter is fixed and shown grayed out.
+   */
+  disabled?: boolean;
 }
 
 const OPTIONS: { value: FavoriteFilterValue; label: string; Icon?: typeof Heart }[] = [
@@ -32,13 +38,15 @@ const OPTIONS: { value: FavoriteFilterValue; label: string; Icon?: typeof Heart 
   { value: 'not_favorite', label: 'Not favorite', Icon: HeartOff },
 ];
 
-export function FavoriteToggle({ value, onChange, className }: Props) {
+export function FavoriteToggle({ value, onChange, className, disabled = false }: Props) {
   return (
     <div
       role="radiogroup"
       aria-label="Favorite filter"
+      aria-disabled={disabled || undefined}
       className={cn(
         'bg-muted inline-flex items-center gap-0.5 rounded-full p-0.5 text-sm',
+        disabled && 'pointer-events-none opacity-50',
         className,
       )}
     >
@@ -51,6 +59,7 @@ export function FavoriteToggle({ value, onChange, className }: Props) {
             type="button"
             role="radio"
             aria-checked={checked}
+            disabled={disabled}
             onClick={() => onChange(opt.value)}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium transition',

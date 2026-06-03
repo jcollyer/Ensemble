@@ -59,6 +59,14 @@ interface PlayFlashcardsDialogProps {
   practicePath: string;
   cards?: ReadonlyArray<PlayFlashcardsDialogCard> | null;
   categories?: ReadonlyArray<PlayFlashcardsDialogCategory> | null;
+  /**
+   * When true the FAVORITES filter is locked to "Favorite" and shown grayed
+   * out. Used by the Favorites view, where every card is already a favorite,
+   * so the favorite filter is fixed and the user can't change it. The locked
+   * value still flows through to the practice URL so the session stays scoped
+   * to favorites.
+   */
+  lockFavorites?: boolean;
 }
 
 export function PlayFlashcardsDialog({
@@ -67,6 +75,7 @@ export function PlayFlashcardsDialog({
   practicePath,
   cards,
   categories,
+  lockFavorites = false,
 }: PlayFlashcardsDialogProps) {
   const router = useRouter();
   const [categorySectionOpen, setCategorySectionOpen] = useState(false);
@@ -75,7 +84,11 @@ export function PlayFlashcardsDialog({
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedRatings, setSelectedRatings] = useState<string[]>([]);
   const [selectedAdvancedRatings, setSelectedAdvancedRatings] = useState<string[]>([]);
-  const [selectedFavorites, setSelectedFavorites] = useState<string[]>([]);
+  // When favorites are locked the filter is permanently ['favorite']; reset
+  // and the UI both respect that fixed value.
+  const [selectedFavorites, setSelectedFavorites] = useState<string[]>(
+    lockFavorites ? ['favorite'] : [],
+  );
   const [playMode, setPlayMode] = useState<PlayMode>('in_order');
 
   const availableCards = cards ?? [];
@@ -107,7 +120,7 @@ export function PlayFlashcardsDialog({
     setSelectedClasses([]);
     setSelectedRatings([]);
     setSelectedAdvancedRatings([]);
-    setSelectedFavorites([]);
+    setSelectedFavorites(lockFavorites ? ['favorite'] : []);
     setRatingMode('all');
     setPlayMode('in_order');
   }
@@ -406,8 +419,9 @@ export function PlayFlashcardsDialog({
               FAVORITES
             </p>
             <FavoriteToggle
-              value={favoriteFilterFromArray(selectedFavorites)}
+              value={lockFavorites ? 'favorite' : favoriteFilterFromArray(selectedFavorites)}
               onChange={(next) => setSelectedFavorites(favoriteFilterToArray(next))}
+              disabled={lockFavorites}
             />
           </div>
         </div>

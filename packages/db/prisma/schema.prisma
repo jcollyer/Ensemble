@@ -376,6 +376,13 @@ model CardProgress {
   // rating a card never changes its favorite state. Filtered on in the
   // Play Flashcards modal via the "Favorite" / "Not favorite" chips.
   favorite        Boolean   @default(false)
+  // Per-user manual ordering for the dedicated "/app/favorites" view. Null
+  // means "never manually sorted" — those cards sort to the BOTTOM (ordered
+  // by updatedAt), which keeps cards favorited from other views at the end
+  // of the list. Independent of Flashcard.sortOrder (the global per-deck
+  // order); reordering favorites only touches this per-user column, so deck
+  // order and favorites order never interfere.
+  favoriteSortOrder Int?
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   card            Flashcard @relation(fields: [cardId], references: [id], onDelete: Cascade)
   createdAt       DateTime  @default(now())

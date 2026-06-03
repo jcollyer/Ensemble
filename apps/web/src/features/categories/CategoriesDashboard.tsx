@@ -30,6 +30,7 @@ import {
   Play,
   FolderPlus,
   GripVertical,
+  Heart,
   ListPlus,
   MessageSquarePlus,
   ArrowRight,
@@ -96,6 +97,10 @@ export function CategoriesDashboard() {
   const { data: stats, isLoading: statsLoading } = trpc.practice.stats.useQuery({});
   // All cards — used in the Play modal to compute the filtered count.
   const { data: allCards } = trpc.flashcards.listAll.useQuery();
+
+  // Show the Favorites shortcut only when the user actually has favorited
+  // cards, so we don't surface a link to an empty view.
+  const hasFavorites = (allCards ?? []).some((c) => (c as { favorite?: boolean }).favorite);
 
   const create = trpc.categories.create.useMutation({
     onSuccess: () => {
@@ -171,6 +176,14 @@ export function CategoriesDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex justify-end gap-2">
+        {hasFavorites ? (
+          <Button asChild variant="outline">
+            <Link href="/app/favorites">
+              <Heart className="h-4 w-4 fill-current text-rose-500" />
+              Favorites
+            </Link>
+          </Button>
+        ) : null}
         <Button
           variant="outline"
           onClick={() => {

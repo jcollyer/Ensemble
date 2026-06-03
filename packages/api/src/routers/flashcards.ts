@@ -144,6 +144,97 @@ export const flashcardsRouter = router({
     });
   }),
 
+  /**
+   * Every card the viewer has favorited, across all of their decks (and any
+   * group-shared decks they can see). Powers the dedicated "/app/favorites"
+   * view, which reads like a deck detail page but draws its cards from the
+   * per-user favorite flag rather than a single category.
+   *
+   * Ordering: by the CardProgress row's `updatedAt` ascending, so the most
+   * recently favorited card lands at the BOTTOM of the list. This matches
+   * the requirement that "cards favorited from another view appear at the
+   * bottom of the flashcards list" — favoriting bumps `updatedAt` to now,
+   * pushing that card to the end.
+   *
+   * Each card carries its own `category.backLanguage` so the preview /
+   * practice flows can pick the right audio language per card (favorites
+   * span multiple decks, so there's no single deck-level language).
+   */
+  listFavorites: protectedProcedure.query(async ({ ctx }) => {
+    const progressRows = await ctx.prisma.cardProgress.findMany({
+      where: { userId: ctx.userId, favorite: true },
+      // Manual order first (favoriteSortOrder ascending). Cards never sorted
+      // from the favorites view have a NULL favoriteSortOrder and sort LAST,
+      // then by updatedAt ascending — so cards favorited from another view
+      // keep landing at the bottom of the list.
+      orderBy: [{ favoriteSortOrder: { sort: 'asc', nulls: 'last' } }, { updatedAt: 'asc' }],
+      select: {
+        cardId: true,
+        difficultyLevel: true,
+        advancedDifficultyLevel: true,
+        // The CardProgress updatedAt is the closest thing we have to "when
+        // the user favorited this card" (favoriting bumps the row), so it
+        // powers the "Date favorited" sort in the favorites view.
+        updatedAt: true,
+        card: {
+          include: {
+            // Deck name + color drive the "By deck" sort and the deck label
+            // in the favorites list (favorites span multiple decks, so each
+            // card may belong to a different one). backLanguage is still
+            // needed per-card for the preview/practice audio.
+            category: { select: { name: true, color: true, backLanguage: true } },
+          },
+        },
+      },
+    });
+
+    return (
+      progressRows
+        // Defensive: a favorite should always have a card, but guard against
+        // any orphaned progress rows so the view never renders `undefined`.
+        .filter((p) => p.card !== null)
+        .map((p) => {
+          const { category, ...card } = p.card!;
+          return {
+            ...card,
+            backLanguage: category?.backLanguage ?? null,
+            deckName: category?.name ?? null,
+            deckColor: category?.color ?? null,
+            favoritedAt: p.updatedAt,
+            difficultyLevel: p.difficultyLevel ?? null,
+            advancedDifficultyLevel: p.advancedDifficultyLevel ?? null,
+            favorite: true,
+          };
+        })
+    );
+  }),
+
+  /**
+   * Persist a manual ordering for the user's favorites view.
+   *
+   * Writes the position into CardProgress.favoriteSortOrder, which is
+   * per-(user, card) and entirely separate from Flashcard.sortOrder (the
+   * global per-deck order). Reordering favorites therefore never disturbs
+   * how a card sits inside its home deck, and vice-versa.
+   *
+   * Scoped to the caller's own favorited rows: the where-clause pins
+   * `userId` and `favorite: true`, so we can't move another user's cards or
+   * accidentally assign an order to a card that isn't favorited.
+   */
+  reorderFavorites: protectedProcedure
+    .input(z.object({ orderedIds: z.array(z.string().cuid()) }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.prisma.$transaction(
+        input.orderedIds.map((cardId, index) =>
+          ctx.prisma.cardProgress.updateMany({
+            where: { userId: ctx.userId, cardId, favorite: true },
+            data: { favoriteSortOrder: index },
+          }),
+        ),
+      );
+      return { ok: true };
+    }),
+
   byId: protectedProcedure
     .input(z.object({ id: z.string().cuid() }))
     .query(async ({ ctx, input }) => {

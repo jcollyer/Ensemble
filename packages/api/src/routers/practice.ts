@@ -275,6 +275,12 @@ export const practiceRouter = router({
       },
       update: {
         favorite: input.favorite,
+        // Favoriting a card sends it to the BOTTOM of the favorites view, so
+        // clear any stale manual position. (A card that was previously
+        // sorted, then unfavorited and favorited again, should reappear at
+        // the end rather than jump back to its old slot.) Unfavoriting leaves
+        // the column untouched — it's irrelevant once the card drops out.
+        ...(input.favorite ? { favoriteSortOrder: null } : {}),
       },
       select: {
         cardId: true,
