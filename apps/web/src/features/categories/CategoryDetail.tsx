@@ -826,7 +826,7 @@ function CategoryCardSkeleton({ showHandle }: { showHandle: boolean }) {
   );
 }
 
-function EditCardDialog({
+export function EditCardDialog({
   cardId,
   categoryId,
   onClose,

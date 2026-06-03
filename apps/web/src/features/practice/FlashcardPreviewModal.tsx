@@ -42,6 +42,7 @@ export interface PreviewCard {
   gender: string | null;
   pronunciation: string | null;
   backLanguage: BackLanguageValue | null;
+  categoryId: string;
   /**
    * Existing advanced-rating selection (comma-separated CSV from the
    * CardProgress row). Used to pre-tick the checkboxes when the user

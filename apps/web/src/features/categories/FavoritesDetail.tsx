@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowLeft, GripVertical, Grid2x2, Heart, List, Play } from 'lucide-react';
+import { ArrowLeft, GripVertical, Grid2x2, Heart, List, Play, Pencil } from 'lucide-react';
 
 import { genderLabel } from '@ensemble/types';
 import type { BackLanguageValue } from '@ensemble/types';
@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils';
 import { ClassBadge } from '@/features/cards/ClassBadge';
 import { FlashcardPreviewModal, type PreviewCard } from '@/features/practice/FlashcardPreviewModal';
 import { PlayFlashcardsDialog } from '@/features/practice/PlayFlashcardsDialog';
+import { EditCardDialog } from './CategoryDetail';
 
 type CardListViewMode = 'grid' | 'list';
 
@@ -213,6 +214,7 @@ export function FavoritesDetail() {
   const [cardListViewMode, setCardListViewMode] = useState<CardListViewMode>('grid');
   const [playOpen, setPlayOpen] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('custom');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Local ordering state for drag-and-drop, seeded from the server query and
   // updated optimistically on drag so the row doesn't snap back before the
@@ -334,6 +336,7 @@ export function FavoritesDetail() {
         | import('@ensemble/types').DifficultyLevel
         | null) ?? null,
     favorite: true,
+    categoryId: (card as { categoryId?: string | null }).categoryId ?? '',
   }));
 
   // Cards shaped for the Play modal's client-side filter/count.
@@ -491,6 +494,21 @@ export function FavoritesDetail() {
         lockFavorites
       />
 
+      {editingId && (
+        <EditCardDialog
+          cardId={editingId}
+          categoryId={
+            (cards?.find((c) => c.id === editingId) as { categoryId?: string | null })
+              ?.categoryId ?? ''
+          }
+          onClose={() => setEditingId(null)}
+          onSaved={() => {
+            utils.flashcards.listFavorites.invalidate();
+            setEditingId(null);
+          }}
+        />
+      )}
+
       <FlashcardPreviewModal
         cards={previewCards}
         initialIndex={previewIndex ?? 0}
@@ -502,6 +520,10 @@ export function FavoritesDetail() {
         onRated={() => {
           utils.flashcards.listFavorites.invalidate();
           utils.practice.stats.invalidate();
+        }}
+        onEdit={(cardId) => {
+          setPreviewIndex(null);
+          setEditingId(cardId);
         }}
         onFavoriteToggled={(cardId, favorite) => {
           // Unfavoriting from inside the preview should drop the card from
