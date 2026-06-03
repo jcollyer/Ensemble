@@ -22,7 +22,7 @@ import {
  * transforms — they never write to the server, so switching back to "custom"
  * restores the saved arrangement untouched. Mirrors the web FavoritesDetail.
  */
-type SortMode = 'custom' | 'front' | 'rating' | 'favorited' | 'deck';
+type SortMode = 'custom' | 'front' | 'rating' | 'favorited' | 'deck' | 'category';
 
 const SORT_OPTIONS: { value: SortMode; label: string }[] = [
   { value: 'custom', label: 'Custom' },
@@ -30,6 +30,7 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
   { value: 'rating', label: 'Rating' },
   { value: 'favorited', label: 'Date' },
   { value: 'deck', label: 'Deck' },
+  { value: 'category', label: 'Category' },
 ];
 
 // Lower rank sorts first: hardest cards surface at the top, unrated last.
@@ -136,6 +137,8 @@ export default function FavoritesScreen() {
           (a.card as { deckName?: string | null }).deckName ?? '',
           (b.card as { deckName?: string | null }).deckName ?? '',
         );
+      } else if (sortMode === 'category') {
+        cmp = collator.compare(a.card.class ?? '', b.card.class ?? '');
       }
       return cmp !== 0 ? cmp : a.index - b.index;
     });
