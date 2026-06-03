@@ -442,27 +442,34 @@ export function CategoryDetail({ categoryId }: Props) {
   // Build the ordered card array for the preview modal. backLanguage comes
   // from the deck-level category (same for every card in this view).
   // Use orderedCards so the modal respects the user's drag-and-drop order.
-  const previewCards: PreviewCard[] = (orderedCards ?? []).map((card) => ({
-    id: card.id,
-    front: card.front,
-    back: card.back,
-    frontExamples: card.frontExamples,
-    backExamples: card.backExamples,
-    class: card.class ?? null,
-    gender: (card as { gender?: string | null }).gender ?? null,
-    pronunciation: (card as { pronunciation?: string | null }).pronunciation ?? null,
-    backLanguage: (category?.backLanguage ?? null) as BackLanguageValue | null,
-    // Forward the existing advanced selection so the rating panel can
-    // pre-tick the user's previous choice when they re-rate a card from
-    // the deck detail view.
-    advancedDifficultyLevel:
-      (card as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null,
-    difficultyLevel:
-      ((card as { difficultyLevel?: string | null }).difficultyLevel as
-        | import('@ensemble/types').DifficultyLevel
-        | null) ?? null,
-    favorite: (card as { favorite?: boolean }).favorite ?? false,
-  }));
+  const previewCards: PreviewCard[] =
+    category && orderedCards
+      ? orderedCards.map((card) => ({
+          id: card.id,
+          categoryId: category.id,
+          front: card.front,
+          back: card.back,
+          frontExamples: card.frontExamples,
+          backExamples: card.backExamples,
+          class: card.class ?? null,
+          gender: (card as { gender?: string | null }).gender ?? null,
+          pronunciation:
+            (card as { pronunciation?: string | null }).pronunciation ?? null,
+          backLanguage:
+            (category?.backLanguage ?? null) as BackLanguageValue | null,
+          // Forward the existing advanced selection so the rating panel can
+          // pre-tick the user's previous choice when they re-rate a card from
+          // the deck detail view.
+          advancedDifficultyLevel:
+            (card as { advancedDifficultyLevel?: string | null })
+              .advancedDifficultyLevel ?? null,
+          difficultyLevel:
+            ((card as { difficultyLevel?: string | null }).difficultyLevel as
+              | import('@ensemble/types').DifficultyLevel
+              | null) ?? null,
+          favorite: (card as { favorite?: boolean }).favorite ?? false,
+        }))
+      : [];
 
   return (
     <div className="space-y-6">
