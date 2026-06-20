@@ -119,6 +119,23 @@ export function FlipCard({
   // mirror the front content onto the back face (so a flip never lands on a
   // blank card), with an amber treatment to distinguish notes from vocab.
   const isNote = cardClass === 'note';
+  // Audio is only meaningful for vocab cards in a deck with a configured
+  // language. When that holds we render per-line speakers + the play-all
+  // button; otherwise no audio UI at all.
+  const showLineAudio = !isNote && !!backLanguage && !!cardId;
+  // Single controller shared by the play-all button and every per-line
+  // button so they share the TTS cache and never play over each other.
+  // (The hook runs unconditionally — it only allocates a tRPC mutation
+  // handle and some refs, and does no work until a button is clicked.)
+  const tts = useCardTts(backLanguage);
+  // Click-to-play: clicking a line plays just that line. We stop propagation
+  // so the click doesn't also bubble up to the FlipCard button and flip the
+  // card — flipping still works by clicking anywhere else on the face.
+  const linePlay = (e: React.MouseEvent, key: string, texts: string[]) => {
+    e.stopPropagation();
+    e.preventDefault();
+    tts.play(key, texts);
+  };
   return (
     <button
       type="button"
@@ -166,12 +183,46 @@ export function FlipCard({
                 <ClassBadge value={cardClass} size="md" />
               </div>
             ) : null}
-            <p className="text-xl font-bold leading-snug">{isNote ? front : back}</p>
+            {/* Per-line audio: each line gets its own speaker that plays just
+                that line. On desktop the buttons reveal on hover (the card
+                still has the play-all button top-right); on mobile they're
+                always visible and the play-all button is hidden. */}
+            {showLineAudio ? (
+              <div
+                className="group/line flex cursor-pointer items-center justify-center gap-2"
+                onClick={(e) => linePlay(e, 'main', [back])}
+              >
+                <p className="text-xl font-bold leading-snug">{back}</p>
+                <LineSpeakerButton
+                  tts={tts}
+                  audioKey="main"
+                  texts={[back]}
+                  label="Hear this line"
+                />
+              </div>
+            ) : (
+              <p className="text-xl font-bold leading-snug">{isNote ? front : back}</p>
+            )}
             {backExamples.length > 0 ? (
-              <ul className="w-fit space-y-1 divide-y divide-gray-200 text-left">
+              <ul className="w-fit space-y-[5px] divide-y divide-gray-200 text-left">
                 {backExamples.map((ex, i) => (
-                  <li key={i} className="text-base">
-                    {ex}
+                  <li key={i} className="text-base pt-1">
+                    {showLineAudio ? (
+                      <span
+                        className="group/line flex cursor-pointer items-center gap-2"
+                        onClick={(e) => linePlay(e, `ex:${i}`, [ex])}
+                      >
+                        <span>{ex}</span>
+                        <LineSpeakerButton
+                          tts={tts}
+                          audioKey={`ex:${i}`}
+                          texts={[ex]}
+                          label="Hear this line"
+                        />
+                      </span>
+                    ) : (
+                      ex
+                    )}
                   </li>
                 ))}
               </ul>
@@ -186,14 +237,11 @@ export function FlipCard({
               {genderLabel(gender)}
             </span>
           ) : null}
-          {/* Only render the audio button if the deck has a configured language. */}
-          {!isNote && backLanguage && cardId ? (
-            <AudioButton
-              cardId={cardId}
-              text={back}
-              examples={backExamples}
-              languageCode={backLanguage}
-            />
+          {/* Card-level play-all button (back text + every example). Kept on
+              desktop as a convenient "hear the whole card" affordance; hidden
+              on mobile, where the per-line buttons take over (no hover there). */}
+          {showLineAudio ? (
+            <CardAudioButton tts={tts} texts={[back, ...backExamples]} />
           ) : null}
         </Card>
       </div>
@@ -201,32 +249,38 @@ export function FlipCard({
   );
 }
 
-// ── AudioButton ────────────────────────────────────────────────────────────────
+// ── useCardTts ─────────────────────────────────────────────────────────────────
+
+type TtsStatus = 'idle' | 'loading' | 'playing';
+
+export interface CardTtsController {
+  /** Begin playing `texts` (one or many segments) under the given key. */
+  play: (key: string, texts: string[]) => void;
+  /** Key of the segment currently loading/playing, or null when idle. */
+  activeKey: string | null;
+  /** Playback state of the active key. */
+  status: TtsStatus;
+  /** Key whose last play attempt errored, or null. */
+  errorKey: string | null;
+}
 
 /**
- * Speaker button that fetches and plays a TTS pronunciation of the back-of-
- * card text (followed by each example, with a short pause between segments)
- * via the `tts.synthesize` mutation.
+ * Shared TTS controller for one flashcard back face.
  *
- * Caching: we keep a per-session in-memory cache keyed by text content so
- * the same phrase is never re-synthesized. Re-clicking while audio is playing
- * cancels the current sequence and restarts from the beginning.
+ * A single controller backs both the card-level "play all" button and every
+ * per-line button. Centralizing it means:
+ *  - one in-memory cache keyed by text content, so a phrase is never
+ *    re-synthesized (and never re-billed) whether played alone or as part of
+ *    the whole-card sequence;
+ *  - only one clip ever plays at a time — clicking any button cancels
+ *    whatever was already playing and restarts from its own first segment;
+ *  - each button can show its own loading/playing state by comparing its key
+ *    against `activeKey`.
  *
- * `stopPropagation` on the click is essential — the audio button is nested
- * inside the FlipCard `<button>`, so without it the click would also
- * toggle the flip.
+ * `stopPropagation` is still required at each button (handled in the button
+ * components) because the buttons are nested inside the FlipCard `<button>`.
  */
-export function AudioButton({
-  cardId,
-  text,
-  examples,
-  languageCode,
-}: {
-  cardId: string;
-  text: string;
-  examples: string[];
-  languageCode: BackLanguageValue;
-}) {
+export function useCardTts(languageCode: BackLanguageValue | null): CardTtsController {
   const synthesize = trpc.tts.synthesize.useMutation();
 
   // text content -> data URL cache so the same phrase is never re-billed.
@@ -235,9 +289,9 @@ export function AudioButton({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   // Symbol token to cancel an in-flight sequence when the user clicks again.
   const runTokenRef = useRef<symbol | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [status, setStatus] = useState<TtsStatus>('idle');
+  const [errorKey, setErrorKey] = useState<string | null>(null);
 
   // If the user navigates away mid-playback the parent unmounts; stop the
   // audio so it doesn't keep playing in the background.
@@ -254,6 +308,7 @@ export function AudioButton({
     async (t: string): Promise<string> => {
       const cached = cacheRef.current.get(t);
       if (cached) return cached;
+      if (!languageCode) throw new Error('No language configured.');
       const { audioContent } = await synthesize.mutateAsync({ text: t, languageCode });
       const dataUrl = `data:audio/mp3;base64,${audioContent}`;
       cacheRef.current.set(t, dataUrl);
@@ -274,66 +329,82 @@ export function AudioButton({
     });
   }, []);
 
-  const handleClick = useCallback(
-    async (e: React.MouseEvent) => {
-      e.stopPropagation();
-      e.preventDefault();
+  const play = useCallback(
+    (key: string, texts: string[]) => {
+      void (async () => {
+        // Cancel any running sequence.
+        audioRef.current?.pause();
+        audioRef.current = null;
+        setErrorKey(null);
 
-      // Cancel any running sequence.
-      audioRef.current?.pause();
-      audioRef.current = null;
-      setError(null);
+        const token = Symbol();
+        runTokenRef.current = token;
+        const isActive = () => runTokenRef.current === token;
 
-      const token = Symbol();
-      runTokenRef.current = token;
-      const isActive = () => runTokenRef.current === token;
+        setActiveKey(key);
+        setStatus('loading');
+        try {
+          // Pre-fetch all segments sequentially (uses cache on repeat plays).
+          const dataUrls: string[] = [];
+          for (const t of texts) {
+            if (!isActive()) return;
+            dataUrls.push(await fetchAudio(t));
+          }
 
-      const texts = examples.length > 0 ? [text, ...examples] : [text];
-
-      setLoading(true);
-      setPlaying(false);
-      try {
-        // Pre-fetch all segments sequentially (uses cache on repeat plays).
-        const dataUrls: string[] = [];
-        for (const t of texts) {
           if (!isActive()) return;
-          dataUrls.push(await fetchAudio(t));
-        }
+          setStatus('playing');
 
-        if (!isActive()) return;
-        setLoading(false);
-        setPlaying(true);
-
-        // Play segments with a 400 ms pause between each.
-        for (let i = 0; i < dataUrls.length; i++) {
-          if (!isActive()) break;
-          await playSingle(dataUrls[i] as string);
-          if (i < dataUrls.length - 1 && isActive()) {
-            await new Promise<void>((resolve) => setTimeout(resolve, 400));
+          // Play segments with a 400 ms pause between each.
+          for (let i = 0; i < dataUrls.length; i++) {
+            if (!isActive()) break;
+            await playSingle(dataUrls[i] as string);
+            if (i < dataUrls.length - 1 && isActive()) {
+              await new Promise<void>((resolve) => setTimeout(resolve, 400));
+            }
+          }
+        } catch {
+          if (isActive()) setErrorKey(key);
+        } finally {
+          if (isActive()) {
+            setStatus('idle');
+            setActiveKey(null);
           }
         }
-      } catch {
-        if (isActive()) setError('Audio playback failed.');
-      } finally {
-        if (isActive()) {
-          setLoading(false);
-          setPlaying(false);
-        }
-      }
+      })();
     },
-    [text, examples, fetchAudio, playSingle],
+    [fetchAudio, playSingle],
   );
+
+  return { play, activeKey, status, errorKey };
+}
+
+// ── CardAudioButton ──────────────────────────────────────────────────────────
+
+/**
+ * The card-level "play all" speaker: top-right of the back face, plays the
+ * back text followed by every example. Hidden on mobile (`hidden sm:flex`),
+ * where the per-line buttons take over because there's no hover.
+ */
+export function CardAudioButton({ tts, texts }: { tts: CardTtsController; texts: string[] }) {
+  const isActive = tts.activeKey === 'all';
+  const loading = isActive && tts.status === 'loading';
+  const playing = isActive && tts.status === 'playing';
 
   return (
     <span
-      className="absolute right-3 top-3 inline-flex flex-col items-end gap-1"
+      className="absolute right-3 top-3 hidden flex-col items-end gap-1 sm:inline-flex"
       onClick={(e) => e.stopPropagation()}
     >
       <button
         type="button"
-        onClick={handleClick}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          tts.play('all', texts);
+        }}
         disabled={loading}
-        aria-label={playing ? 'Playing pronunciation' : 'Hear pronunciation'}
+        aria-label={playing ? 'Playing pronunciation' : 'Hear the whole card'}
+        title="Hear the whole card"
         className={cn(
           'bg-background text-primary inline-flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition',
           'hover:bg-primary/10 focus:ring-ring focus:outline-none focus:ring-2 focus:ring-offset-1',
@@ -343,12 +414,64 @@ export function AudioButton({
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
       </button>
-      {error ? (
+      {isActive && tts.errorKey === 'all' ? (
         <span className="bg-destructive/10 text-destructive max-w-[180px] truncate rounded px-1.5 py-0.5 text-[10px]">
-          {error}
+          Audio playback failed.
         </span>
       ) : null}
     </span>
+  );
+}
+
+// ── LineSpeakerButton ──────────────────────────────────────────────────────────
+
+/**
+ * A small speaker shown next to a single line of back-of-card text. Plays
+ * only that line. Place it inside a `group/line` wrapper: on desktop it stays
+ * hidden until the line is hovered (or the button is focused); on mobile
+ * (where there's no hover) it's always visible, since the card-level play-all
+ * button is hidden there.
+ */
+export function LineSpeakerButton({
+  tts,
+  audioKey,
+  texts,
+  label,
+}: {
+  tts: CardTtsController;
+  audioKey: string;
+  texts: string[];
+  label: string;
+}) {
+  const isActive = tts.activeKey === audioKey;
+  const loading = isActive && tts.status === 'loading';
+  const playing = isActive && tts.status === 'playing';
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        tts.play(audioKey, texts);
+      }}
+      disabled={loading}
+      aria-label={playing ? 'Playing line' : label}
+      title={label}
+      className={cn(
+        'bg-background text-primary inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border shadow-sm transition',
+        'hover:bg-primary/10 focus:ring-ring focus-visible:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-1',
+        'disabled:cursor-progress disabled:opacity-60',
+        // Always visible on mobile; hover/focus-reveal on desktop.
+        'opacity-100 sm:opacity-0 sm:group-hover/line:opacity-100',
+        // Keep visible whenever this line is the active one, even on desktop
+        // when the pointer has moved off after clicking.
+        isActive && 'opacity-100 sm:opacity-100',
+        playing && 'bg-primary/10 animate-pulse',
+      )}
+    >
+      {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Volume2 className="h-3 w-3" />}
+    </button>
   );
 }
 
