@@ -118,11 +118,15 @@ export function FlipCard({
   cardId: string | undefined;
   backLanguage: BackLanguageValue | null;
 }) {
+  // Teaching notes have no answer side. We always show the front content (even
+  // when "flipped"), hide the back text/audio/gender, and give the card an
+  // amber treatment so notes are distinguishable from vocab cards.
+  const isNote = cardClass === 'note';
   return (
     <Pressable onPress={onPress} className="flex-1 active:opacity-90">
       <Card
         className={`relative min-h-[280px] items-center justify-center p-6 ${
-          flipped ? 'border-primary bg-blue-50' : ''
+          isNote ? 'border-amber-300 bg-amber-50' : flipped ? 'border-primary bg-blue-50' : ''
         }`}
       >
         {cardClass ? (
@@ -133,13 +137,15 @@ export function FlipCard({
 
         <Text
           className={`text-center leading-snug ${
-            flipped ? 'text-xl font-bold text-slate-900' : 'text-2xl font-bold text-slate-900'
+            flipped && !isNote
+              ? 'text-xl font-bold text-slate-900'
+              : 'text-2xl font-bold text-slate-900'
           }`}
         >
-          {flipped ? back : front}
+          {isNote ? front : flipped ? back : front}
         </Text>
 
-        {flipped && pronunciation ? (
+        {flipped && pronunciation && !isNote ? (
           <Text className="mt-2 text-center text-base italic text-slate-500">{pronunciation}</Text>
         ) : null}
 
@@ -161,11 +167,13 @@ export function FlipCard({
           </View>
         ) : null}
 
-        <Text className="mt-6 text-xs uppercase tracking-wider text-slate-400">
-          {flipped ? 'Answer' : 'Tap to reveal'}
-        </Text>
+        {!isNote ? (
+          <Text className="mt-6 text-xs uppercase tracking-wider text-slate-400">
+            {flipped ? 'Answer' : 'Tap to reveal'}
+          </Text>
+        ) : null}
 
-        {flipped && cardId && backLanguage ? (
+        {flipped && cardId && backLanguage && !isNote ? (
           <View className="absolute right-3 top-3 z-10">
             <AudioButton
               cardId={cardId}
@@ -177,7 +185,7 @@ export function FlipCard({
         ) : null}
 
         {/* Gender indicator — bottom-left of the back face. */}
-        {flipped && gender ? (
+        {flipped && gender && !isNote ? (
           <View className="absolute bottom-3 left-3 z-10">
             <Text className="text-xs italic text-slate-500">{genderLabel(gender)}</Text>
           </View>

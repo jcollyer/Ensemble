@@ -95,6 +95,9 @@ export default function NewCardScreen() {
   const [deckSelection, setDeckSelection] = useState<string>(initialCategoryId ?? NO_DECK);
   const selectedCategoryId = deckSelection === NO_DECK ? null : deckSelection;
 
+  // Teaching notes have no answer side: we hide the Back field and submit a
+  // placeholder ("-") so the card still satisfies the "back required" rule.
+
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [frontError, setFrontError] = useState<string | undefined>();
@@ -103,6 +106,7 @@ export default function NewCardScreen() {
   const [backExamples, setBackExamples] = useState<string[]>([]);
   // Word class (part of speech) — optional.
   const [wordClass, setWordClass] = useState<string | null>(null);
+  const isNote = wordClass === 'note';
   // Gender and verb type — optional.
   const [gender, setGender] = useState<string | null>(null);
   const [verbType, setVerbType] = useState<string | null>(null);
@@ -347,7 +351,7 @@ export default function NewCardScreen() {
     setBackError(undefined);
     const parsed = FlashcardCreateInput.safeParse({
       front,
-      back,
+      back: isNote ? '-' : back,
       categoryId: selectedCategoryId,
       frontExamples,
       backExamples,
@@ -453,32 +457,35 @@ export default function NewCardScreen() {
           />
 
           {/* Back: render label + optional spinner ourselves instead of using
-              TextField's `label` prop, so we can show "Translating…" inline. */}
-          <View className="gap-1.5">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm font-medium text-slate-700">Back</Text>
-              {translateOn && translate.isPending ? (
-                <View className="flex-row items-center gap-1.5">
-                  <ActivityIndicator size="small" color="#64748b" />
-                  <Text className="text-xs text-slate-500">Translating…</Text>
-                </View>
+              TextField's `label` prop, so we can show "Translating…" inline.
+              Hidden for Teaching Notes, which have no answer side. */}
+          {!isNote ? (
+            <View className="gap-1.5">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-sm font-medium text-slate-700">Back</Text>
+                {translateOn && translate.isPending ? (
+                  <View className="flex-row items-center gap-1.5">
+                    <ActivityIndicator size="small" color="#64748b" />
+                    <Text className="text-xs text-slate-500">Translating…</Text>
+                  </View>
+                ) : null}
+              </View>
+              <TextField
+                placeholder="What's the answer?"
+                value={back}
+                onChangeText={(v) => {
+                  setBack(v);
+                  if (backError) setBackError(undefined);
+                }}
+                error={backError}
+                multiline
+                style={{ minHeight: 120, textAlignVertical: 'top' }}
+              />
+              {translate.error ? (
+                <Text className="text-destructive text-xs">{translate.error.message}</Text>
               ) : null}
             </View>
-            <TextField
-              placeholder="What's the answer?"
-              value={back}
-              onChangeText={(v) => {
-                setBack(v);
-                if (backError) setBackError(undefined);
-              }}
-              error={backError}
-              multiline
-              style={{ minHeight: 120, textAlignVertical: 'top' }}
-            />
-            {translate.error ? (
-              <Text className="text-destructive text-xs">{translate.error.message}</Text>
-            ) : null}
-          </View>
+          ) : null}
 
           {/* Examples section */}
           {frontExamples.length > 0 ? (

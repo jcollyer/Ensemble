@@ -423,9 +423,25 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
 
   const showDeckSelector = props.mode === 'selectable' && props.decks.length > 0;
 
+  // Teaching notes have no answer side: we hide the Back input and submit a
+  // placeholder ("-") so the card still satisfies the server's "back required"
+  // rule while staying visually note-only in the UI.
+  const isNote = wordClass === 'note';
+
+  // The Back field is hidden for notes, but the form's zod resolver still
+  // requires a non-empty back. Seed a placeholder so validation passes (the
+  // submit handler also forces "-" for notes).
+  useEffect(() => {
+    if (isNote && !form.getValues('back')?.trim()) {
+      form.setValue('back', '-', { shouldValidate: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNote]);
+
   const onSubmit = form.handleSubmit((values) => {
     // Validate examples client-side so the user gets clear feedback instead of
-    // a silent 400 from the server's Zod check.
+    // a silent 400 from the server's Zod check. Notes skip back-example
+    // validation since the back side is hidden and cleared.
     const badFront = new Set<number>();
     const badBack = new Set<number>();
     frontExamples.forEach((v, i) => {
@@ -447,6 +463,7 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
     create.mutate({
       ...values,
       categoryId,
+      back: isNote ? '-' : values.back,
       frontExamples,
       backExamples,
       class: wordClass,
@@ -600,18 +617,25 @@ export function CreateCardDialog(props: CreateCardDialogProps) {
             ) : null}
           </div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="back">Back</Label>
-              {translateOn && translate.isPending ? (
-                <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Translating…
-                </span>
-              ) : null}
-            </div>
-            <Textarea id="back" rows={3} {...form.register('back')} />
+            {/* The main Back answer is hidden for Teaching Notes, but back
+                examples stay available so notes can carry example sentences. */}
+            {!isNote ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="back">Back</Label>
+                  {translateOn && translate.isPending ? (
+                    <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Translating…
+                    </span>
+                  ) : null}
+                </div>
+                <Textarea id="back" rows={3} {...form.register('back')} />
+              </>
+            ) : null}
             {backExamples.length > 0 ? (
               <div className="space-y-2">
+                {isNote ? <Label>Back examples</Label> : null}
                 {backExamples.map((val, i) => (
                   <div key={i} className="space-y-1">
                     <Input

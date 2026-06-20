@@ -321,10 +321,14 @@ export default function FavoritesScreen() {
                       <Text className="font-semibold text-slate-900" numberOfLines={1}>
                         {item.front}
                       </Text>
-                      <Text className="text-slate-400"> – </Text>
-                      <Text className="flex-shrink text-sm text-slate-500" numberOfLines={1}>
-                        {item.back}
-                      </Text>
+                      {item.class !== 'note' ? (
+                        <>
+                          <Text className="text-slate-400"> – </Text>
+                          <Text className="flex-shrink text-sm text-slate-500" numberOfLines={1}>
+                            {item.back}
+                          </Text>
+                        </>
+                      ) : null}
                       {item.class ? (
                         <>
                           <Text className="text-slate-300"> · </Text>
@@ -351,9 +355,11 @@ export default function FavoritesScreen() {
                       <Text className="font-semibold text-slate-900" numberOfLines={2}>
                         {item.front}
                       </Text>
-                      <Text className="text-sm text-slate-500" numberOfLines={2}>
-                        {item.back}
-                      </Text>
+                      {item.class !== 'note' ? (
+                        <Text className="text-sm text-slate-500" numberOfLines={2}>
+                          {item.back}
+                        </Text>
+                      ) : null}
                       <View className="mt-1 flex-row flex-wrap items-center gap-x-2 gap-y-1">
                         {item.class ? <ClassBadge value={item.class} /> : null}
                         {gender ? (

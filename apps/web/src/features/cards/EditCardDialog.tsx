@@ -332,6 +332,10 @@ export function EditCardDialog({
     );
   }
 
+  // Teaching notes have no answer side: hide the Back input and persist a
+  // placeholder ("-") so the card still satisfies the "back required" rule.
+  const isNote = wordClass === 'note';
+
   return (
     <Dialog open onOpenChange={(open) => (open ? null : onClose())}>
       <DialogContent className="max-h-[80dvh] overflow-auto">
@@ -363,6 +367,7 @@ export function EditCardDialog({
             update.mutate({
               ...values,
               categoryId,
+              back: isNote ? '-' : values.back,
               frontExamples,
               backExamples,
               class: wordClass,
@@ -526,10 +531,17 @@ export function EditCardDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="back">Back</Label>
-            <Textarea id="back" rows={3} {...form.register('back')} />
+            {/* The main Back answer is hidden for Teaching Notes, but back
+                examples stay available so notes can carry example sentences. */}
+            {!isNote ? (
+              <>
+                <Label htmlFor="back">Back</Label>
+                <Textarea id="back" rows={3} {...form.register('back')} />
+              </>
+            ) : null}
             {backExamples.length > 0 ? (
               <div className="space-y-2">
+                {isNote ? <Label>Back examples</Label> : null}
                 {backExamples.map((val, i) => (
                   <div key={i} className="space-y-1">
                     <Input

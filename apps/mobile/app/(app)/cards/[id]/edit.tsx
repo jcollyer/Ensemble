@@ -94,6 +94,9 @@ export default function EditCardScreen() {
   const [backExamples, setBackExamples] = useState<string[]>([]);
   // Word class (part of speech) — optional. `null` = clear it on save.
   const [wordClass, setWordClass] = useState<string | null>(null);
+  // Teaching notes have no answer side: hide the Back field and persist a
+  // placeholder ("-") so the card still satisfies the "back required" rule.
+  const isNote = wordClass === 'note';
   // Gender and verb type — optional.
   const [gender, setGender] = useState<string | null>(null);
   const [verbType, setVerbType] = useState<string | null>(null);
@@ -352,7 +355,7 @@ export default function EditCardScreen() {
     const parsed = FlashcardUpdateInput.safeParse({
       id: cardId,
       front,
-      back,
+      back: isNote ? '-' : back,
       ...(categoryId ? { categoryId } : {}),
       frontExamples,
       backExamples,
@@ -437,14 +440,16 @@ export default function EditCardScreen() {
             multiline
             style={{ minHeight: 80, textAlignVertical: 'top' }}
           />
-          <TextField
-            label="Back"
-            value={back}
-            onChangeText={setBack}
-            error={backError}
-            multiline
-            style={{ minHeight: 120, textAlignVertical: 'top' }}
-          />
+          {!isNote ? (
+            <TextField
+              label="Back"
+              value={back}
+              onChangeText={setBack}
+              error={backError}
+              multiline
+              style={{ minHeight: 120, textAlignVertical: 'top' }}
+            />
+          ) : null}
 
           {frontExamples.length > 0 ? (
             <View className="gap-2">

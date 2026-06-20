@@ -386,9 +386,11 @@ export default function AllCardsScreen() {
                   <Text className="font-semibold text-slate-900" numberOfLines={2}>
                     {item.front}
                   </Text>
-                  <Text className="text-sm text-slate-500" numberOfLines={2}>
-                    {item.back}
-                  </Text>
+                  {item.class !== 'note' ? (
+                    <Text className="text-sm text-slate-500" numberOfLines={2}>
+                      {item.back}
+                    </Text>
+                  ) : null}
                   {item.frontExamples?.length > 0 || item.backExamples?.length > 0 ? (
                     <View className="mt-1.5 gap-1 border-t border-slate-100 pt-1.5">
                       {Array.from({

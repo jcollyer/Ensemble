@@ -115,6 +115,10 @@ export function FlipCard({
   cardId: string | undefined;
   backLanguage: BackLanguageValue | null;
 }) {
+  // Teaching notes have no answer side. We hide the back text/audio/gender and
+  // mirror the front content onto the back face (so a flip never lands on a
+  // blank card), with an amber treatment to distinguish notes from vocab.
+  const isNote = cardClass === 'note';
   return (
     <button
       type="button"
@@ -126,7 +130,12 @@ export function FlipCard({
       aria-label={flipped ? 'Hide answer' : 'Flip'}
     >
       <div className="flip-card-inner">
-        <Card className="flip-card-face flex items-center justify-center p-6 text-center shadow-md">
+        <Card
+          className={cn(
+            'flip-card-face flex items-center justify-center p-6 text-center shadow-md',
+            isNote && 'border-amber-300 bg-amber-50',
+          )}
+        >
           <CardContent className="w-full space-y-3">
             {cardClass ? (
               <div className="flex justify-center">
@@ -145,14 +154,19 @@ export function FlipCard({
             ) : null}
           </CardContent>
         </Card>
-        <Card className="flip-card-face flip-card-back border-primary/40 bg-primary/5 relative flex items-stretch justify-center p-6 text-center shadow-md">
+        <Card
+          className={cn(
+            'flip-card-face flip-card-back relative flex items-stretch justify-center p-6 text-center shadow-md',
+            isNote ? 'border-amber-300 bg-amber-50' : 'border-primary/40 bg-primary/5',
+          )}
+        >
           <CardContent className="flex h-full w-full flex-col gap-3 pb-0">
             {cardClass ? (
               <div className="flex justify-center">
                 <ClassBadge value={cardClass} size="md" />
               </div>
             ) : null}
-            <p className="text-xl font-bold leading-snug">{back}</p>
+            <p className="text-xl font-bold leading-snug">{isNote ? front : back}</p>
             {backExamples.length > 0 ? (
               <ul className="w-fit space-y-1 divide-y divide-gray-200 text-left">
                 {backExamples.map((ex, i) => (
@@ -162,18 +176,18 @@ export function FlipCard({
                 ))}
               </ul>
             ) : null}
-            {pronunciation && (
+            {!isNote && pronunciation && (
               <p className="text-muted-foreground mt-auto text-right italic">[{pronunciation}]</p>
             )}
           </CardContent>
           {/* Gender indicator — bottom-left of the back face. */}
-          {gender ? (
+          {!isNote && gender ? (
             <span className="text-muted-foreground absolute bottom-3 left-3 text-xs italic">
               {genderLabel(gender)}
             </span>
           ) : null}
           {/* Only render the audio button if the deck has a configured language. */}
-          {backLanguage && cardId ? (
+          {!isNote && backLanguage && cardId ? (
             <AudioButton
               cardId={cardId}
               text={back}

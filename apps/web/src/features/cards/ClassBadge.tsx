@@ -30,10 +30,15 @@ export function ClassBadge({ value, size = 'sm', className }: ClassBadgeProps) {
   // client doesn't know about yet — better than rendering nothing.
   const label = LABEL_BY_VALUE.get(value) ?? value;
 
+  // Teaching notes get a distinct amber treatment so they stand out from
+  // regular vocab cards at a glance.
+  const isNote = value === 'note';
+
   return (
     <span
       className={cn(
-        'bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-sm',
+        'inline-flex items-center gap-1 rounded-sm',
+        isNote ? 'bg-amber-100 text-amber-700' : 'bg-muted text-muted-foreground',
         size === 'sm' ? 'px-1.5 py-0.5 text-xs' : 'px-2 py-0.5 text-sm',
         className,
       )}

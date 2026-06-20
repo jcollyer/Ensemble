@@ -29,20 +29,23 @@ export function ClassBadge({ value, size = 'sm' }: ClassBadgeProps) {
 
   const isMd = size === 'md';
   const iconSize = isMd ? 14 : 11;
-  // Match the web's muted gray. Slate-500 reads well on the slate-100 chip
-  // and on the lighter card backgrounds used in practice mode.
-  const color = '#64748b';
+  // Teaching notes get a distinct amber treatment so they stand out from
+  // regular vocab cards. Everything else keeps the muted slate gray.
+  const isNote = value === 'note';
+  const color = isNote ? '#b45309' : '#64748b';
+  const chipBg = isNote ? 'bg-amber-100' : 'bg-slate-100';
+  const textColor = isNote ? 'text-amber-700' : 'text-slate-500';
 
   return (
     <View
       className={
         isMd
-          ? 'flex-row items-center gap-1 self-center rounded-sm bg-slate-100 px-2 py-0.5'
-          : 'flex-row items-center gap-1 rounded-sm bg-slate-100 px-1.5 py-0.5'
+          ? `flex-row items-center gap-1 self-center rounded-sm ${chipBg} px-2 py-0.5`
+          : `flex-row items-center gap-1 rounded-sm ${chipBg} px-1.5 py-0.5`
       }
     >
       <Feather name="tag" size={iconSize} color={color} />
-      <Text className={isMd ? 'text-sm text-slate-500' : 'text-xs text-slate-500'}>{label}</Text>
+      <Text className={isMd ? `text-sm ${textColor}` : `text-xs ${textColor}`}>{label}</Text>
     </View>
   );
 }

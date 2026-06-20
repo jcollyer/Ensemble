@@ -142,8 +142,12 @@ function SortableFavoriteCard({
             {cardListViewMode === 'list' ? (
               <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-sm">
                 <span className="truncate font-medium">{card.front}</span>
-                <span className="text-muted-foreground shrink-0">-</span>
-                <span className="text-muted-foreground truncate">{card.back}</span>
+                {card.class !== 'note' ? (
+                  <>
+                    <span className="text-muted-foreground shrink-0">-</span>
+                    <span className="text-muted-foreground truncate">{card.back}</span>
+                  </>
+                ) : null}
                 {card.class ? (
                   <>
                     <span className="text-muted-foreground shrink-0">-</span>
@@ -168,7 +172,9 @@ function SortableFavoriteCard({
             ) : (
               <>
                 <div className="line-clamp-2 font-medium">{card.front}</div>
-                <div className="text-muted-foreground line-clamp-2 text-sm">{card.back}</div>
+                {card.class !== 'note' ? (
+                  <div className="text-muted-foreground line-clamp-2 text-sm">{card.back}</div>
+                ) : null}
                 <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs">
                   {card.class ? <ClassBadge value={card.class} /> : null}
                   {gender ? <span>{genderLabel(gender)}</span> : null}

@@ -222,8 +222,12 @@ function SortableCard({
             {cardListViewMode === 'list' ? (
               <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-sm">
                 <span className="truncate font-medium">{card.front}</span>
-                <span className="text-muted-foreground shrink-0">-</span>
-                <span className="text-muted-foreground truncate">{card.back}</span>
+                {card.class !== 'note' ? (
+                  <>
+                    <span className="text-muted-foreground shrink-0">-</span>
+                    <span className="text-muted-foreground truncate">{card.back}</span>
+                  </>
+                ) : null}
                 {card.class ? (
                   <>
                     <span className="text-muted-foreground shrink-0">-</span>
@@ -258,7 +262,9 @@ function SortableCard({
             ) : (
               <>
                 <div className="line-clamp-2 font-medium">{card.front}</div>
-                <div className="text-muted-foreground line-clamp-2 text-sm">{card.back}</div>
+                {card.class !== 'note' ? (
+                  <div className="text-muted-foreground line-clamp-2 text-sm">{card.back}</div>
+                ) : null}
                 {card.frontExamples.length > 0 || card.backExamples.length > 0 ? (
                   <div className="divide-border/50 mt-2 divide-y px-3 py-1">
                     {Array.from({
@@ -453,16 +459,13 @@ export function CategoryDetail({ categoryId }: Props) {
           backExamples: card.backExamples,
           class: card.class ?? null,
           gender: (card as { gender?: string | null }).gender ?? null,
-          pronunciation:
-            (card as { pronunciation?: string | null }).pronunciation ?? null,
-          backLanguage:
-            (category?.backLanguage ?? null) as BackLanguageValue | null,
+          pronunciation: (card as { pronunciation?: string | null }).pronunciation ?? null,
+          backLanguage: (category?.backLanguage ?? null) as BackLanguageValue | null,
           // Forward the existing advanced selection so the rating panel can
           // pre-tick the user's previous choice when they re-rate a card from
           // the deck detail view.
           advancedDifficultyLevel:
-            (card as { advancedDifficultyLevel?: string | null })
-              .advancedDifficultyLevel ?? null,
+            (card as { advancedDifficultyLevel?: string | null }).advancedDifficultyLevel ?? null,
           difficultyLevel:
             ((card as { difficultyLevel?: string | null }).difficultyLevel as
               | import('@ensemble/types').DifficultyLevel
