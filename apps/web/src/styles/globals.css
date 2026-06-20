@@ -104,3 +104,24 @@
 .flip-card-back {
   transform: rotateY(180deg);
 }
+
+/* Speaker icon "speaking" pulse — applied to the Volume icon while a TTS
+   clip is actively playing. A gentle rhythmic scale reads as sound output
+   without being distracting. */
+@keyframes speaker-speaking {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.22);
+  }
+}
+.animate-speaking {
+  animation: speaker-speaking 0.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-speaking {
+    animation: none;
+  }
+}

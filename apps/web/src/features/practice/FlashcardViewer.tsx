@@ -409,10 +409,14 @@ export function CardAudioButton({ tts, texts }: { tts: CardTtsController; texts:
           'bg-background text-primary inline-flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition',
           'hover:bg-primary/10 focus:ring-ring focus:outline-none focus:ring-2 focus:ring-offset-1',
           'disabled:cursor-progress disabled:opacity-60',
-          playing && 'bg-primary/10 animate-pulse',
+          playing && 'bg-primary/10',
         )}
       >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+        {loading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Volume2 className={cn('h-4 w-4', playing && 'animate-speaking')} />
+        )}
       </button>
       {isActive && tts.errorKey === 'all' ? (
         <span className="bg-destructive/10 text-destructive max-w-[180px] truncate rounded px-1.5 py-0.5 text-[10px]">
@@ -467,10 +471,14 @@ export function LineSpeakerButton({
         // Keep visible whenever this line is the active one, even on desktop
         // when the pointer has moved off after clicking.
         isActive && 'opacity-100 sm:opacity-100',
-        playing && 'bg-primary/10 animate-pulse',
+        playing && 'bg-primary/10',
       )}
     >
-      {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Volume2 className="h-3 w-3" />}
+      {loading ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <Volume2 className={cn('h-3 w-3', playing && 'animate-speaking')} />
+      )}
     </button>
   );
 }
