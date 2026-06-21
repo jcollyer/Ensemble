@@ -503,7 +503,9 @@ export function LineSpeakerButton({
       aria-label={playing ? 'Playing line' : label}
       title={label}
       className={cn(
-        'bg-background text-primary inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border shadow-sm transition',
+        // Larger tap target on mobile (where these are the only audio control),
+        // tightened to a subtle inline size on desktop where hover reveals them.
+        'bg-background text-primary inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border shadow-sm transition sm:h-6 sm:w-6',
         'hover:bg-primary/10 focus:ring-ring focus-visible:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-1',
         'disabled:cursor-progress disabled:opacity-60',
         // Always visible on mobile; hover/focus-reveal on desktop.
@@ -515,10 +517,13 @@ export function LineSpeakerButton({
       )}
     >
       {loading ? (
-        <Loader2 className="h-3 w-3 animate-spin" />
+        <Loader2 className="h-4 w-4 animate-spin sm:h-3 sm:w-3" />
       ) : (
         <Volume2
-          className={cn('h-3 w-3', playing && (slow ? 'animate-speaking-slow' : 'animate-speaking'))}
+          className={cn(
+            'h-4 w-4 sm:h-3 sm:w-3',
+            playing && (slow ? 'animate-speaking-slow' : 'animate-speaking'),
+          )}
         />
       )}
     </button>

@@ -13,7 +13,7 @@ import { Feather, FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio, type AVPlaybackStatus } from 'expo-av';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Pressable, Switch, Text, View } from 'react-native';
 
 import type { AdvancedDifficultyLevel, BackLanguageValue, DifficultyLevel } from '@ensemble/types';
 import { ADVANCED_DIFFICULTY_LEVEL_OPTIONS, genderLabel } from '@ensemble/types';
@@ -122,6 +122,15 @@ export function FlipCard({
   // when "flipped"), hide the back text/audio/gender, and give the card an
   // amber treatment so notes are distinguishable from vocab cards.
   const isNote = cardClass === 'note';
+  // Per-line audio is only meaningful on the back of a vocab card in a deck
+  // with a configured language. There's no hover on a touch device, so every
+  // line carries its own always-visible speaker button (replacing the old
+  // single card-level button).
+  const showLineAudio = flipped && !isNote && !!cardId && !!backLanguage;
+  // Shared controller so every per-line button shares the TTS cache and only
+  // one line ever plays at a time. Runs unconditionally (it only allocates a
+  // tRPC handle + refs and does nothing until a button is pressed).
+  const tts = useCardTts(backLanguage);
   return (
     <Pressable onPress={onPress} className="flex-1 active:opacity-90">
       <Card
@@ -135,15 +144,26 @@ export function FlipCard({
           </View>
         ) : null}
 
-        <Text
-          className={`text-center leading-snug ${
-            flipped && !isNote
-              ? 'text-xl font-bold text-slate-900'
-              : 'text-2xl font-bold text-slate-900'
-          }`}
-        >
-          {isNote ? front : flipped ? back : front}
-        </Text>
+        {showLineAudio ? (
+          <View className="w-full flex-row items-center justify-center gap-2">
+            <Text className="text-center text-xl font-bold leading-snug text-slate-900">{back}</Text>
+            <LineSpeakerButton tts={tts} audioKey="main" texts={[back]} label="Hear this line" />
+          </View>
+        ) : (
+          <Text
+            className={`text-center leading-snug ${
+              flipped && !isNote
+                ? 'text-xl font-bold text-slate-900'
+                : 'text-2xl font-bold text-slate-900'
+            }`}
+          >
+            {isNote ? front : flipped ? back : front}
+          </Text>
+        )}
+
+        {showLineAudio && tts.errorKey ? (
+          <Text className="text-destructive mt-1 text-[10px]">Audio playback failed.</Text>
+        ) : null}
 
         {flipped && pronunciation && !isNote ? (
           <Text className="mt-2 text-center text-base italic text-slate-500">{pronunciation}</Text>
@@ -151,11 +171,23 @@ export function FlipCard({
 
         {flipped && backExamples.length > 0 ? (
           <View className="mt-3 w-full gap-1 self-start pl-2">
-            {backExamples.map((ex, i) => (
-              <Text key={i} className="text-sm italic text-slate-500">
-                {ex}
-              </Text>
-            ))}
+            {backExamples.map((ex, i) =>
+              showLineAudio ? (
+                <View key={i} className="flex-row items-center gap-2">
+                  <Text className="flex-1 text-sm italic text-slate-500">{ex}</Text>
+                  <LineSpeakerButton
+                    tts={tts}
+                    audioKey={`ex:${i}`}
+                    texts={[ex]}
+                    label="Hear this line"
+                  />
+                </View>
+              ) : (
+                <Text key={i} className="text-sm italic text-slate-500">
+                  {ex}
+                </Text>
+              ),
+            )}
           </View>
         ) : !flipped && frontExamples.length > 0 ? (
           <View className="mt-3 w-full gap-1 self-start pl-2">
@@ -173,17 +205,6 @@ export function FlipCard({
           </Text>
         ) : null}
 
-        {flipped && cardId && backLanguage && !isNote ? (
-          <View className="absolute right-3 top-3 z-10">
-            <AudioButton
-              cardId={cardId}
-              text={back}
-              examples={backExamples}
-              languageCode={backLanguage}
-            />
-          </View>
-        ) : null}
-
         {/* Gender indicator — bottom-left of the back face. */}
         {flipped && gender && !isNote ? (
           <View className="absolute bottom-3 left-3 z-10">
@@ -195,33 +216,52 @@ export function FlipCard({
   );
 }
 
-// ── AudioButton ────────────────────────────────────────────────────────────────
+// ── useCardTts ─────────────────────────────────────────────────────────────────
+
+type TtsStatus = 'idle' | 'loading' | 'playing';
+
+/** Speaking rate used when the user taps a line a second time. */
+const SLOW_SPEAKING_RATE = 0.6;
+
+export interface CardTtsController {
+  /** Begin playing `texts` under the given key at an optional speaking rate. */
+  play: (key: string, texts: string[], speakingRate?: number) => void;
+  /**
+   * Play a single line, toggling speed on repeat taps: first tap plays at
+   * normal speed, a second consecutive tap on the same line plays slowly, a
+   * third returns to normal. Switching lines resets to normal speed.
+   */
+  playLine: (key: string, texts: string[]) => void;
+  /** Key of the segment currently loading/playing, or null when idle. */
+  activeKey: string | null;
+  /** Playback state of the active key. */
+  status: TtsStatus;
+  /** True while the active playback is the slowed-down variant. */
+  slow: boolean;
+  /** Key whose last play attempt errored, or null. */
+  errorKey: string | null;
+}
 
 /**
- * Speaker button that fetches TTS audio for the back text + examples and
- * plays them sequentially. Uses expo-av and an in-memory cache so the same
- * phrase is never re-synthesized within a session.
+ * Shared TTS controller for one flashcard back face. Mirrors the web version:
+ * one rate-keyed cache so a phrase is never re-synthesized (or re-billed),
+ * and a single expo-av sound so only one line plays at a time.
  */
-export function AudioButton({
-  cardId: _cardId,
-  text,
-  examples,
-  languageCode,
-}: {
-  cardId: string;
-  text: string;
-  examples: string[];
-  languageCode: BackLanguageValue;
-}) {
+export function useCardTts(languageCode: BackLanguageValue | null): CardTtsController {
   const synthesize = trpc.tts.synthesize.useMutation();
 
+  // `${rate}:${text}` -> data URL, so normal and slow renderings cache apart.
   const cacheRef = useRef<Map<string, string>>(new Map());
   const soundRef = useRef<Audio.Sound | null>(null);
   const runTokenRef = useRef<symbol | null>(null);
+  // Toggle bookkeeping for `playLine`.
+  const lastLineKeyRef = useRef<string | null>(null);
+  const lastLineSlowRef = useRef(false);
 
-  const [playing, setPlaying] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [status, setStatus] = useState<TtsStatus>('idle');
+  const [slow, setSlow] = useState(false);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -235,12 +275,18 @@ export function AudioButton({
   }, []);
 
   const fetchAudio = useCallback(
-    async (segment: string): Promise<string> => {
-      const cached = cacheRef.current.get(segment);
+    async (segment: string, speakingRate: number): Promise<string> => {
+      const cacheKey = `${speakingRate}:${segment}`;
+      const cached = cacheRef.current.get(cacheKey);
       if (cached) return cached;
-      const { audioContent } = await synthesize.mutateAsync({ text: segment, languageCode });
+      const { audioContent } = await synthesize.mutateAsync({
+        text: segment,
+        languageCode: languageCode as BackLanguageValue,
+        // Omit when normal so the server uses Google's default 1.0.
+        ...(speakingRate !== 1 ? { speakingRate } : {}),
+      });
       const dataUrl = `data:audio/mp3;base64,${audioContent}`;
-      cacheRef.current.set(segment, dataUrl);
+      cacheRef.current.set(cacheKey, dataUrl);
       return dataUrl;
     },
     [synthesize, languageCode],
@@ -257,14 +303,14 @@ export function AudioButton({
           const { sound } = await Audio.Sound.createAsync({ uri: dataUrl }, { shouldPlay: true });
           soundRef.current = sound;
 
-          sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-            if (!status.isLoaded) {
-              if ('error' in status && status.error) {
+          sound.setOnPlaybackStatusUpdate((s: AVPlaybackStatus) => {
+            if (!s.isLoaded) {
+              if ('error' in s && s.error) {
                 reject(new Error('Audio playback failed.'));
               }
               return;
             }
-            if (status.didJustFinish) {
+            if (s.didJustFinish) {
               sound.unloadAsync().catch(() => {});
               if (soundRef.current === sound) soundRef.current = null;
               resolve();
@@ -277,78 +323,135 @@ export function AudioButton({
     });
   }, []);
 
-  const handlePress = useCallback(async () => {
-    if (soundRef.current) {
-      await soundRef.current.stopAsync().catch(() => {});
-    }
-    setError(null);
-
-    const token = Symbol();
-    runTokenRef.current = token;
-    const isActive = () => runTokenRef.current === token;
-
-    const texts = examples.length > 0 ? [text, ...examples] : [text];
-
-    setLoading(true);
-    setPlaying(false);
-    try {
-      const dataUrls: string[] = [];
-      for (const segment of texts) {
-        if (!isActive()) return;
-        dataUrls.push(await fetchAudio(segment));
-      }
-
-      if (!isActive()) return;
-      setLoading(false);
-      setPlaying(true);
-
-      for (let i = 0; i < dataUrls.length; i++) {
-        if (!isActive()) break;
-        await playSingle(dataUrls[i] as string);
-        if (i < dataUrls.length - 1 && isActive()) {
-          await new Promise<void>((resolve) => setTimeout(resolve, 400));
+  const play = useCallback(
+    (key: string, texts: string[], speakingRate = 1) => {
+      void (async () => {
+        if (soundRef.current) {
+          await soundRef.current.stopAsync().catch(() => {});
         }
-      }
-    } catch {
-      if (isActive()) setError('Audio playback failed.');
-    } finally {
-      if (isActive()) {
-        setLoading(false);
-        setPlaying(false);
-      }
+        setErrorKey(null);
+
+        const token = Symbol();
+        runTokenRef.current = token;
+        const isActive = () => runTokenRef.current === token;
+
+        setActiveKey(key);
+        setSlow(speakingRate < 1);
+        setStatus('loading');
+        try {
+          const dataUrls: string[] = [];
+          for (const segment of texts) {
+            if (!isActive()) return;
+            dataUrls.push(await fetchAudio(segment, speakingRate));
+          }
+
+          if (!isActive()) return;
+          setStatus('playing');
+
+          for (let i = 0; i < dataUrls.length; i++) {
+            if (!isActive()) break;
+            await playSingle(dataUrls[i] as string);
+            if (i < dataUrls.length - 1 && isActive()) {
+              await new Promise<void>((resolve) => setTimeout(resolve, 400));
+            }
+          }
+        } catch {
+          if (isActive()) setErrorKey(key);
+        } finally {
+          if (isActive()) {
+            setStatus('idle');
+            setActiveKey(null);
+            setSlow(false);
+          }
+        }
+      })();
+    },
+    [fetchAudio, playSingle],
+  );
+
+  const playLine = useCallback(
+    (key: string, texts: string[]) => {
+      const slowThisTime = lastLineKeyRef.current === key ? !lastLineSlowRef.current : false;
+      lastLineKeyRef.current = key;
+      lastLineSlowRef.current = slowThisTime;
+      play(key, texts, slowThisTime ? SLOW_SPEAKING_RATE : 1);
+    },
+    [play],
+  );
+
+  return { play, playLine, activeKey, status, slow, errorKey };
+}
+
+// ── LineSpeakerButton ──────────────────────────────────────────────────────────
+
+/**
+ * A small speaker shown beside a single line of back-of-card text. Tapping it
+ * plays just that line; tapping again plays it slower. While the line is
+ * playing, the icon does a gentle pulse — slower when the slow variant is
+ * playing — so the animation tracks the speech.
+ */
+export function LineSpeakerButton({
+  tts,
+  audioKey,
+  texts,
+  label,
+}: {
+  tts: CardTtsController;
+  audioKey: string;
+  texts: string[];
+  label: string;
+}) {
+  const isActive = tts.activeKey === audioKey;
+  const loading = isActive && tts.status === 'loading';
+  const playing = isActive && tts.status === 'playing';
+  const slow = isActive && tts.slow;
+
+  // Gentle scale pulse while speaking, using core RN Animated (native driver,
+  // no extra deps). Slower cadence for the slowed-down clip so the animation
+  // tracks the speech.
+  const scale = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!playing) {
+      scale.setValue(1);
+      return;
     }
-  }, [text, examples, fetchAudio, playSingle]);
+    const duration = slow ? 550 : 300;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.22, duration, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => {
+      loop.stop();
+      scale.setValue(1);
+    };
+  }, [playing, slow, scale]);
 
   return (
-    <View className="items-end gap-1">
-      <Pressable
-        onPress={(event) => {
-          event.stopPropagation();
-          void handlePress();
-        }}
-        disabled={loading}
-        accessibilityLabel={playing ? 'Playing pronunciation' : 'Hear pronunciation'}
-        accessibilityRole="button"
-        hitSlop={6}
-        className={`border-border h-10 w-10 items-center justify-center rounded-full border bg-white active:opacity-70 ${
-          playing ? 'bg-blue-50' : ''
-        }`}
-        style={{ opacity: loading ? 0.6 : 1 }}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color="#5584bb" />
-        ) : (
-          <Feather name="volume-2" size={18} color="#5584bb" />
-        )}
-      </Pressable>
-      {error ? (
-        <View className="max-w-[180px] rounded bg-red-50 px-2 py-1">
-          <Text className="text-destructive text-[10px]" numberOfLines={2}>
-            {error}
-          </Text>
-        </View>
-      ) : null}
-    </View>
+    <Pressable
+      onPress={(event) => {
+        event.stopPropagation();
+        tts.playLine(audioKey, texts);
+      }}
+      disabled={loading}
+      accessibilityLabel={playing ? 'Playing line' : label}
+      accessibilityRole="button"
+      hitSlop={8}
+      className={`border-border h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white active:opacity-70 ${
+        playing ? 'bg-blue-50' : ''
+      }`}
+      style={{ opacity: loading ? 0.6 : 1 }}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color="#5584bb" />
+      ) : (
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <Feather name="volume-2" size={16} color="#5584bb" />
+        </Animated.View>
+      )}
+    </Pressable>
   );
 }
 
