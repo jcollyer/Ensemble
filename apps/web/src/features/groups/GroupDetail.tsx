@@ -327,15 +327,17 @@ export function GroupDetail({ groupId }: Props) {
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-muted-foreground text-sm">Anyone with the link can join.</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => createLink.mutate({ groupId })}
-              disabled={createLink.isPending}
-            >
-              <Plus className="h-4 w-4" />
-              {createLink.isPending ? 'Generating…' : 'Generate link'}
-            </Button>
+            {group.isOwner ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => createLink.mutate({ groupId })}
+                disabled={createLink.isPending}
+              >
+                <Plus className="h-4 w-4" />
+                {createLink.isPending ? 'Generating…' : 'Generate link'}
+              </Button>
+            ) : null}
           </div>
           {(linkInvites ?? []).length === 0 ? (
             <p className="text-muted-foreground text-xs">No active invite links yet.</p>
@@ -385,15 +387,17 @@ export function GroupDetail({ groupId }: Props) {
                         </>
                       )}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => revokeInvite.mutate({ inviteId: inv.id })}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Revoke
-                    </Button>
+                    {group.isOwner ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => revokeInvite.mutate({ inviteId: inv.id })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Revoke
+                      </Button>
+                    ) : null}
                   </li>
                 );
               })}
