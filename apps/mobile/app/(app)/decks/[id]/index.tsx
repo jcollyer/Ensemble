@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Grid2x2, Heart, List, Play } from 'lucide-react-native';
+import { Grid2x2, Heart, ImagePlus, List, Play } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -42,6 +42,12 @@ export default function DeckDetailScreen() {
     { categoryId },
     { enabled: category?.isOwner === true },
   );
+  // Feature-detect the photo→cards flow; the button only renders when the
+  // server has an OpenAI key configured.
+  const { data: photoAvailability } = trpc.cardsAi.isAvailable.useQuery(undefined, {
+    staleTime: Infinity,
+  });
+  const photoCardsAvailable = !!photoAvailability?.available;
 
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [practiceFiltersOpen, setPracticeFiltersOpen] = useState(false);
@@ -187,6 +193,18 @@ export default function DeckDetailScreen() {
                 </>
               ) : null}
             </View>
+
+            {isOwner && photoCardsAvailable ? (
+              <Button
+                variant="outline"
+                onPress={() => router.push(`/new-cards-from-photo?categoryId=${categoryId}`)}
+              >
+                <View className="flex-row items-center justify-center gap-2">
+                  <ImagePlus size={15} color="#0f172a" />
+                  <Text className="font-semibold text-slate-900">New cards from photo</Text>
+                </View>
+              </Button>
+            ) : null}
 
             <View className="flex-row gap-2">
               {isOwner ? (

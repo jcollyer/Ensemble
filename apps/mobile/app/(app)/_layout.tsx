@@ -45,6 +45,10 @@ export default function AppLayout() {
       <Stack.Screen name="groups/[id]/index" options={{ title: 'Group' }} />
       <Stack.Screen name="new-deck" options={{ title: 'New deck', presentation: 'modal' }} />
       <Stack.Screen name="new-card" options={{ title: 'New card', presentation: 'modal' }} />
+      <Stack.Screen
+        name="new-cards-from-photo"
+        options={{ title: 'New cards from photo', presentation: 'modal' }}
+      />
       <Stack.Screen name="decks/[id]/index" options={{ title: 'Deck' }} />
       <Stack.Screen name="decks/[id]/practice" options={{ title: 'Play' }} />
       <Stack.Screen
