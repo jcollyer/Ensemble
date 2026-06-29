@@ -10,12 +10,13 @@ import {
   Crown,
   Globe,
   HeartHandshake,
-  Smartphone,
+  Camera,
   ListStart,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { auth } from '@/server/auth';
+import { MobileAppBanner } from './MobileAppBanner';
 
 export default async function HomePage() {
   const session = await auth();
@@ -23,6 +24,7 @@ export default async function HomePage() {
 
   return (
     <main className="flex min-h-dvh flex-col">
+      <MobileAppBanner />
       <header className="border-b">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
@@ -81,6 +83,16 @@ export default async function HomePage() {
             body="Turn on translation to both see + hear it"
           />
           <FeatureCard
+            icon={<Camera className="h-5 w-5" />}
+            title="Snap a photo"
+            body="Turn a photo of any vocab list into a full deck of cards"
+          />
+          <FeatureCard
+            icon={<HeartHandshake className="h-5 w-5" />}
+            title="Collaborate"
+            body="Create together or duplicate classmates’ decks"
+          />
+          <FeatureCard
             icon={<ListStart className="h-5 w-5" />}
             title="Organization"
             body="Group cards by course, by week"
@@ -91,23 +103,13 @@ export default async function HomePage() {
             body="Track your progress as you learn"
           />
           <FeatureCard
-            icon={<HeartHandshake className="h-5 w-5" />}
-            title="Collaborate"
-            body="Create together or duplicate classmates’ decks"
-          />
-          <FeatureCard
-            icon={<Smartphone className="h-5 w-5" />}
-            title="On the go"
-            body="Play on the app in easy 5 or 10 minute pockets of time"
-          />
-          <FeatureCard
             icon={<Crown className="h-5 w-5" />}
             title="Personalized convos"
             body="Chat with ensemble using only your known vocabulary"
             badge="Coming soon"
           />
         </div>
-        <div className="mt-20 w-full max-w-3xl">
+        <div className="mt-20 hidden w-full max-w-3xl sm:block">
           <div className="bg-muted/30 flex flex-col items-center gap-6 rounded-2xl border p-8 sm:flex-row sm:gap-8 sm:p-10 sm:text-left">
             <Image
               src={appIconPng}
