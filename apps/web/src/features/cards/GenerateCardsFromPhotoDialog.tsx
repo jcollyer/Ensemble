@@ -137,6 +137,7 @@ export function GenerateCardsFromPhotoDialog(props: GenerateCardsFromPhotoDialog
   const [drafts, setDrafts] = useState<EditableDraft[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
 
   const languageLabel = backLanguageName(backLanguage) || 'the deck language';
 
@@ -150,6 +151,7 @@ export function GenerateCardsFromPhotoDialog(props: GenerateCardsFromPhotoDialog
       setDrafts(null);
       setError(null);
       setPreparing(false);
+      setDragActive(false);
       generate.reset();
       createMany.reset();
     }
@@ -172,6 +174,18 @@ export function GenerateCardsFromPhotoDialog(props: GenerateCardsFromPhotoDialog
     } finally {
       setPreparing(false);
     }
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLButtonElement>) {
+    e.preventDefault();
+    setDragActive(false);
+    if (!hasLanguage || preparing) return;
+    const file = Array.from(e.dataTransfer.files).find((f) => f.type.startsWith('image/'));
+    if (!file) {
+      setError('Please drop an image file.');
+      return;
+    }
+    void handleFileSelected(file);
   }
 
   function handleGenerate() {
@@ -347,7 +361,21 @@ export function GenerateCardsFromPhotoDialog(props: GenerateCardsFromPhotoDialog
                 type="button"
                 disabled={!hasLanguage || preparing}
                 onClick={() => fileInputRef.current?.click()}
-                className="border-input hover:bg-muted/40 flex w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed py-10 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (!hasLanguage || preparing) return;
+                  setDragActive(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setDragActive(false);
+                }}
+                onDrop={handleDrop}
+                className={`flex w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed py-10 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                  dragActive
+                    ? 'border-primary bg-primary/5'
+                    : 'border-input hover:bg-muted/40'
+                }`}
               >
                 {preparing ? (
                   <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
@@ -355,7 +383,11 @@ export function GenerateCardsFromPhotoDialog(props: GenerateCardsFromPhotoDialog
                   <ImagePlus className="text-muted-foreground h-6 w-6" />
                 )}
                 <span className="text-muted-foreground">
-                  {preparing ? 'Preparing image…' : 'Click to upload a photo'}
+                  {preparing
+                    ? 'Preparing image…'
+                    : dragActive
+                      ? 'Drop your photo here'
+                      : 'Click to upload or drag a photo here'}
                 </span>
               </button>
             )}
